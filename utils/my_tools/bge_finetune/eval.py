@@ -103,8 +103,8 @@ def index(model: FlagModel, corpus: datasets.Dataset, batch_size: int = 256, max
     # create faiss index
     faiss_index = faiss.index_factory(dim, index_factory, faiss.METRIC_INNER_PRODUCT)
 
-    if model.device == torch.device("cuda"):
-        # co = faiss.GpuClonerOptions()
+    # if model.device == torch.device("cuda"):
+    if False:
         co = faiss.GpuMultipleClonerOptions()
         co.useFloat16 = True
         # faiss_index = faiss.index_cpu_to_gpu(faiss.StandardGpuResources(), 0, faiss_index, co)
@@ -135,10 +135,14 @@ def search(model: FlagModel, queries: datasets, faiss_index: faiss.Index, k:int 
     all_scores = np.concatenate(all_scores, axis=0)
     all_indices = np.concatenate(all_indices, axis=0)
     return all_scores, all_indices
-    
-    
-def evaluate(preds, labels, cutoffs=[1,10,100]):
+
+
+import numpy as np
+
+
+def evaluate(preds, labels, cutoffs=[1, 5, 10, 30]):
     metrics = {}
+
     # MRR
     mrrs = np.zeros(len(cutoffs))
     for pred, label in zip(preds, labels):
@@ -167,27 +171,89 @@ def evaluate(preds, labels, cutoffs=[1,10,100]):
         recall = recalls[i]
         metrics[f"Recall@{cutoff}"] = recall
 
-    return metrics
+    # Precision
+    precisions = np.zeros(len(cutoffs))
+    for pred, label in zip(preds, labels):
+        for k, cutoff in enumerate(cutoffs):
+            precision = np.intersect1d(label, pred[:cutoff])
+            precisions[k] += len(precision) / cutoff
+    precisions /= len(preds)
+    for i, cutoff in enumerate(cutoffs):
+        precision = precisions[i]
+        metrics[f"Precision@{cutoff}"] = precision
 
+    # F1-Score@K
+    f1_scores = np.zeros(len(cutoffs))
+    for pred, label in zip(preds, labels):
+        for k, cutoff in enumerate(cutoffs):
+            recall = np.intersect1d(label, pred[:cutoff])
+            precision = np.intersect1d(label, pred[:cutoff])
+            recall_value = len(recall) / len(label)
+            precision_value = len(precision) / cutoff
+            if precision_value + recall_value > 0:
+                f1_score = 2 * (precision_value * recall_value) / (precision_value + recall_value)
+            else:
+                f1_score = 0.0
+            f1_scores[k] += f1_score
+    f1_scores /= len(preds)
+    for i, cutoff in enumerate(cutoffs):
+        f1_score = f1_scores[i]
+        metrics[f"F1-Score@{cutoff}"] = f1_score
+
+    # Hit Rate
+    hit_rates = np.zeros(len(cutoffs))
+    for pred, label in zip(preds, labels):
+        for k, cutoff in enumerate(cutoffs):
+            hit = np.intersect1d(label, pred[:cutoff])
+            if len(hit) > 0:
+                hit_rates[k] += 1
+    hit_rates /= len(preds)
+    for i, cutoff in enumerate(cutoffs):
+        hit_rate = hit_rates[i]
+        metrics[f"HitRate@{cutoff}"] = hit_rate
+
+    # NDCG
+    ndcgs = np.zeros(len(cutoffs))
+    for pred, label in zip(preds, labels):
+        for k, cutoff in enumerate(cutoffs):
+            pred_cutoff = pred[:cutoff]
+            dcg = 0.0
+            idcg = 0.0
+            for i, item in enumerate(pred_cutoff, 1):
+                if item in label:
+                    dcg += 1.0 / np.log2(i + 1)
+            for i in range(1, len(label) + 1):
+                idcg += 1.0 / np.log2(i + 1)
+            if idcg == 0:
+                ndcgs[k] += 0
+            else:
+                ndcgs[k] += dcg / idcg
+    ndcgs /= len(preds)
+    for i, cutoff in enumerate(cutoffs):
+        ndcg = ndcgs[i]
+        metrics[f"NDCG@{cutoff}"] = ndcg
+
+    return metrics
 def main():
     parser = HfArgumentParser([Args])
     args: Args = parser.parse_args_into_dataclasses()[0]
 
     with open(args.test_data, "r") as f:
         test_data = json.load(f)
-    
-    test_data = test_data['test_data']
+    # print(json.dumps(test_data, indent=4, ensure_ascii=False))
+    # print(json.dumps(test_data, indent=4, ensure_ascii=False))
     corpus = test_data['corpus']
+    test_data = test_data['test_data']
 
     model = FlagModel(
-        args.encoder, 
+        args.encoder,
         query_instruction_for_retrieval="Represent this sentence for searching relevant passages: " if args.add_instruction else None,
         use_fp16=args.fp16
     )
-    
+
     faiss_index = index(
-        model=model, 
-        corpus=corpus, 
+        model=model,
+        corpus=corpus,
         batch_size=args.batch_size,
         max_length=args.max_passage_length,
         index_factory=args.index_factory,
@@ -195,16 +261,15 @@ def main():
         save_embedding=args.save_embedding,
         load_embedding=args.load_embedding
     )
-    
+
     scores, indices = search(
-        model=model, 
+        model=model,
         queries=test_data,
-        faiss_index=faiss_index, 
-        k=args.k, 
-        batch_size=args.batch_size, 
+        faiss_index=faiss_index,
+        k=args.k,
+        batch_size=args.batch_size,
         max_length=args.max_query_length
     )
-    
     retrieval_results = []
     for indice in indices:
         # filter invalid indices
@@ -213,12 +278,13 @@ def main():
         for ind in indice:
             conts.append(corpus['content'][ind])
         retrieval_results.append(conts)
-
+    # print(retrieval_results)
     ground_truths = []
     for sample in test_data['query']:
         ground_truths.append(test_data['mapper'][sample])
     metrics = evaluate(retrieval_results, ground_truths)
-    print(metrics)
+    for k, v in metrics.items():
+        print('{'+f"\"{k}\": {v:.4f}"+'}')
 
 
 if __name__ == "__main__":

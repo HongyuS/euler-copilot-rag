@@ -28,10 +28,11 @@ pip install  .
 query是查询指令，pos是正例列表，neg是负例列表
 
 ```
-python data_processing.py --input_dir data_path --output_dir output_path
+python data_processing.py --input_dir data_path --output_dir output_path --train_num 10000
 ```
 - input_dir 问答对数据存放目录
 - output_dir 训练集和测试机输出目录
+- train_num 训练集数量
 
 如果数据中没有负例，则可以使用以下命令从整个语料库中随机抽取样本做负例增强：
 ```
