@@ -54,15 +54,68 @@ class DeepPdfParser(BaseParser):
     ocr = PaddleOCR(use_angle_cls=True, lang="ch")  # 使用中文语言模型
 
     @staticmethod
-    async def extract_text_from_page(image_path: str, exclude_regions: list[Bbox]) -> list[ParseNodeWithBbox]:
+    async def extract_text_from_page(
+            page: Page, exclude_regions: list[Bbox] = None) -> list[ParseNodeWithBbox]:
+        nodes_with_bbox = []
+        text_blocks = page.get_text("blocks")
+        matrix = fitz.Matrix(2, 2)  # 设置缩放比例
+
+        # 如果没有提供排除区域，创建一个空列表
+        if exclude_regions is None:
+            exclude_regions = []
+
+        for block in text_blocks:
+            if block[6] == 0:  # 确保是文本块
+                text = block[4].strip()
+                if not text:
+                    continue
+                bounding_box = block[:4]  # (x0, y0, x1, y1)
+                block_bbox = Bbox(
+                    x0=bounding_box[0]*matrix.a,
+                    y0=bounding_box[1]*matrix.d,
+                    x1=bounding_box[2]*matrix.a,
+                    y1=bounding_box[3]*matrix.d
+                )
+
+                # 检查文本块是否在排除区域内
+                should_exclude = False
+                for region in exclude_regions:
+                    if region.overlaps(block_bbox):
+                        should_exclude = True
+                        break
+
+                if text and not should_exclude:
+                    nodes_with_bbox.append(ParseNodeWithBbox(
+                        node=ParseNode(
+                            id=uuid.uuid4(),
+                            lv=0,
+                            parse_topology_type=ChunkParseTopology.GRAPHNODE,
+                            content=text,
+                            type=ChunkType.TEXT,
+                            link_nodes=[],
+                        ),
+                        bbox=block_bbox
+                    ))
+        return sorted(nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
+
+    @staticmethod
+    async def extract_text_from_page_by_ocr(
+            image_path: str, exclude_regions: list[Bbox] = None) -> list[ParseNodeWithBbox]:
         text_nodes_with_bbox = []
         image = cv2.imread(image_path)
         result = DeepPdfParser.ocr.ocr(image, cls=True)
         if not result or not result[0]:
             return []
         for line in result[0]:
-            box = line[0]
-            text = line[1][0]
+            try:
+                box = line[0]
+                text = line[1][0].strip()
+            except Exception as e:
+                err = f"[DeepPdfParser] OCR识别失败: {e}"
+                logging.error("[DeepPdfParser] %s", err)
+                continue
+            if not text:
+                continue
 
             # 计算文本块边界框(左上x, 左上y, 右下x, 右下y)
             bbox = (min(p[0] for p in box), min(p[1] for p in box),
@@ -95,6 +148,7 @@ class DeepPdfParser(BaseParser):
                     break
             if not overlaps:
                 new_text_nodes_with_bbox.append(text_node_with_bbox)
+        new_text_nodes_with_bbox = sorted(new_text_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
         return new_text_nodes_with_bbox
 
     @staticmethod
@@ -346,23 +400,24 @@ class DeepPdfParser(BaseParser):
                     final_table.append(final_row)
                 if not final_table:
                     continue
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    lv=0,
-                    parse_topology_type=ChunkParseTopology.GRAPHNODE,
-                    content=final_table,
-                    type=ChunkType.TABLE,
-                    link_nodes=[],
-                )
-                nodes_with_bbox.append(ParseNodeWithBbox(
-                    node=node,
-                    bbox=Bbox(
-                        x0=merged_bboxes[index].x0,
-                        y0=merged_bboxes[index].y0,
-                        x1=merged_bboxes[index].x1,
-                        y1=merged_bboxes[index].y1
+                for row in final_table:
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=0,
+                        parse_topology_type=ChunkParseTopology.GRAPHNODE,
+                        content=row,
+                        type=ChunkType.TABLE,
+                        link_nodes=[],
                     )
-                ))
+                    nodes_with_bbox.append(ParseNodeWithBbox(
+                        node=node,
+                        bbox=Bbox(
+                            x0=merged_bboxes[index].x0,
+                            y0=merged_bboxes[index].y0,
+                            x1=merged_bboxes[index].x1,
+                            y1=merged_bboxes[index].y1
+                        )
+                    ))
                 table_regions.append(Bbox(
                     x0=merged_bboxes[index].x0,
                     y0=merged_bboxes[index].y0,
@@ -532,8 +587,10 @@ class DeepPdfParser(BaseParser):
             exclude_regions = table_regions + image_regions
 
             # 提取文本时排除表格和图片区域
-            text_nodes_with_bbox = await DeepPdfParser.extract_text_from_page(image_path, exclude_regions)
-
+            text_nodes_with_bbox = await DeepPdfParser.extract_text_from_page(page, exclude_regions)
+            if not text_nodes_with_bbox:
+                text_nodes_with_bbox = await DeepPdfParser.extract_text_from_page_by_ocr(
+                    image_path, exclude_regions)
             # 合并所有节点
             sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
                 text_nodes_with_bbox, table_nodes_with_bbox)
