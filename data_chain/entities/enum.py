@@ -126,7 +126,7 @@ class DataSetStatus(str, Enum):
     """数据集状态"""
     IDLE = "idle"
     PENDING = "pending"
-    GENERATING = "generating"
+    GENERATING = "running"
     EXPORTING = "exporting"
     IMPORTING = "importing"
     DELETED = "deleted"
