@@ -45,7 +45,8 @@ from data_chain.parser.handler import (
     txt_parser,
     xlsx_parser,
     yaml_parser,
-    picture_parser
+    picture_parser,
+    deep_pdf_parser
 )
 from data_chain.rag import (
     base_searcher,

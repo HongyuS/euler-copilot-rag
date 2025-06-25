@@ -125,7 +125,10 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def parse_doc(doc_entity: DocumentEntity, file_path: str) -> ParseResult:
         '''解析文档'''
-        parse_result = await BaseParser.parser(doc_entity.extension, file_path)
+        extension = doc_entity.extension
+        if doc_entity.parse_method == ParseMethod.DEEP.value:
+            extension += '.deep'
+        parse_result = await BaseParser.parser(extension, file_path)
         return parse_result
 
     @staticmethod
