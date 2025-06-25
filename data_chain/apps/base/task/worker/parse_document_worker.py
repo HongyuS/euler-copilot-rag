@@ -204,7 +204,11 @@ class ParseDocumentWorker(BaseWorker):
         else:
             if doc_entity.extension == 'xlsx' or doc_entity.extension == 'xls' or doc_entity.extension == 'csv':
                 for node in parse_result.nodes:
-                    node.content = '|'.join(node.content)
+                    content = node.content[:]
+                    for i in range(len(content)):
+                        if not isinstance(content[i], str):
+                            content[i] = str(content[i])
+                    node.content = '|'.join(content)
                     node.text_feature = node.content
             elif doc_entity.extension == 'json' or doc_entity.extension == 'yaml':
                 parse_result.nodes[0].content = await ParseDocumentWorker.get_content_from_json(parse_result.nodes[0].content)
@@ -219,7 +223,11 @@ class ParseDocumentWorker(BaseWorker):
                         if node.text_feature is None:
                             node.text_feature = TokenTool.get_top_k_keywords(node.content)
                     elif node.type == ChunkType.TABLE:
-                        node.content = '|'.join(node.content)
+                        content = node.content[:]
+                        for i in range(len(content)):
+                            if not isinstance(content[i], str):
+                                content[i] = str(content[i])
+                        node.content = '|'.join(content)
                         node.text_feature = node.content
 
     @staticmethod
