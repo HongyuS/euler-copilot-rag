@@ -155,7 +155,7 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def handle_parse_result(parse_result: ParseResult, doc_entity: DocumentEntity, llm: LLM = None) -> None:
         '''处理解析结果'''
-        if doc_entity.parse_method != ParseMethod.OCR.value and doc_entity.parse_method != ParseMethod.EHANCED:
+        if doc_entity.parse_method == ParseMethod.GENERAL.value or doc_entity.parse_method == ParseMethod.QA.value:
             nodes = []
             for node in parse_result.nodes:
                 if node.type != ChunkType.IMAGE:
@@ -480,7 +480,7 @@ class ParseDocumentWorker(BaseWorker):
             raise Exception(err)
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.RUNNING.value})
         try:
-            if doc_entity.parse_method == ParseMethod.EHANCED:
+            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value:
                 llm = LLM(
                     openai_api_key=config['OPENAI_API_KEY'],
                     openai_api_base=config['OPENAI_API_BASE'],
