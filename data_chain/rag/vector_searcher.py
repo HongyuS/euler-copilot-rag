@@ -29,7 +29,9 @@ class VectorSearcher(BaseSearcher):
         chunk_entities = []
         for _ in range(3):
             try:
-                chunk_entities = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=3)
+                chunk_entities = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=10)
+                if not chunk_entities:
+                    chunk_entities = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=10)
                 break
             except Exception as e:
                 err = f"[VectorSearcher] 向量检索失败，error: {e}"
