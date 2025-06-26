@@ -199,7 +199,7 @@ class ChunkManager():
 
                 # 应用排序条件
                 stmt = stmt.order_by(similarity_score)
-                stmt = stmt.limit(max(top_k, 50))
+                stmt = stmt.limit(max(top_k, 100))
 
                 # 执行最终查询
                 result = await session.execute(stmt)
