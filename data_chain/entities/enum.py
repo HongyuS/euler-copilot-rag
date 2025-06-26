@@ -126,7 +126,7 @@ class DataSetStatus(str, Enum):
     """数据集状态"""
     IDLE = "idle"
     PENDING = "pending"
-    GENERATING = "generating"
+    GENERATING = "running"
     EXPORTING = "exporting"
     IMPORTING = "importing"
     DELETED = "deleted"
@@ -160,6 +160,8 @@ class SearchMethod(str, Enum):
     DOC2CHUNK = "doc2chunk"
     DOC2CHUNK_BFS = "doc2chunk_bfs"
     ENHANCED_BY_LLM = "enhanced_by_llm"
+    QUERY_EXTEND = "query_extend"
+    DYNAMIC_WEIGHTED_KEYWORD = "dynamic_weighted_keyword"
 
 
 class TaskType(str, Enum):

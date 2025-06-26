@@ -196,6 +196,8 @@ class ParseDocumentWorker(BaseWorker):
                         link_nodes=[]
                     )
                     parse_result.nodes.append(node)
+            else:
+                parse_result.nodes = []
         else:
             if doc_entity.extension == 'xlsx' or doc_entity.extension == 'xls' or doc_entity.extension == 'csv':
                 for node in parse_result.nodes:
@@ -273,7 +275,7 @@ class ParseDocumentWorker(BaseWorker):
                     node.content = await OcrTool.image_to_text(img_np, image_related_text, llm)
                     node.text_feature = node.content
                 except Exception as e:
-                    err = f"[ParseDocumentWorker] OCR失败，doc_id: {node.doc_id}, error: {e}"
+                    err = f"[ParseDocumentWorker] OCR失败 error: {e}"
                     logging.exception(err)
                     continue
 
@@ -351,6 +353,7 @@ class ParseDocumentWorker(BaseWorker):
                 link_nodes=[]
             )
             nodes.append(tmp_node)
+        parse_result.nodes = nodes
 
     @staticmethod
     async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None) -> None:
@@ -401,11 +404,8 @@ class ParseDocumentWorker(BaseWorker):
         if llm is not None:
             abstract = await TokenTool.get_abstract_by_llm(abstract, llm)
         else:
-            sentences = TokenTool.get_top_k_keysentence(abstract, 1)
-            if sentences:
-                abstract = sentences[0]
-            else:
-                abstract = ''
+            keywords = TokenTool.get_top_k_keywords(abstract, 20)
+            abstract = ' '.join(keywords)
         abstract_vector = await Embedding.vectorize_embedding(abstract)
         await DocumentManager.update_document_by_doc_id(
             doc_id,
@@ -556,8 +556,6 @@ class ParseDocumentWorker(BaseWorker):
             return None
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.IDLE.value})
         if task_entity.status == TaskStatus.PENDING.value or task_entity.status == TaskStatus.RUNNING.value or task_entity.status == TaskStatus.FAILED.value:
-            if task_entity.status == TaskStatus.RUNNING.value or task_entity.status == TaskStatus.FAILED.value:
-                await TaskManager.update_task_by_id(task_id, {"status": TaskStatus.CANCLED.value})
             await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"abstract": "", "abstract_vector": None})
             await ImageManager.update_images_by_doc_id(task_entity.op_id, {"status": ImageStatus.DELETED.value})
             await ChunkManager.update_chunk_by_doc_id(task_entity.op_id, {"status": ChunkStatus.DELETED.value})

@@ -130,7 +130,7 @@ class GetTemporaryDocumentStatusRequest(BaseModel):
 class TemporaryDocument(BaseModel):
     id: uuid.UUID = Field(description="临时文档id", alias="id")
     name: str = Field(default='这是一个默认的临时文档名称', min_length=1, max_length=150, alias="name")
-    bucket: str = Field(default='default', description="临时文档存储的桶名称", alias="bucket")
+    bucket_name: str = Field(default='default', description="临时文档存储的桶名称")
     type: str = Field(default='txt', description="临时文档的类型", alias="type")
 
 
@@ -221,7 +221,7 @@ class ListTestingRequest(BaseModel):
     testing_id: Optional[uuid.UUID] = Field(default=None, description="测试id", alias="testingId")
     testing_name: Optional[str] = Field(default=None, description="测试名称", alias="testingName")
     llm_ids: Optional[list[str]] = Field(default=None, description="测试使用的大模型id", alias="llmIds")
-    search_methods: Optional[List[SearchMethod]] = Field(default=None, description="测试使用的检索方法", alias="searchMethods")
+    search_method: Optional[List[SearchMethod]] = Field(default=None, description="测试使用的检索方法", alias="searchMethod")
     run_status: Optional[List[TaskStatus]] = Field(default=None, description="测试运行状态", alias="runStatus")
     scores_order: Optional[OrderType] = Field(default=OrderType.DESC, description="测试评分", alias="scoresOrder")
     author_name: Optional[str] = Field(default=None, description="测试创建者", alias="authorName")

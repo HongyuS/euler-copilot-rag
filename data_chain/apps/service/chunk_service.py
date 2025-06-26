@@ -80,17 +80,6 @@ class ChunkService:
         logging.error("[ChunkService] 搜索分片，查询条件: %s", req)
         chunk_entities = []
         for kb_id in req.kb_ids:
-            if kb_id != DEFAULT_KNOWLEDGE_BASE_ID:
-                try:
-                    if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(
-                            user_sub, kb_id, action)):
-                        err = f"用户没有权限访问知识库中的块，知识库ID: {kb_id}"
-                        logging.error("[ChunkService] %s", err)
-                        continue
-                except Exception as e:
-                    err = f"验证用户对知识库的操作权限失败，error: {e}"
-                    logging.exception(err)
-                    continue
             try:
                 chunk_entities += await BaseSearcher.search(req.search_method.value, kb_id, req.query, 2*req.top_k, req.doc_ids, req.banned_ids)
             except Exception as e:
@@ -110,6 +99,9 @@ class ChunkService:
             tokens_limit_every_chunk = tokens_limit // len(chunk_entities) if len(chunk_entities) > 0 else tokens_limit
             leave_tokens = 0
             related_chunk_entities = []
+            token_sum = 0
+            for chunk_entity in chunk_entities:
+                token_sum += chunk_entity.tokens
             for chunk_entity in chunk_entities:
                 leave_tokens = tokens_limit_every_chunk+leave_tokens
                 try:
@@ -119,14 +111,15 @@ class ChunkService:
                     err = f"[ChunkService] 关联上下文失败，error: {e}"
                     logging.exception(err)
                     continue
-                tokens_sum = 0
                 for related_chunk_entity in sub_related_chunk_entities:
-                    tokens_sum += related_chunk_entity.tokens
-                leave_tokens -= tokens_sum
+                    token_sum += related_chunk_entity.tokens
+                    leave_tokens -= related_chunk_entity.tokens
                 if leave_tokens < 0:
                     leave_tokens = 0
                 chunk_ids += [chunk_entity.id for chunk_entity in sub_related_chunk_entities]
                 related_chunk_entities += sub_related_chunk_entities
+                if token_sum >= tokens_limit:
+                    break
             chunk_entities += related_chunk_entities
         logging.error(len(chunk_entities))
         search_chunk_msg = SearchChunkMsg(docChunks=[])

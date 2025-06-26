@@ -45,6 +45,7 @@ from data_chain.parser.handler import (
     txt_parser,
     xlsx_parser,
     yaml_parser,
+    picture_parser
 )
 from data_chain.rag import (
     base_searcher,
@@ -53,7 +54,9 @@ from data_chain.rag import (
     keyword_and_vector_searcher,
     doc2chunk_searcher,
     doc2chunk_bfs_searcher,
-    enhanced_by_llm_searcher
+    enhanced_by_llm_searcher,
+    query_extend_searcher,
+    dynamic_weighted_keyword_searcher
 )
 from data_chain.stores.database.database import (
     DataBase,
@@ -84,9 +87,9 @@ scheduler = AsyncIOScheduler()
 @app.on_event("startup")
 async def startup_event():
     await configure()
-    await DataBase.init_all_table()
     await add_acitons()
     await TaskQueueService.init_task_queue()
+    await add_knowledge_base()
     await add_document_type()
     await init_path()
     scheduler.add_job(TaskQueueService.handle_tasks, 'interval', seconds=5)

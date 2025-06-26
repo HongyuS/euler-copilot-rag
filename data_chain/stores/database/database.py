@@ -8,7 +8,6 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, Float, String, func
 from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.orm import declarative_base
-
 from data_chain.config.config import config
 from data_chain.entities.enum import (Tokenizer,
                                       ParseMethod,
@@ -209,7 +208,7 @@ class KnowledgeBaseEntity(Base):
     __tablename__ = 'knowledge_base'
 
     id = Column(UUID, default=uuid4, primary_key=True)
-    team_id = Column(UUID, ForeignKey('team.id', ondelete="CASCADE"))  # 团队id
+    team_id = Column(UUID, ForeignKey('team.id', ondelete="CASCADE"), nullable=True)  # 团队id
     author_id = Column(String)  # 作者id
     author_name = Column(String)  # 作者名称
     name = Column(String, default='')  # 知识库名资产名
@@ -323,7 +322,6 @@ class ChunkEntity(Base):
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp())
-
     __table_args__ = (
         Index(
             'text_vector_index',
@@ -552,6 +550,7 @@ class DataBase:
         pool_recycle=300,
         pool_pre_ping=True
     )
+    init_all_table_flag = False
 
     @classmethod
     async def init_all_table(cls):
@@ -567,6 +566,9 @@ class DataBase:
 
     @classmethod
     async def get_session(cls):
+        if DataBase.init_all_table_flag is False:
+            await DataBase.init_all_table()
+            DataBase.init_all_table_flag = True
         connection = async_sessionmaker(DataBase.engine, expire_on_commit=False)()
         return cls._ConnectionManager(connection)
 

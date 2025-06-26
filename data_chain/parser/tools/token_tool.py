@@ -25,6 +25,20 @@ class TokenTool:
         stopwords = set(line.strip() for line in f)
 
     @staticmethod
+    def filter_stopwords(content: str) -> str:
+        """
+        过滤停用词
+        """
+        try:
+            words = TokenTool.split_words(content)
+            filtered_words = [word for word in words if word not in TokenTool.stopwords]
+            return ' '.join(filtered_words)
+        except Exception as e:
+            err = f"[TokenTool] 过滤停用词失败 {e}"
+            logging.exception("[TokenTool] %s", err)
+        return content
+
+    @staticmethod
     def get_leave_tokens_from_content_len(content: str) -> int:
         """
         根据内容长度获取留存的token数
@@ -141,6 +155,19 @@ class TokenTool:
             # 使用jieba提取关键词
             keywords = extract_tags(content, topK=k, withWeight=True)
             return [keyword for keyword, weight in keywords]
+        except Exception as e:
+            err = f"[TokenTool] 获取关键词失败 {e}"
+            logging.exception("[TokenTool] %s", err)
+        return []
+
+    @staticmethod
+    def get_top_k_keywords_and_weights(content: str, k=10) -> list:
+        try:
+            # 使用jieba提取关键词
+            keyword_weight_list = extract_tags(content, topK=k, withWeight=True)
+            keywords = [keyword for keyword, weight in keyword_weight_list]
+            weights = [weight for keyword, weight in keyword_weight_list]
+            return keywords, weights
         except Exception as e:
             err = f"[TokenTool] 获取关键词失败 {e}"
             logging.exception("[TokenTool] %s", err)
@@ -312,7 +339,8 @@ class TokenTool:
             content = TokenTool.compress_tokens(content, llm.max_tokens)
             sys_call = prompt_template.format(content=content)
             user_call = '请结合文本输出陈诉列表'
-            statements = await llm.nostream([], sys_call, user_call)
+            statements = await llm.nostream([], sys_call, user_call, st_str='[',
+                                             en_str=']')
             statements = json.loads(statements)
             if len(statements) == 0:
                 return 0
@@ -350,7 +378,8 @@ class TokenTool:
             prompt = prompt_template.format(question=question, answer=answer)
             sys_call = prompt
             user_call = '请结合问题和答案输出陈诉'
-            statements = await llm.nostream([], sys_call, user_call)
+            statements = await llm.nostream([], sys_call, user_call,st_str='[',
+                                             en_str=']')
             prompt_template = prompt_dict.get('STATEMENTS_TO_FRAGMENT_PROMPT', '')
             statements = json.loads(statements)
             if len(statements) == 0:
