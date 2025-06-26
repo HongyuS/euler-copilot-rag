@@ -213,7 +213,6 @@ class ChunkManager():
                     if chunk_entities:
                         break
                     fetch_cnt *= 2
-                    fetch_cnt = min(fetch_cnt, max(top_k, 8192)+1)  # 确保不超过2048
                 chunk_entities = chunk_entities[:top_k]  # 确保返回的结果不超过 top_k
                 return chunk_entities
         except Exception as e:
