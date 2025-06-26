@@ -75,7 +75,6 @@ class DocumentManager():
                     if document_entities:
                         break
                     fetch_cnt *= 2  # Increase fetch count by 50 until we have enough results
-                    fetch_cnt = min(fetch_cnt, max(top_k, 8192)+1)
                 document_entities = document_entities[:top_k]  # Limit to top_k results
                 return document_entities
         except Exception as e:
