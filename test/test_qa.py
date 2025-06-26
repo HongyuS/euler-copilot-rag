@@ -359,8 +359,12 @@ async def get_QAs_answers(QAs, kb_id, session_cookie, csrf_cookie, base_url):
 class QAScore():
     async def get_score(self, QA):
         prompt = prompt_dict['SCORE_QA']
-        llm_score_dict = await self.chat_with_llm(llm, prompt, QA['question'], QA['text'], QA['witChainD_source'], QA['answer'], QA['witChainD_answer'])
-        print(llm_score_dict)
+        try:
+            llm_score_dict = await self.chat_with_llm(llm, prompt, QA['question'], QA['text'], QA['witChainD_source'], QA['answer'], QA['witChainD_answer'])
+            print(llm_score_dict)
+        except ValueError as e:
+            print(f"评分验证失败: {e}，使用默认分数")
+
         QA['context_relevancy'] = llm_score_dict['context_relevancy']
         QA['context_recall'] = llm_score_dict['context_recall']
         QA['faithfulness'] = llm_score_dict['faithfulness']
@@ -406,6 +410,12 @@ class QAScore():
         - qa_pairs: list[dict]
 
         """
+        required_metrics = {
+            "context_relevancy",
+            "context_recall",
+            "faithfulness",
+            "answer_relevancy",
+        }
         for i in range(5):
             try:
                 user_call = '''请对答案打分，并以下面形式返回结果{
@@ -427,6 +437,11 @@ class QAScore():
                 score_dict = json.loads(score_dict)
                 # 提取问题、答案段落对的list，字符串格式为["问题","答案","段落对"]
                 # print(score)
+                present_metrics = set(score_dict.keys())
+                missing_metrics = required_metrics - present_metrics
+                if missing_metrics:
+                    missing = ", ".join(missing_metrics)
+                    raise ValueError(f"错误：评分结果缺少必要指标: {missing}")
                 return score_dict
             except Exception as e:
                 continue
@@ -579,11 +594,11 @@ if __name__ == '__main__':
         print(f"获取到{len(t_QAs)}个文档")
         for item in t_QAs[0]:
             single_item = {
-                "question": item['问题'],
-                "answer": item['标准答案'],
-                "witChainD_answer": item['llm的回答'],
-                "text": item['原始片段'],
-                "witChainD_source": item['检索片段'],
+                "question": item["问题"],
+                "answer": item["标准答案"],
+                "witChainD_answer": item["llm的回答"],
+                "text": item["原始片段"],
+                "witChainD_source": item["检索片段"],
             }
             # print(single_item)
             ttt_QAs = asyncio.run(QAScore().get_score(single_item))
@@ -638,7 +653,7 @@ if __name__ == '__main__':
                 }
             else:
                 ReOrderedQA = {
-                    '领域': str(QA['type']),
+                    # '领域': str(QA['type']),
                     '问题': str(QA['question']),
                     '标准答案': str(QA['answer']),
                     'llm的回答': str(QA['witChainD_answer']),
@@ -701,4 +716,3 @@ if __name__ == '__main__':
 
 
     print(f'测试样例和结果已输出到{excel_path}')
-    
