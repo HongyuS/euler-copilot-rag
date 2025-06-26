@@ -199,12 +199,12 @@ class ChunkManager():
 
                 # 应用排序条件
                 stmt = stmt.order_by(similarity_score)
-                stmt = stmt.limit(top_k)
+                stmt = stmt.limit(max(top_k, 50))
 
                 # 执行最终查询
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()
-
+                chunk_entities = chunk_entities[:top_k]  # 确保返回的结果不超过 top_k
                 return chunk_entities
         except Exception as e:
             err = "根据知识库ID和向量查询文档解析结果失败"
