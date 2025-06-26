@@ -40,16 +40,19 @@ class KeywordVectorSearcher(BaseSearcher):
             chunk_entities_get_by_vector = []
             for _ in range(3):
                 try:
-                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids), timeout=3)
+                    import time
+                    start_time = time.time()
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=10)
+                    end_time = time.time()
+                    logging.info(f"[KeywordVectorSearcher] 向量检索成功完成，耗时: {end_time - start_time:.2f}秒")
+                    if not chunk_entities_get_by_vector:
+                       chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=10)
                     break
                 except Exception as e:
                     err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
                     logging.error(err)
                     continue
             chunk_entities = chunk_entities_get_by_keyword + chunk_entities_get_by_dynamic_weighted_keyword + chunk_entities_get_by_vector
-            for chunk_entity in chunk_entities:
-                logging.error(
-                    f"[KeywordVectorSearcher] chunk_entity: {chunk_entity.id}, text: {chunk_entity.text[:100]}...")
         except Exception as e:
             err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"
             logging.exception(err)
