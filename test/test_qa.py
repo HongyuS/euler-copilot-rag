@@ -359,11 +359,8 @@ async def get_QAs_answers(QAs, kb_id, session_cookie, csrf_cookie, base_url):
 class QAScore():
     async def get_score(self, QA):
         prompt = prompt_dict['SCORE_QA']
-        try:
-            llm_score_dict = await self.chat_with_llm(llm, prompt, QA['question'], QA['text'], QA['witChainD_source'], QA['answer'], QA['witChainD_answer'])
-            print(llm_score_dict)
-        except ValueError as e:
-            print(f"评分验证失败: {e}，使用默认分数")
+        llm_score_dict = await self.chat_with_llm(llm, prompt, QA['question'], QA['text'], QA['witChainD_source'], QA['answer'], QA['witChainD_answer'])
+        print(llm_score_dict)
 
         QA['context_relevancy'] = llm_score_dict['context_relevancy']
         QA['context_recall'] = llm_score_dict['context_recall']
@@ -418,13 +415,13 @@ class QAScore():
         }
         for i in range(5):
             try:
-                user_call = '''请对答案打分，并以下面形式返回结果{
+                user_call = """请对答案打分，并以下面形式返回结果{
   \"context_relevancy\": 分数,
   \"context_recall\": 分数,
   \"faithfulness\": 分数,
   \"answer_relevancy\": 分数
 }
-'''
+注意：属性名必须使用双引号，分数为数字，保留两位小数。"""
                 prompt = prompt.format(question=question, meta_chunk=meta_chunk,
                                    chunk=chunk, answer=answer, answer_text=answer_text)
                 # print(prompt)
@@ -433,7 +430,7 @@ class QAScore():
                 en = score_dict.rfind('}')
                 if st != -1 and en != -1:
                     score_dict = score_dict[st:en+1]
-                print(score_dict)
+                # print(score_dict)
                 score_dict = json.loads(score_dict)
                 # 提取问题、答案段落对的list，字符串格式为["问题","答案","段落对"]
                 # print(score)
@@ -441,7 +438,11 @@ class QAScore():
                 missing_metrics = required_metrics - present_metrics
                 if missing_metrics:
                     missing = ", ".join(missing_metrics)
-                    raise ValueError(f"错误：评分结果缺少必要指标: {missing}")
+                    print(f"评分结果缺少必要指标: {missing}")
+                for metric in required_metrics:
+                    if metric not in score_dict:
+                        score_dict[metric] = 0.00
+                print(score_dict)
                 return score_dict
             except Exception as e:
                 continue
@@ -697,7 +698,6 @@ if __name__ == '__main__':
                 )
             avg[metric] = avg_time_cost
 
-    print(f"生成测试结果: {avg}")
     
     excel_path = current_dir / 'answer.xlsx'
     with pd.ExcelWriter(excel_path, engine='xlsxwriter') as writer:
@@ -711,6 +711,7 @@ if __name__ == '__main__':
             **{k: v for k, v in avg.items() if k != "time_cost"},
             **{f"time_cost_{k}": v for k, v in filtered_time_cost.items()},
         }
+        print(f"写入测试结果:{flat_avg}")
         avg_df = pd.DataFrame([flat_avg])
         avg_df.to_excel(writer, sheet_name="测试结果", index=False)
 
