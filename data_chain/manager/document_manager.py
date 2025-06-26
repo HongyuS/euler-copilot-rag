@@ -53,7 +53,6 @@ class DocumentManager():
                 similarity_score = DocumentEntity.abstract_vector.cosine_distance(vector).label("similarity_score")
                 stmt = (
                     select(DocumentEntity, similarity_score)
-                    .where(similarity_score > 0)
                     .where(DocumentEntity.kb_id == kb_id)
                     .where(DocumentEntity.id.notin_(banned_ids))
                     .where(DocumentEntity.status != DocumentStatus.DELETED.value)
@@ -64,10 +63,11 @@ class DocumentManager():
                 stmt = stmt.order_by(
                     similarity_score
                 )
-
+                stmt = stmt.limit(max(top_k, 50))  # Ensure at least 50 results for vector search
                 result = await session.execute(stmt)
 
                 document_entities = result.scalars().all()
+                document_entities = document_entities[:top_k]  # Limit to top_k results
                 return document_entities
         except Exception as e:
             err = "获取前K个文档失败"

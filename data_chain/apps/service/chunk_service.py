@@ -81,7 +81,7 @@ class ChunkService:
         chunk_entities = []
         for kb_id in req.kb_ids:
             try:
-                chunk_entities += await BaseSearcher.search(req.search_method.value, kb_id, req.query, 2*req.top_k, req.doc_ids, req.banned_ids)
+                chunk_entities += await BaseSearcher.search(req.search_method.value, kb_id, req.query, req.top_k, req.doc_ids, req.banned_ids)
             except Exception as e:
                 err = f"[ChunkService] 搜索分片失败，error: {e}"
                 logging.exception(err)
