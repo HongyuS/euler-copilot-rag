@@ -125,7 +125,10 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def parse_doc(doc_entity: DocumentEntity, file_path: str) -> ParseResult:
         '''解析文档'''
-        parse_result = await BaseParser.parser(doc_entity.extension, file_path)
+        extension = doc_entity.extension
+        if doc_entity.parse_method == ParseMethod.DEEP.value:
+            extension += '.deep'
+        parse_result = await BaseParser.parser(extension, file_path)
         return parse_result
 
     @staticmethod
@@ -152,7 +155,7 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def handle_parse_result(parse_result: ParseResult, doc_entity: DocumentEntity, llm: LLM = None) -> None:
         '''处理解析结果'''
-        if doc_entity.parse_method != ParseMethod.OCR.value and doc_entity.parse_method != ParseMethod.EHANCED:
+        if doc_entity.parse_method == ParseMethod.GENERAL.value or doc_entity.parse_method == ParseMethod.QA.value:
             nodes = []
             for node in parse_result.nodes:
                 if node.type != ChunkType.IMAGE:
@@ -201,7 +204,11 @@ class ParseDocumentWorker(BaseWorker):
         else:
             if doc_entity.extension == 'xlsx' or doc_entity.extension == 'xls' or doc_entity.extension == 'csv':
                 for node in parse_result.nodes:
-                    node.content = '|'.join(node.content)
+                    content = node.content[:]
+                    for i in range(len(content)):
+                        if not isinstance(content[i], str):
+                            content[i] = str(content[i])
+                    node.content = '|'.join(content)
                     node.text_feature = node.content
             elif doc_entity.extension == 'json' or doc_entity.extension == 'yaml':
                 parse_result.nodes[0].content = await ParseDocumentWorker.get_content_from_json(parse_result.nodes[0].content)
@@ -216,7 +223,11 @@ class ParseDocumentWorker(BaseWorker):
                         if node.text_feature is None:
                             node.text_feature = TokenTool.get_top_k_keywords(node.content)
                     elif node.type == ChunkType.TABLE:
-                        node.content = '|'.join(node.content)
+                        content = node.content[:]
+                        for i in range(len(content)):
+                            if not isinstance(content[i], str):
+                                content[i] = str(content[i])
+                        node.content = '|'.join(content)
                         node.text_feature = node.content
 
     @staticmethod
@@ -477,7 +488,7 @@ class ParseDocumentWorker(BaseWorker):
             raise Exception(err)
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.RUNNING.value})
         try:
-            if doc_entity.parse_method == ParseMethod.EHANCED:
+            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value:
                 llm = LLM(
                     openai_api_key=config['OPENAI_API_KEY'],
                     openai_api_base=config['OPENAI_API_BASE'],
