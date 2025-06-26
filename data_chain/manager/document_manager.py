@@ -63,7 +63,7 @@ class DocumentManager():
                 stmt = stmt.order_by(
                     similarity_score
                 )
-                stmt = stmt.limit(max(top_k, 50))  # Ensure at least 50 results for vector search
+                stmt = stmt.limit(max(top_k, 100))  # Ensure at least 50 results for vector search
                 result = await session.execute(stmt)
 
                 document_entities = result.scalars().all()
