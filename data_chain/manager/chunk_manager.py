@@ -171,39 +171,49 @@ class ChunkManager():
             chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
         """根据知识库ID和向量查询文档解析结果"""
         try:
+            if top_k <= 0:
+                return []
             async with await DataBase.get_session() as session:
-                # 计算相似度分数
-                similarity_score = ChunkEntity.text_vector.cosine_distance(vector).label("similarity_score")
+                fetch_cnt = top_k
+                chunk_entities = []
+                while fetch_cnt <= max(top_k, 8192):
+                    # 计算相似度分数
+                    similarity_score = ChunkEntity.text_vector.cosine_distance(vector).label("similarity_score")
 
-                # 构建基础查询条件
-                stmt = (
-                    select(ChunkEntity, similarity_score)
-                    .join(DocumentEntity,
-                          DocumentEntity.id == ChunkEntity.doc_id
-                          )
-                    .where(DocumentEntity.enabled == True)
-                    .where(DocumentEntity.status != DocumentStatus.DELETED.value)
-                    .where(ChunkEntity.kb_id == kb_id)
-                    .where(ChunkEntity.enabled == True)
-                    .where(ChunkEntity.status != ChunkStatus.DELETED.value)
-                    .where(ChunkEntity.id.notin_(banned_ids))
-                )
+                    # 构建基础查询条件
+                    stmt = (
+                        select(ChunkEntity, similarity_score)
+                        .join(DocumentEntity,
+                              DocumentEntity.id == ChunkEntity.doc_id
+                              )
+                        .where(DocumentEntity.enabled == True)
+                        .where(DocumentEntity.status != DocumentStatus.DELETED.value)
+                        .where(ChunkEntity.kb_id == kb_id)
+                        .where(ChunkEntity.enabled == True)
+                        .where(ChunkEntity.status != ChunkStatus.DELETED.value)
+                        .where(ChunkEntity.id.notin_(banned_ids))
+                    )
 
-                # 添加可选条件
-                if doc_ids is not None:
-                    stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-                if chunk_to_type is not None:
-                    stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
-                if pre_ids is not None:
-                    stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
+                    # 添加可选条件
+                    if doc_ids is not None:
+                        stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
+                    if chunk_to_type is not None:
+                        stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
+                    if pre_ids is not None:
+                        stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
 
-                # 应用排序条件
-                stmt = stmt.order_by(similarity_score)
-                stmt = stmt.limit(max(top_k, 100))
+                    # 应用排序条件
+                    stmt = stmt.order_by(similarity_score)
 
-                # 执行最终查询
-                result = await session.execute(stmt)
-                chunk_entities = result.scalars().all()
+                    stmt = stmt.limit(fetch_cnt)
+
+                    # 执行最终查询
+                    result = await session.execute(stmt)
+                    chunk_entities = result.scalars().all()
+                    if chunk_entities:
+                        break
+                    fetch_cnt *= 2
+                    fetch_cnt = min(fetch_cnt, max(top_k, 8192)+1)  # 确保不超过2048
                 chunk_entities = chunk_entities[:top_k]  # 确保返回的结果不超过 top_k
                 return chunk_entities
         except Exception as e:
