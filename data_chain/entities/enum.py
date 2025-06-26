@@ -40,6 +40,7 @@ class ParseMethod(str, Enum):
     OCR = "ocr"
     EHANCED = "enhanced"
     QA = "qa"
+    DEEP = "deep"
 
 
 class UserStatus(str, Enum):

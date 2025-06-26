@@ -39,7 +39,7 @@ class EnhancedByLLMSearcher(BaseSearcher):
             prompt_template = prompt_dict['CHUNK_QUERY_MATCH_PROMPT']
             chunk_entities = []
             rd = 0
-            max_retry = 15
+            max_retry = 5
             llm = LLM(
                 openai_api_key=config['OPENAI_API_KEY'],
                 openai_api_base=config['OPENAI_API_BASE'],
