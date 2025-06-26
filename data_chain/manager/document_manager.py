@@ -49,24 +49,33 @@ class DocumentManager():
             top_k: int = 5, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = []) -> List[DocumentEntity]:
         """根据知识库ID和向量获取前K个文档"""
         try:
+            if top_k <= 0:
+                return []
             async with await DataBase.get_session() as session:
-                similarity_score = DocumentEntity.abstract_vector.cosine_distance(vector).label("similarity_score")
-                stmt = (
-                    select(DocumentEntity, similarity_score)
-                    .where(DocumentEntity.kb_id == kb_id)
-                    .where(DocumentEntity.id.notin_(banned_ids))
-                    .where(DocumentEntity.status != DocumentStatus.DELETED.value)
-                    .where(DocumentEntity.enabled == True)
-                )
-                if doc_ids:
-                    stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-                stmt = stmt.order_by(
-                    similarity_score
-                )
-                stmt = stmt.limit(max(top_k, 100))  # Ensure at least 50 results for vector search
-                result = await session.execute(stmt)
-
-                document_entities = result.scalars().all()
+                fetch_cnt = top_k
+                document_entities = []
+                while fetch_cnt < max(top_k, 8192):
+                    similarity_score = DocumentEntity.abstract_vector.cosine_distance(vector).label("similarity_score")
+                    stmt = (
+                        select(DocumentEntity, similarity_score)
+                        .where(DocumentEntity.kb_id == kb_id)
+                        .where(DocumentEntity.id.notin_(banned_ids))
+                        .where(DocumentEntity.status != DocumentStatus.DELETED.value)
+                        .where(DocumentEntity.enabled == True)
+                    )
+                    if doc_ids:
+                        stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
+                    stmt = stmt.order_by(
+                        similarity_score
+                    )
+                    # 获取所有符合条件的文档数量
+                    stmt = stmt.limit(fetch_cnt)  # Ensure at least 50 results for vector search
+                    result = await session.execute(stmt)
+                    document_entities = result.scalars().all()
+                    if document_entities:
+                        break
+                    fetch_cnt *= 2  # Increase fetch count by 50 until we have enough results
+                    fetch_cnt = min(fetch_cnt, max(top_k, 8192)+1)
                 document_entities = document_entities[:top_k]  # Limit to top_k results
                 return document_entities
         except Exception as e:
