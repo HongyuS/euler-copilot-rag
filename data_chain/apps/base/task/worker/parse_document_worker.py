@@ -304,6 +304,8 @@ class ParseDocumentWorker(BaseWorker):
                 else:
                     if node.is_need_newline:
                         nodes[-1].content += '\n'
+                    elif node.is_need_space:
+                        nodes[-1].content += ' '
                     nodes[-1].content += node.content
             else:
                 nodes.append(node)
