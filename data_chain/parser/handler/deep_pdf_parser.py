@@ -51,7 +51,16 @@ class ParseNodeWithBbox(BaseModel):
 
 class DeepPdfParser(BaseParser):
     name = 'pdf.deep'
-    ocr = PaddleOCR(use_angle_cls=True, lang="ch")  # 使用中文语言模型
+    det_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_det_infer'
+    rec_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_rec_infer'
+    cls_model_dir = 'data_chain/parser/model/ocr/ch_ppocr_mobile_v2.0_cls_infer'
+    ocr = PaddleOCR(
+        det_model_dir=det_model_dir,
+        rec_model_dir=rec_model_dir,
+        cls_model_dir=cls_model_dir,
+        use_angle_cls=True,
+        lang="ch"
+    )  # 使用中文语言模型
 
     @staticmethod
     async def extract_text_from_page(
@@ -587,10 +596,21 @@ class DeepPdfParser(BaseParser):
             exclude_regions = table_regions + image_regions
 
             # 提取文本时排除表格和图片区域
-            text_nodes_with_bbox = await DeepPdfParser.extract_text_from_page(page, exclude_regions)
-            if not text_nodes_with_bbox:
-                text_nodes_with_bbox = await DeepPdfParser.extract_text_from_page_by_ocr(
+            text_nodes_with_bbox_1 = await DeepPdfParser.extract_text_from_page(page, exclude_regions)
+            text_nodes_with_bbox_2 = []
+            text_len_1 = 0
+            text_len_2 = 0
+            for node in text_nodes_with_bbox_1:
+                text_len_1 += len(node.node.content)
+            if text_len_1 < 100:
+                text_nodes_with_bbox_2 = await DeepPdfParser.extract_text_from_page_by_ocr(
                     image_path, exclude_regions)
+                for node in text_nodes_with_bbox_2:
+                    text_len_2 += len(node.node.content)
+            if text_len_1 > text_len_2:
+                text_nodes_with_bbox = text_nodes_with_bbox_1
+            else:
+                text_nodes_with_bbox = text_nodes_with_bbox_2
             # 合并所有节点
             sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
                 text_nodes_with_bbox, table_nodes_with_bbox)
@@ -602,8 +622,11 @@ class DeepPdfParser(BaseParser):
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行换行'''
             if nodes_with_bbox[i].bbox.y0 > nodes_with_bbox[i-1].bbox.y1 + 1:
-                nodes_with_bbox[i].node.is_need_newline = True
-
+                nodes_with_bbox[i-1].node.is_need_newline = True
+        for i in range(1, len(nodes_with_bbox)):
+            '''根据bbox判断是否要进行空格'''
+            if i > 0 and nodes_with_bbox[i].bbox.x0 > nodes_with_bbox[i-1].bbox.x1 + 1:
+                nodes_with_bbox[i-1].node.is_need_space = True
         nodes = [node_with_bbox.node for node_with_bbox in nodes_with_bbox]
         DeepPdfParser.image_related_node_in_link_nodes(nodes)  # 假设这个方法在别处定义
         parse_result = ParseResult(
