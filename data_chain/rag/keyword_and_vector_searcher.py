@@ -42,11 +42,9 @@ class KeywordVectorSearcher(BaseSearcher):
                 try:
                     import time
                     start_time = time.time()
-                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=10)
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=3)
                     end_time = time.time()
                     logging.info(f"[KeywordVectorSearcher] 向量检索成功完成，耗时: {end_time - start_time:.2f}秒")
-                    if not chunk_entities_get_by_vector:
-                       chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=10)
                     break
                 except Exception as e:
                     err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
