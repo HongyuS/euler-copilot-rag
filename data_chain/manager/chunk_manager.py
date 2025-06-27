@@ -176,7 +176,7 @@ class ChunkManager():
             async with await DataBase.get_session() as session:
                 fetch_cnt = top_k
                 chunk_entities = []
-                while fetch_cnt <= max(top_k, 8192):
+                while True:
                     # 计算相似度分数
                     similarity_score = ChunkEntity.text_vector.cosine_distance(vector).label("similarity_score")
 
@@ -213,6 +213,7 @@ class ChunkManager():
                     if chunk_entities:
                         break
                     fetch_cnt *= 2
+                    fetch_cnt = min(fetch_cnt, max(8192, top_k)+1)
                 chunk_entities = chunk_entities[:top_k]  # 确保返回的结果不超过 top_k
                 return chunk_entities
         except Exception as e:
