@@ -207,15 +207,12 @@ class DeepPdfParser(BaseParser):
                 continue
 
             # 计算轮廓面积与边界框面积的比率
-            area = cv2.contourArea(contour)
-            rect_area = w * h
-            area_ratio = area / rect_area
-
-            # 计算宽高比
-            aspect_ratio = w / h if h != 0 else float('inf')
+            # area = cv2.contourArea(contour)
+            # rect_area = w * h
+            # area_ratio = area / rect_area
 
             # # 表格通常具有较高的面积比率和适当的宽高比
-            # if area_ratio < 0.5 or (aspect_ratio < 0.3 or aspect_ratio > 5):
+            # if area_ratio < 0.2:
             #     continue
 
             # 提取候选区域
@@ -225,8 +222,8 @@ class DeepPdfParser(BaseParser):
             grid_density = np.count_nonzero(region) / (w * h)
 
             # 表格通常具有较高的网格密度
-            if grid_density < 0.05:
-                continue
+            # if grid_density < 0.05:
+            #     continue
 
             # 计算轮廓的复杂度
             epsilon = 0.02 * cv2.arcLength(contour, True)
@@ -234,7 +231,7 @@ class DeepPdfParser(BaseParser):
             complexity = len(approx)
 
             # 表格轮廓通常较简单，而非表格图形可能更复杂
-            if complexity > 20:
+            if complexity > 20 or complexity < 4:
                 continue
 
             table_bboxes.append(Bbox(
