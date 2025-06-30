@@ -303,13 +303,13 @@ class PdfParser(BaseParser):
             '''根据bbox判断是否要进行换行'''
             vertical_distance = nodes_with_bbox[i].bbox.y0 - nodes_with_bbox[i-1].bbox.y1
             height = nodes_with_bbox[i].bbox.y1 - nodes_with_bbox[i].bbox.y0
-            if vertical_distance > 0 and vertical_distance > height*0.5:
+            if vertical_distance > 0 and vertical_distance > height*0.3:
                 nodes_with_bbox[i-1].node.is_need_newline = True
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行空格'''
             horizontal_distance = nodes_with_bbox[i].bbox.x0 - nodes_with_bbox[i-1].bbox.x1
             width = nodes_with_bbox[i].bbox.x1 - nodes_with_bbox[i].bbox.x0
-            if horizontal_distance > 0 and horizontal_distance > width*0.5:
+            if horizontal_distance > 0 and horizontal_distance > width*0.3:
                 nodes_with_bbox[i-1].node.is_need_space = True
         nodes = [node_with_bbox.node for node_with_bbox in nodes_with_bbox]
         PdfParser.image_related_node_in_link_nodes(nodes)  # 假设这个方法在别处定义

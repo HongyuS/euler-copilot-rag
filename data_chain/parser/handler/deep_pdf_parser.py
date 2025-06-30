@@ -214,9 +214,9 @@ class DeepPdfParser(BaseParser):
             # 计算宽高比
             aspect_ratio = w / h if h != 0 else float('inf')
 
-            # 表格通常具有较高的面积比率和适当的宽高比
-            if area_ratio < 0.5 or (aspect_ratio < 0.3 or aspect_ratio > 5):
-                continue
+            # # 表格通常具有较高的面积比率和适当的宽高比
+            # if area_ratio < 0.5 or (aspect_ratio < 0.3 or aspect_ratio > 5):
+            #     continue
 
             # 提取候选区域
             region = mask[y:y+h, x:x+w]
@@ -287,7 +287,7 @@ class DeepPdfParser(BaseParser):
                 result = DeepPdfParser.ocr.ocr(table_image_path, cls=True)
 
                 if not result or not result[0]:
-                    return []
+                    continue
 
                 cells = []
                 for line in result[0]:
@@ -307,7 +307,7 @@ class DeepPdfParser(BaseParser):
                     })
 
                 if not cells:
-                    return []
+                    continue
                 # 使用DBSCAN聚类合并相近的单元格
                 coords = np.array([[cell['x_center'], cell['y_center']] for cell in cells])
                 clustering = DBSCAN(eps=20, min_samples=1).fit(coords)
@@ -623,7 +623,7 @@ class DeepPdfParser(BaseParser):
             '''根据bbox判断是否要进行换行'''
             vertical_distance = nodes_with_bbox[i].bbox.y0 - nodes_with_bbox[i-1].bbox.y1
             height = nodes_with_bbox[i].bbox.y1 - nodes_with_bbox[i].bbox.y0
-            if vertical_distance > 0 and vertical_distance > height*0.5:
+            if vertical_distance > 0 and vertical_distance > height*0.3:
                 nodes_with_bbox[i-1].node.is_need_newline = True
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行空格'''
