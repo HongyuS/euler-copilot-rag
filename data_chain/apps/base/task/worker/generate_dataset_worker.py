@@ -143,6 +143,7 @@ class GenerateDataSetWorker(BaseWorker):
         cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', '')
         dataset_score = 0
         logging.error(f"{chunk_index_list}")
+        exist_q_set = set()
         for i in range(len(doc_chunks)):
             doc_chunk = doc_chunks[i]
             for j in range(len(doc_chunk.chunks)):
@@ -185,7 +186,7 @@ class GenerateDataSetWorker(BaseWorker):
                     rd -= 1
                     try:
                         sys_call = q_generate_prompt_template.format(
-                            k=qa_cnt-len(qs),
+                            k=2*(qa_cnt-len(qs)),
                             content=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens)
                         )
                         usr_call = '请输出问题的列表'
@@ -195,6 +196,13 @@ class GenerateDataSetWorker(BaseWorker):
                         err = f"[GenerateDataSetWorker] 生成问题失败，错误信息: {e}"
                         logging.exception(err)
                         continue
+                    new_sub_qs = []
+                    for q in sub_qs:
+                        if q not in exist_q_set and len(q) > 0:
+                            new_sub_qs.append(q)
+                            exist_q_set.add(q)
+                    sub_qs = new_sub_qs
+                    random.shuffle(sub_qs)
                     sub_qs = sub_qs[:qa_cnt-len(qs)]
                     sub_answers = []
                     try:

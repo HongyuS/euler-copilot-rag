@@ -207,16 +207,13 @@ class DeepPdfParser(BaseParser):
                 continue
 
             # 计算轮廓面积与边界框面积的比率
-            area = cv2.contourArea(contour)
-            rect_area = w * h
-            area_ratio = area / rect_area
+            # area = cv2.contourArea(contour)
+            # rect_area = w * h
+            # area_ratio = area / rect_area
 
-            # 计算宽高比
-            aspect_ratio = w / h if h != 0 else float('inf')
-
-            # 表格通常具有较高的面积比率和适当的宽高比
-            if area_ratio < 0.5 or (aspect_ratio < 0.3 or aspect_ratio > 5):
-                continue
+            # # 表格通常具有较高的面积比率和适当的宽高比
+            # if area_ratio < 0.2:
+            #     continue
 
             # 提取候选区域
             region = mask[y:y+h, x:x+w]
@@ -225,8 +222,8 @@ class DeepPdfParser(BaseParser):
             grid_density = np.count_nonzero(region) / (w * h)
 
             # 表格通常具有较高的网格密度
-            if grid_density < 0.05:
-                continue
+            # if grid_density < 0.05:
+            #     continue
 
             # 计算轮廓的复杂度
             epsilon = 0.02 * cv2.arcLength(contour, True)
@@ -234,7 +231,7 @@ class DeepPdfParser(BaseParser):
             complexity = len(approx)
 
             # 表格轮廓通常较简单，而非表格图形可能更复杂
-            if complexity > 20:
+            if complexity > 20 or complexity < 4:
                 continue
 
             table_bboxes.append(Bbox(
@@ -287,7 +284,7 @@ class DeepPdfParser(BaseParser):
                 result = DeepPdfParser.ocr.ocr(table_image_path, cls=True)
 
                 if not result or not result[0]:
-                    return []
+                    continue
 
                 cells = []
                 for line in result[0]:
@@ -307,7 +304,7 @@ class DeepPdfParser(BaseParser):
                     })
 
                 if not cells:
-                    return []
+                    continue
                 # 使用DBSCAN聚类合并相近的单元格
                 coords = np.array([[cell['x_center'], cell['y_center']] for cell in cells])
                 clustering = DBSCAN(eps=20, min_samples=1).fit(coords)
@@ -621,11 +618,15 @@ class DeepPdfParser(BaseParser):
             page_number += 1
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行换行'''
-            if nodes_with_bbox[i].bbox.y0 > nodes_with_bbox[i-1].bbox.y1 + 1:
+            vertical_distance = nodes_with_bbox[i].bbox.y0 - nodes_with_bbox[i-1].bbox.y1
+            height = nodes_with_bbox[i].bbox.y1 - nodes_with_bbox[i].bbox.y0
+            if vertical_distance > 0 and vertical_distance > height*0.3:
                 nodes_with_bbox[i-1].node.is_need_newline = True
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行空格'''
-            if i > 0 and nodes_with_bbox[i].bbox.x0 > nodes_with_bbox[i-1].bbox.x1 + 1:
+            horizontal_distance = nodes_with_bbox[i].bbox.x0 - nodes_with_bbox[i-1].bbox.x1
+            width = nodes_with_bbox[i].bbox.x1 - nodes_with_bbox[i].bbox.x0
+            if horizontal_distance > 0 and horizontal_distance > width*0.5:
                 nodes_with_bbox[i-1].node.is_need_space = True
         nodes = [node_with_bbox.node for node_with_bbox in nodes_with_bbox]
         DeepPdfParser.image_related_node_in_link_nodes(nodes)  # 假设这个方法在别处定义
