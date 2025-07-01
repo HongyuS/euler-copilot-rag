@@ -606,6 +606,7 @@ class DeepPdfParser(BaseParser):
             #     sub_nodes_with_bbox, image_nodes_with_bbox)
             sub_nodes_with_bbox = text_nodes_with_bbox + table_nodes_with_bbox + image_nodes_with_bbox
             sub_nodes_with_bbox = sorted(sub_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
+            sub_nodes_with_bbox[-1].node.is_need_newline = True  # 最后一个节点需要换行
             nodes_with_bbox.extend(sub_nodes_with_bbox)
             page_number += 1
         for i in range(1, len(nodes_with_bbox)):
@@ -632,4 +633,3 @@ class DeepPdfParser(BaseParser):
                 # 处理图片节点
                 continue
         return parse_result
-
