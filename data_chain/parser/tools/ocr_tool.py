@@ -109,6 +109,8 @@ class OcrTool:
                 text = await OcrTool.merge_text_from_ocr_result(ocr_result)
             else:
                 text = await OcrTool.enhance_ocr_result(ocr_result, image_related_text, llm)
+            if "图片内容为空" in text:
+                return ""
             return text
         except Exception as e:
             err = f"[OCRTool] 图片转文本失败 {e}"
