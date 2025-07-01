@@ -99,7 +99,7 @@ class DeepPdfParser(BaseParser):
     async def extract_text_from_page_by_ocr(
             image_path: str, exclude_regions: list[Bbox] = None) -> list[ParseNodeWithBbox]:
         text_nodes_with_bbox = []
-        result = OcrTool.ocr_from_image_path(image_path)
+        result = await OcrTool.ocr_from_image_path(image_path)
         if not result or not result[0]:
             return []
         for line in result[0]:
@@ -268,7 +268,7 @@ class DeepPdfParser(BaseParser):
                                     int(merged_bboxes[index].x0): int(merged_bboxes[index].x1)]
                 table_image_path = os.path.join(tmp_path, f"table_{uuid.uuid4()}.png")
                 cv2.imwrite(table_image_path, table_image)
-                result = OcrTool.ocr_from_image_path(table_image_path)
+                result = await OcrTool.ocr_from_image_path(table_image_path)
 
                 if not result or not result[0]:
                     continue
