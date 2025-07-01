@@ -237,12 +237,26 @@ class DeepPdfParser(BaseParser):
         # for b in merged_bboxes:
         #     cv2.rectangle(image, (int(b.x0), int(b.y0)), (int(b.x1), int(b.y1)), (0, 255, 0), 2)
         # cv2.imwrite("debug_detected_tables.png", image)
-        # 一定程度扩展表格以保全表头
+        # 自适应扩展每个表格区域的边界框
         for bbox in merged_bboxes:
-            bbox.x0 = max(0, bbox.x0 - 20)
-            bbox.y0 = max(0, bbox.y0 - 20)
-            bbox.x1 += 20
-            bbox.y1 += 20
+            width = bbox.x1 - bbox.x0
+            height = bbox.y1 - bbox.y0
+            # 计算长宽比例，按比例扩展
+            if width > height:
+                bbox.x0 = max(0, bbox.x0 - 30)
+                bbox.y0 = max(0, bbox.y0 - 20)
+                bbox.x1 += 30
+                bbox.y1 += 20
+            elif width < height:
+                bbox.x0 = max(0, bbox.x0 - 20)
+                bbox.y0 = max(0, bbox.y0 - 30)
+                bbox.x1 += 20
+                bbox.y1 += 30
+            else:
+                bbox.x0 = max(0, bbox.x0 - 20)
+                bbox.y0 = max(0, bbox.y0 - 20)
+                bbox.x1 += 20
+                bbox.y1 += 20
         return merged_bboxes
 
     @staticmethod
@@ -393,6 +407,9 @@ class DeepPdfParser(BaseParser):
                     final_table.append(final_row)
                 if not final_table:
                     continue
+                # 计算信息熵，信息比较少的表格可能部署表格
+                entropy = 0
+
                 for row in final_table:
                     node = ParseNode(
                         id=uuid.uuid4(),
