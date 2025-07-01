@@ -1,11 +1,12 @@
 from PIL import Image, ImageEnhance
 import yaml
-from paddleocr import PaddleOCR
+import cv2
 import numpy as np
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.logger.logger import logger as logging
 from data_chain.config.config import config
 from data_chain.llm.llm import LLM
+from data_chain.parser.tools.instruct_scan_tool import InstructScanTool
 
 
 class OcrTool:
@@ -13,15 +14,33 @@ class OcrTool:
     rec_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_rec_infer'
     cls_model_dir = 'data_chain/parser/model/ocr/ch_ppocr_mobile_v2.0_cls_infer'
     # 优化 OCR 参数配置
-    model = PaddleOCR(
-        det_model_dir=det_model_dir,
-        rec_model_dir=rec_model_dir,
-        cls_model_dir=cls_model_dir,
-        use_angle_cls=True,
-        use_space_char=True,
-        det_db_thresh=0.3,       # 降低文本检测阈值，提高敏感度
-        det_db_box_thresh=0.5,   # 调整文本框阈值
-    )
+    if InstructScanTool.check_avx512_support():
+        from paddleocr import PaddleOCR
+        model = PaddleOCR(
+            det_model_dir=det_model_dir,
+            rec_model_dir=rec_model_dir,
+            cls_model_dir=cls_model_dir,
+            use_angle_cls=True,
+            lang="ch"
+        )
+    else:
+        model = None
+
+    @staticmethod
+    async def ocr_from_image_path(image_path: str) -> list:
+        try:
+            # 打开图片
+            if OcrTool.model is None:
+                err = "[OCRTool] 当前机器不支持 AVX-512，无法进行OCR识别"
+                logging.error(err)
+                return None
+            image = cv2.imread(image_path)
+            result = OcrTool.model.ocr(image, cls=True)
+            return result
+        except Exception as e:
+            err = f"[OCRTool] OCR识别失败: {e}"
+            logging.exception(err)
+            return None
 
     @staticmethod
     async def ocr_from_image(image: np.ndarray) -> list:
@@ -29,27 +48,6 @@ class OcrTool:
 
             # 尝试OCR识别
             ocr_result = OcrTool.model.ocr(image)
-
-            # 如果第一次尝试失败，尝试不同的参数配置
-            if ocr_result is None or len(ocr_result) == 0 or ocr_result[0] is None:
-                logging.warning("[OCRTool] 第一次OCR尝试失败，尝试降低阈值...")
-                # 创建临时OCR实例，使用更低的阈值
-                temp_ocr = PaddleOCR(
-                    det_model_dir=OcrTool.det_model_dir,
-                    rec_model_dir=OcrTool.rec_model_dir,
-                    cls_model_dir=OcrTool.cls_model_dir,
-                    use_angle_cls=True,
-                    use_space_char=True,
-                    det_db_thresh=0.2,       # 更低的检测阈值
-                    det_db_box_thresh=0.4,   # 更低的文本框阈值
-                )
-                ocr_result = temp_ocr.ocr(image)
-
-            # 记录OCR结果状态
-            if ocr_result is None or len(ocr_result) == 0 or ocr_result[0] is None:
-                logging.warning("[OCRTool] 图片无法识别文本")
-                return None
-
             return ocr_result
         except Exception as e:
             err = f"[OCRTool] OCR识别失败: {e}"
@@ -100,6 +98,10 @@ class OcrTool:
     @staticmethod
     async def image_to_text(image: np.ndarray, image_related_text: str = '', llm: LLM = None) -> str:
         try:
+            if OcrTool.model is None:
+                err = "[OCRTool] 当前机器不支持 AVX-512，无法进行OCR识别"
+                logging.error(err)
+                return ''
             ocr_result = await OcrTool.ocr_from_image(image)
             if ocr_result is None:
                 return ''

@@ -4,9 +4,6 @@ import io
 import fitz
 from fitz import Page, Document
 import numpy as np
-from PIL import Image
-from pandas import DataFrame
-from paddleocr import PaddleOCR
 from pydantic import BaseModel, Field
 import uuid
 import cv2
@@ -16,6 +13,7 @@ import shutil
 from data_chain.entities.enum import DocParseRelutTopology, ChunkParseTopology, ChunkType
 from data_chain.parser.parse_result import ParseNode, ParseResult
 from data_chain.parser.handler.base_parser import BaseParser
+from data_chain.parser.tools.ocr_tool import OcrTool
 from data_chain.logger.logger import logger as logging
 
 
@@ -51,16 +49,6 @@ class ParseNodeWithBbox(BaseModel):
 
 class DeepPdfParser(BaseParser):
     name = 'pdf.deep'
-    det_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_det_infer'
-    rec_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_rec_infer'
-    cls_model_dir = 'data_chain/parser/model/ocr/ch_ppocr_mobile_v2.0_cls_infer'
-    ocr = PaddleOCR(
-        det_model_dir=det_model_dir,
-        rec_model_dir=rec_model_dir,
-        cls_model_dir=cls_model_dir,
-        use_angle_cls=True,
-        lang="ch"
-    )  # 使用中文语言模型
 
     @staticmethod
     async def extract_text_from_page(
@@ -111,8 +99,7 @@ class DeepPdfParser(BaseParser):
     async def extract_text_from_page_by_ocr(
             image_path: str, exclude_regions: list[Bbox] = None) -> list[ParseNodeWithBbox]:
         text_nodes_with_bbox = []
-        image = cv2.imread(image_path)
-        result = DeepPdfParser.ocr.ocr(image, cls=True)
+        result = await OcrTool.ocr_from_image_path(image_path)
         if not result or not result[0]:
             return []
         for line in result[0]:
@@ -281,7 +268,7 @@ class DeepPdfParser(BaseParser):
                                     int(merged_bboxes[index].x0): int(merged_bboxes[index].x1)]
                 table_image_path = os.path.join(tmp_path, f"table_{uuid.uuid4()}.png")
                 cv2.imwrite(table_image_path, table_image)
-                result = DeepPdfParser.ocr.ocr(table_image_path, cls=True)
+                result = await OcrTool.ocr_from_image_path(table_image_path)
 
                 if not result or not result[0]:
                     continue
