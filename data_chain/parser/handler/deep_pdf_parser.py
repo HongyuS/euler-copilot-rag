@@ -332,6 +332,10 @@ class DeepPdfParser(BaseParser):
                 for y in all_y_coords:
                     if not merged_y_coords or y - merged_y_coords[-1] > y_threshold:
                         merged_y_coords.append(y)
+                if len(merged_x_coords) < 2 or len(merged_y_coords) < 2:
+                    continue  # 不是标准网格结构
+                if len(cells) < 4:
+                    continue  # OCR单元格太少，跳过
 
                 def get_id(num, coords):
                     """获取坐标在合并后的列表中的索引"""
@@ -596,11 +600,12 @@ class DeepPdfParser(BaseParser):
             else:
                 text_nodes_with_bbox = text_nodes_with_bbox_2
             # 合并所有节点
-            sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
-                text_nodes_with_bbox, table_nodes_with_bbox)
-            sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
-                sub_nodes_with_bbox, image_nodes_with_bbox)
-
+            # sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
+            #     text_nodes_with_bbox, table_nodes_with_bbox)
+            # sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
+            #     sub_nodes_with_bbox, image_nodes_with_bbox)
+            sub_nodes_with_bbox = text_nodes_with_bbox + table_nodes_with_bbox + image_nodes_with_bbox
+            sub_nodes_with_bbox = sorted(sub_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
             nodes_with_bbox.extend(sub_nodes_with_bbox)
             page_number += 1
         for i in range(1, len(nodes_with_bbox)):
@@ -627,3 +632,4 @@ class DeepPdfParser(BaseParser):
                 # 处理图片节点
                 continue
         return parse_result
+
