@@ -150,103 +150,99 @@ class DeepPdfParser(BaseParser):
     @staticmethod
     async def detect_table(image_path: str) -> list[Bbox]:
         """
-        检测图像中的表格，返回表格区域及其内容
+        检测图像中的表格区域，返回列表[Bbox]
         """
-
         image = cv2.imread(image_path)
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # 用原图直接提取绿色或蓝色通道，表格线常见于这些
+        green = image[:, :, 1]  # G通道
+        blue = image[:, :, 0]   # B通道
 
-        # 使用改进的表格检测算法
-        # 二值化
-        binary = cv2.adaptiveThreshold(
-            ~gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 15, -10
-        )
+        # 选一个看起来表格线更清晰的通道来处理
+        channel = green  # 或 blue
 
-        # 水平和垂直线检测
+        # 然后再二值化
+        binary = cv2.adaptiveThreshold(channel, 255,
+                                       cv2.ADAPTIVE_THRESH_MEAN_C,
+                                       cv2.THRESH_BINARY_INV, 15, 10)
+
+        # 提取水平和垂直线
         horizontal = binary.copy()
         vertical = binary.copy()
 
-        # 定义水平线和垂直线的结构元素
-        cols = horizontal.shape[1]
-        horizontal_size = cols // 30
-        horizontalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal_size, 1))
-        horizontal = cv2.erode(horizontal, horizontalStructure)
-        horizontal = cv2.dilate(horizontal, horizontalStructure)
+        scale = 30  # 控制提取结构元素大小，值越小越敏感
+        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal.shape[1] // scale, 1))
+        v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vertical.shape[0] // scale))
 
-        rows = vertical.shape[0]
-        vertical_size = rows // 30
-        verticalStructure = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vertical_size))
-        vertical = cv2.erode(vertical, verticalStructure)
-        vertical = cv2.dilate(vertical, verticalStructure)
+        horizontal = cv2.erode(horizontal, h_kernel)
+        horizontal = cv2.dilate(horizontal, h_kernel)
 
-        # 合并水平和垂直线
-        mask = horizontal + vertical
+        vertical = cv2.erode(vertical, v_kernel)
+        vertical = cv2.dilate(vertical, v_kernel)
 
-        # 检测轮廓
+        # 合并线条掩码
+        mask = cv2.add(horizontal, vertical)
+
+        # 轮廓检测
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         table_bboxes = []
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
 
-            # 基本过滤：过滤小区域
-            if w < 100 or h < 100:
+            # 基础过滤（小块排除）
+            if w < 80 or h < 80:
                 continue
 
-            # 计算轮廓面积与边界框面积的比率
-            # area = cv2.contourArea(contour)
-            # rect_area = w * h
-            # area_ratio = area / rect_area
-
-            # # 表格通常具有较高的面积比率和适当的宽高比
-            # if area_ratio < 0.2:
-            #     continue
-
-            # 提取候选区域
-            region = mask[y:y+h, x:x+w]
-
-            # 计算网格密度 - 表格应该有明显的网格结构
-            grid_density = np.count_nonzero(region) / (w * h)
-
-            # 表格通常具有较高的网格密度
-            # if grid_density < 0.05:
-            #     continue
-
-            # 计算轮廓的复杂度
+            # 复杂度过滤
             epsilon = 0.02 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
-            complexity = len(approx)
+            if len(approx) < 4 or len(approx) > 20:
+                continue
 
-            # 表格轮廓通常较简单，而非表格图形可能更复杂
-            if complexity > 20 or complexity < 4:
+            # 网格密度简单过滤
+            region = mask[y:y+h, x:x+w]
+            density = np.count_nonzero(region) / (w * h)
+            if density < 0.02:
                 continue
 
             table_bboxes.append(Bbox(
-                x0=float(x),
-                y0=float(y),
-                x1=float(x + w),
-                y1=float(y + h)
+                x0=float(x), y0=float(y), x1=float(x + w), y1=float(y + h)
             ))
-        # 合并相近的表格区域
-        table_bboxes = sorted(table_bboxes, key=lambda bbox: (bbox.y0, bbox.x0))
+
+        # 按坐标排序
+        table_bboxes = sorted(table_bboxes, key=lambda b: (b.y0, b.x0))
+
+        # 合并相邻或重叠的表格区域
         merged_bboxes = []
         for bbox in table_bboxes:
             if not merged_bboxes:
                 merged_bboxes.append(bbox)
                 continue
-            last_bbox = merged_bboxes[-1]
-            # 检查当前bbox是否与上一个bbox相邻或重叠
-            if (abs(bbox.x0 - last_bbox.x1) < 10 and abs(bbox.y0 - last_bbox.y0) < 10) or \
-               (abs(bbox.y0 - last_bbox.y1) < 10 and abs(bbox.x0 - last_bbox.x0) < 10):
-                # 合并两个bbox
-                merged_bboxes[-1] = Bbox(
-                    x0=min(last_bbox.x0, bbox.x0),
-                    y0=min(last_bbox.y0, bbox.y0),
-                    x1=max(last_bbox.x1, bbox.x1),
-                    y1=max(last_bbox.y1, bbox.y1)
+            last = merged_bboxes[-1]
+            overlap_x = min(last.x1, bbox.x1) - max(last.x0, bbox.x0)
+            overlap_y = min(last.y1, bbox.y1) - max(last.y0, bbox.y0)
+
+            if overlap_x > -20 and overlap_y > -20:
+                merged = Bbox(
+                    x0=min(last.x0, bbox.x0),
+                    y0=min(last.y0, bbox.y0),
+                    x1=max(last.x1, bbox.x1),
+                    y1=max(last.y1, bbox.y1)
                 )
+                merged_bboxes[-1] = merged
             else:
                 merged_bboxes.append(bbox)
+
+        # 可视化调试：保存检测图
+        # for b in merged_bboxes:
+        #     cv2.rectangle(image, (int(b.x0), int(b.y0)), (int(b.x1), int(b.y1)), (0, 255, 0), 2)
+        # cv2.imwrite("debug_detected_tables.png", image)
+        # 一定程度扩展表格以保全表头
+        for bbox in merged_bboxes:
+            bbox.x0 = max(0, bbox.x0 - 20)
+            bbox.y0 = max(0, bbox.y0 - 20)
+            bbox.x1 += 20
+            bbox.y1 += 20
         return merged_bboxes
 
     @staticmethod
@@ -600,13 +596,12 @@ class DeepPdfParser(BaseParser):
             else:
                 text_nodes_with_bbox = text_nodes_with_bbox_2
             # 合并所有节点
-            # sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
-            #     text_nodes_with_bbox, table_nodes_with_bbox)
-            # sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
-            #     sub_nodes_with_bbox, image_nodes_with_bbox)
-            sub_nodes_with_bbox = text_nodes_with_bbox + table_nodes_with_bbox + image_nodes_with_bbox
+            sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
+                text_nodes_with_bbox, table_nodes_with_bbox)
+            sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
+                sub_nodes_with_bbox, image_nodes_with_bbox)
             sub_nodes_with_bbox = sorted(sub_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
-            sub_nodes_with_bbox[-1].node.is_need_newline = True  # 最后一个节点需要换行
+            sub_nodes_with_bbox[-1].node.is_need_space = True  # 最后一个节点后面需要空格
             nodes_with_bbox.extend(sub_nodes_with_bbox)
             page_number += 1
         for i in range(1, len(nodes_with_bbox)):
