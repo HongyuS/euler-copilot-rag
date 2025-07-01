@@ -64,9 +64,9 @@ class ConfigModel(DictBaseModel):
     HALF_KEY2: str = Field(None, description="两层密钥管理组件2")
     HALF_KEY3: str = Field(None, description="两层密钥管理组件3")
     # Prompt file
-    PROMPT_PATH: str = Field(None, description="prompt路径")
+    PROMPT_PATH: str = Field(default="./data_chain/common/prompt.yaml", description="prompt路径")
     # Stop Words PATH
-    STOP_WORDS_PATH: str = Field(None, description="停用词表存放位置")
+    STOP_WORDS_PATH: str = Field(default="./data_chain/common/stopwords.txt", description="停用词表存放位置")
     # CPU Limit
     USE_CPU_LIMIT: int = Field(default=64, description="文档解析器使用CPU核数")
     # Task Retry Time limit
