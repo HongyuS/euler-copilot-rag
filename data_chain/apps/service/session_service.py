@@ -37,7 +37,7 @@ async def verify_user(request: HTTPConnection):
     except:
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 retcode=401, rtmsg="Authentication Error.", data="")
-    if not SessionManager.verify_user(session_id):
+    if not (await SessionManager.verify_user(session_id)):
         raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                 retcode=401, rtmsg="Authentication Error.", data="")
 

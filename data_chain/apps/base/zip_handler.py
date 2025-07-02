@@ -8,6 +8,17 @@ from data_chain.logger.logger import logger as logging
 
 
 class ZipHandler():
+    '''处理zip文件的类'''
+    @staticmethod
+    def is_zip_file(file_path: str) -> bool:
+        '''检查文件是否为zip文件'''
+        if not os.path.exists(file_path):
+            logging.error("[ZipHandler] 文件 %s 不存在", file_path)
+            return False
+        if not zipfile.is_zipfile(file_path):
+            logging.error("[ZipHandler] 文件 %s 不是一个有效的zip文件", file_path)
+            return False
+        return True
 
     @staticmethod
     def check_zip_file(zip_file_path: str, max_file_num: int = 4096, max_file_size: int = 10 * 1024 * 1024 * 1024) -> bool:
