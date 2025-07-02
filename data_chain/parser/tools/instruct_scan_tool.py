@@ -13,6 +13,10 @@ class InstructScanTool:
             "Maybe": 无法确定是否支持
         """
         try:
+            # 当前环境为arm则返回 True
+            machine = platform.machine().lower()
+            if machine.startswith('arm') or machine.startswith('aarch64'):
+                return True
             # 优先使用 cpuinfo 库获取精确信息
             info = cpuinfo.get_cpu_info()
             flags = info.get('flags', [])
@@ -46,6 +50,9 @@ class InstructScanTool:
         """
         回退到基于平台命令的检测方法（原实现）
         """
+        machine = platform.machine().lower()
+        if machine.startswith('arm') or machine.startswith('aarch64'):
+            return True
         system = platform.system()
         
         if system == "Linux":

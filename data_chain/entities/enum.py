@@ -41,6 +41,7 @@ class ParseMethod(str, Enum):
     EHANCED = "enhanced"
     QA = "qa"
     DEEP = "deep"
+    FINE = "fine"
 
 
 class UserStatus(str, Enum):

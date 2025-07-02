@@ -126,8 +126,8 @@ class ParseDocumentWorker(BaseWorker):
     async def parse_doc(doc_entity: DocumentEntity, file_path: str) -> ParseResult:
         '''解析文档'''
         extension = doc_entity.extension
-        if doc_entity.parse_method == ParseMethod.DEEP.value:
-            extension += '.deep'
+        if doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
+            extension += '.' + doc_entity.parse_method
         parse_result = await BaseParser.parser(extension, file_path)
         return parse_result
 
@@ -490,7 +490,7 @@ class ParseDocumentWorker(BaseWorker):
             raise Exception(err)
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.RUNNING.value})
         try:
-            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value:
+            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
                 llm = LLM(
                     openai_api_key=config['OPENAI_API_KEY'],
                     openai_api_base=config['OPENAI_API_BASE'],
