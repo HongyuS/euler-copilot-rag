@@ -242,7 +242,6 @@ class MdZipParser(BaseParser):
 
     @staticmethod
     async def parser(file_path: str) -> ParseResult:
-        print(file_path)
         if ZipHandler.is_zip_file(file_path):
             target_file_path = os.path.join(os.path.dirname(file_path), 'temp')
             await ZipHandler.unzip_file(file_path, target_file_path)

@@ -1,4 +1,4 @@
-FROM openeuler/openeuler:22.03-lts-sp1
+FROM openeuler/openeuler:24.03-lts-sp2
 
 # 设置环境变量
 ENV PATH /rag-service/.local/bin:$PATH
