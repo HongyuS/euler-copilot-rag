@@ -29,5 +29,4 @@ COPY --chown=1001:1001 download_model.py /rag-service/
 # 安装 Python 依赖
 RUN pip3 install --no-cache-dir -r /rag-service/requirements.txt --index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     chmod -R 750 /rag-service
-RUN pip3 install --no-cache-dir marker-pdf==1.8.0
 RUN python3 /rag-service/download_model.py
