@@ -380,11 +380,11 @@ class ParseDocumentWorker(BaseWorker):
                 if len(node.title) == 0:
                     if llm is not None:
                         content = ''
-                        for node in node.link_nodes:
-                            if node.title:
-                                content += node.title + '\n'
+                        for cnode in node.link_nodes:
+                            if cnode.title:
+                                content += cnode.title + '\n'
                             else:
-                                sentences = TokenTool.get_top_k_keysentence(node.content, 1)
+                                sentences = TokenTool.get_top_k_keysentence(cnode.content, 1)
                                 if sentences:
                                     content += sentences[0] + '\n'
                         if content:
