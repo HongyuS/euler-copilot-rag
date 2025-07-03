@@ -444,6 +444,12 @@ class ParseDocumentWorker(BaseWorker):
         for node in parse_result.nodes:
             if not node.content:
                 continue
+            new_content = node.content.strip()
+            # 剔除非new_content utf-8编码的内容
+            new_content = new_content.encode('utf-8', 'ignore').decode('utf-8')
+            if not new_content:
+                continue
+            node.content = new_content
             chunk_entity = ChunkEntity(
                 id=node.id,
                 team_id=doc_entity.team_id,
