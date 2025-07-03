@@ -166,7 +166,6 @@ class MdZipParser(BaseParser):
                 code_text = element.get_text().strip()
                 node = ParseNode(
                     id=uuid.uuid4(),
-
                     lv=current_level,
                     parse_topology_type=ChunkParseTopology.TREELEAF,
                     content=code_text,
@@ -179,7 +178,6 @@ class MdZipParser(BaseParser):
                 if para_text:
                     node = ParseNode(
                         id=uuid.uuid4(),
-
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
                         content=para_text,
@@ -193,7 +191,6 @@ class MdZipParser(BaseParser):
                 if img_blob:
                     node = ParseNode(
                         id=uuid.uuid4(),
-
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
                         content=img_blob,
@@ -206,7 +203,6 @@ class MdZipParser(BaseParser):
                 for row in table_array:
                     node = ParseNode(
                         id=uuid.uuid4(),
-
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
                         content=row,

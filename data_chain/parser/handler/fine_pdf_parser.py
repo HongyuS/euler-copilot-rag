@@ -47,4 +47,3 @@ class FinePdfParser(BaseParser):
         else:
             logging.error("[FinePdfParser] 当前机器不支持 AVX-512，无法进行PDF解析")
             raise Exception("[FinePdfParser] 当前机器不支持 AVX-512，无法进行PDF解析")
-
