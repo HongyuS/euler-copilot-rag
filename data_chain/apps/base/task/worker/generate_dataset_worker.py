@@ -157,7 +157,7 @@ class GenerateDataSetWorker(BaseWorker):
                     l = j-1
                     r = j+1
                     tokens_sub = 0
-                    while TokenTool.get_tokens(chunk) < max(llm.max_tokens//2, 2048):
+                    while TokenTool.get_tokens(chunk) < max(llm.max_tokens//4, 2048):
                         if l < 0 and r >= len(doc_chunk.chunks):
                             break
                         if tokens_sub > 0:
@@ -186,7 +186,7 @@ class GenerateDataSetWorker(BaseWorker):
                     rd -= 1
                     try:
                         sys_call = q_generate_prompt_template.format(
-                            k=2*(qa_cnt-len(qs)),
+                            k=5*(qa_cnt-len(qs)),
                             content=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens)
                         )
                         usr_call = '请输出问题的列表'
