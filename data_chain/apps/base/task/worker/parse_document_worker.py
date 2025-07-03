@@ -126,8 +126,8 @@ class ParseDocumentWorker(BaseWorker):
     async def parse_doc(doc_entity: DocumentEntity, file_path: str) -> ParseResult:
         '''解析文档'''
         extension = doc_entity.extension
-        if doc_entity.parse_method == ParseMethod.DEEP.value:
-            extension += '.deep'
+        if doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
+            extension += '.' + doc_entity.parse_method
         parse_result = await BaseParser.parser(extension, file_path)
         return parse_result
 
@@ -380,11 +380,11 @@ class ParseDocumentWorker(BaseWorker):
                 if len(node.title) == 0:
                     if llm is not None:
                         content = ''
-                        for node in node.link_nodes:
-                            if node.title:
-                                content += node.title + '\n'
+                        for cnode in node.link_nodes:
+                            if cnode.title:
+                                content += cnode.title + '\n'
                             else:
-                                sentences = TokenTool.get_top_k_keysentence(node.content, 1)
+                                sentences = TokenTool.get_top_k_keysentence(cnode.content, 1)
                                 if sentences:
                                     content += sentences[0] + '\n'
                         if content:
@@ -444,6 +444,12 @@ class ParseDocumentWorker(BaseWorker):
         for node in parse_result.nodes:
             if not node.content:
                 continue
+            new_content = node.content.strip()
+            # 剔除非new_content utf-8编码的内容
+            new_content = new_content.encode('utf-8', 'ignore').decode('utf-8')
+            if not new_content:
+                continue
+            node.content = new_content
             chunk_entity = ChunkEntity(
                 id=node.id,
                 team_id=doc_entity.team_id,
@@ -490,7 +496,7 @@ class ParseDocumentWorker(BaseWorker):
             raise Exception(err)
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.RUNNING.value})
         try:
-            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value:
+            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
                 llm = LLM(
                     openai_api_key=config['OPENAI_API_KEY'],
                     openai_api_base=config['OPENAI_API_BASE'],
