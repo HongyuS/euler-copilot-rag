@@ -166,7 +166,6 @@ class MdZipParser(BaseParser):
                 code_text = element.get_text().strip()
                 node = ParseNode(
                     id=uuid.uuid4(),
-
                     lv=current_level,
                     parse_topology_type=ChunkParseTopology.TREELEAF,
                     content=code_text,
@@ -179,7 +178,6 @@ class MdZipParser(BaseParser):
                 if para_text:
                     node = ParseNode(
                         id=uuid.uuid4(),
-
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
                         content=para_text,
@@ -193,7 +191,6 @@ class MdZipParser(BaseParser):
                 if img_blob:
                     node = ParseNode(
                         id=uuid.uuid4(),
-
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
                         content=img_blob,
@@ -206,7 +203,6 @@ class MdZipParser(BaseParser):
                 for row in table_array:
                     node = ParseNode(
                         id=uuid.uuid4(),
-
                         lv=current_level,
                         parse_topology_type=ChunkParseTopology.TREELEAF,
                         content=row,
@@ -226,7 +222,6 @@ class MdZipParser(BaseParser):
     @staticmethod
     async def markdown_to_tree(file_path: str, markdown_text: str) -> ParseNode:
         html = markdown.markdown(markdown_text, extensions=['tables'])
-        logging.error(html)
         root = ParseNode(
             id=uuid.uuid4(),
             title="",
@@ -243,8 +238,13 @@ class MdZipParser(BaseParser):
 
     @staticmethod
     async def parser(file_path: str) -> ParseResult:
-        target_file_path = os.path.join(os.path.dirname(file_path), 'temp')
-        await ZipHandler.unzip_file(file_path, target_file_path)
+        if ZipHandler.is_zip_file(file_path):
+            target_file_path = os.path.join(os.path.dirname(file_path), 'temp')
+            await ZipHandler.unzip_file(file_path, target_file_path)
+        elif os.path.isdir(file_path):
+            target_file_path = file_path
+        else:
+            target_file_path = None
         # 递归查找markdown文件
         markdown_file_path_list = []
         for root, dirs, files in os.walk(target_file_path):
