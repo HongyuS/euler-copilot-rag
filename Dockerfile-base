@@ -13,10 +13,6 @@ RUN sed -i 's|http://repo.openeuler.org/|https://mirrors.huaweicloud.com/openeul
 
 # 创建 /rag-service 目录并设置权限
 RUN mkdir -p /rag-service && chown -R 1001:1001 /rag-service
-COPY --chown=1001:1001 openGauss-sqlalchemy.tar.gz .
-RUN  tar -xvf openGauss-sqlalchemy.tar.gz && \
-    cd openGauss-sqlalchemy && \
-    pip3 install . --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 切换到 eulercopilot 用户
 USER eulercopilot
