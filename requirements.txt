@@ -47,5 +47,5 @@ urllib3==2.2.1
 uvicorn==0.21.0
 xlrd==2.0.1
 py-cpuinfo==9.0.0
-marker-pdf==1.8.0
 opengauss-sqlalchemy==2.4.0
+#marker-pdf==1.8.0
