@@ -180,31 +180,31 @@ class TestingWorker(BaseWorker):
                 bac_info=bac_info
             )
             llm_answer = await llm.nostream([], prompt, question)
-            sub_socres = []
+            sub_scores = []
             pre = await TokenTool.cal_precision(question, answer, llm)
             if pre != -1:
-                sub_socres.append(pre)
+                sub_scores.append(pre)
             rec = await TokenTool.cal_recall(answer, llm_answer, llm)
             if rec != -1:
-                sub_socres.append(rec)
+                sub_scores.append(rec)
             fai = await TokenTool.cal_faithfulness(question, llm_answer, bac_info, llm)
             if fai != -1:
-                sub_socres.append(fai)
+                sub_scores.append(fai)
             rel = await TokenTool.cal_relevance(question, llm_answer, llm)
             if rel != -1:
-                sub_socres.append(rel)
+                sub_scores.append(rel)
             lcs = TokenTool.cal_lcs(answer, llm_answer)
             if lcs != -1:
-                sub_socres.append(lcs)
+                sub_scores.append(lcs)
             leve = TokenTool.cal_leve(answer, llm_answer)
             if leve != -1:
-                sub_socres.append(leve)
+                sub_scores.append(leve)
             jac = TokenTool.cal_jac(answer, llm_answer)
             if jac != -1:
-                sub_socres.append(jac)
+                sub_scores.append(jac)
             score = -1
-            if sub_socres:
-                score = sum(sub_socres) / len(sub_socres)
+            if sub_scores:
+                score = sum(sub_scores) / len(sub_scores)
             test_case_entity = TestCaseEntity(
                 testing_id=testing_entity.id,
                 question=question,
