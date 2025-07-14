@@ -33,14 +33,14 @@ class KeywordVectorSearcher(BaseSearcher):
             chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(
                 kb_id, query, max(top_k//3, 1), doc_ids, banned_ids, is_tight=True)
             banned_ids += [chunk_entity.id for chunk_entity in chunk_entities_get_by_keyword]
-            chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(
+            chunk_entities_get_by_keyword += await ChunkManager.get_top_k_chunk_by_kb_id_keyword(
                 kb_id, query, max(top_k//2, 1), doc_ids, banned_ids, is_tight=False)
             banned_ids += [chunk_entity.id for chunk_entity in chunk_entities_get_by_keyword]
             for _ in range(3):
                 try:
                     import time
                     start_time = time.time()
-                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=3)
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_keyword), doc_ids, banned_ids), timeout=3)
                     end_time = time.time()
                     logging.info(f"[KeywordVectorSearcher] 向量检索成功完成，耗时: {end_time - start_time:.2f}秒")
                     break
