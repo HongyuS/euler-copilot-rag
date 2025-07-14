@@ -53,6 +53,7 @@ from data_chain.rag import (
     base_searcher,
     keyword_searcher,
     vector_searcher,
+    dynamic_weighted_keyword_and_vector_searcher,
     keyword_and_vector_searcher,
     doc2chunk_searcher,
     doc2chunk_bfs_searcher,

@@ -224,7 +224,7 @@ class ChunkManager():
     async def get_top_k_chunk_by_kb_id_keyword(
             kb_id: uuid.UUID, query: str,
             top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
-            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
+            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None, is_tight: bool = True) -> List[ChunkEntity]:
         """根据知识库ID和向量查询文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
@@ -243,15 +243,21 @@ class ChunkManager():
                         tokenizer = 'zhparser'
 
                 # 计算相似度分数并选择它
-                similarity_score = func.ts_rank_cd(
-                    func.to_tsvector(tokenizer, ChunkEntity.text),
-                    func.to_tsquery(
-                        func.replace(
-                            func.text(func.plainto_tsquery(tokenizer, query)),
-                            '&', '|'
+                if is_tight:
+                    similarity_score = func.ts_rank_cd(
+                        func.to_tsvector(tokenizer, ChunkEntity.text),
+                        func.to_tsquery(tokenizer, query)
+                    ).label("similarity_score")
+                else:
+                    similarity_score = func.ts_rank_cd(
+                        func.to_tsvector(tokenizer, ChunkEntity.text),
+                        func.to_tsquery(
+                            func.replace(
+                                func.text(func.plainto_tsquery(tokenizer, query)),
+                                '&', '|'
+                            )
                         )
-                    )
-                ).label("similarity_score")
+                    ).label("similarity_score")
 
                 stmt = (
                     select(ChunkEntity, similarity_score)
