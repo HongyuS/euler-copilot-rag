@@ -328,6 +328,7 @@ class DocChunk(BaseModel):
     doc_name: str = Field(description="文档名称", alias="docName")
     doc_abstract: str = Field(default="", description="文档摘要", alias="docAbstract")
     doc_extension: str = Field(default="", description="文档扩展名", alias="docExtension")
+    doc_size: int = Field(default=0, description="文档大小，单位是KB", alias="docSize")
     chunks: list[Chunk] = Field(default=[], description="分片列表", alias="chunks")
 
 

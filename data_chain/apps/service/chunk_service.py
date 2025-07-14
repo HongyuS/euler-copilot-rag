@@ -144,6 +144,7 @@ class ChunkService:
             doc_entity = doc_map.get(doc_chunk.doc_id)
             doc_chunk.doc_abstract = doc_entity.abstract if doc_entity else ""
             doc_chunk.doc_extension = doc_entity.extension if doc_entity else ""
+            doc_chunk.doc_size = doc_entity.size if doc_entity else 0
         return search_chunk_msg
 
     async def update_chunk_by_id(chunk_id: uuid.UUID, req: UpdateChunkRequest) -> uuid.UUID:
