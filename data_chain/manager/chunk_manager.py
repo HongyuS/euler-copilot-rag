@@ -245,7 +245,12 @@ class ChunkManager():
                 # 计算相似度分数并选择它
                 similarity_score = func.ts_rank_cd(
                     func.to_tsvector(tokenizer, ChunkEntity.text),
-                    func.plainto_tsquery(tokenizer, query)
+                    func.to_tsquery(
+                        func.replace(
+                            func.text(func.plainto_tsquery(tokenizer, query)),
+                            '&', '|'
+                        )
+                    )
                 ).label("similarity_score")
 
                 stmt = (
