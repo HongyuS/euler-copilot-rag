@@ -246,7 +246,7 @@ class ChunkManager():
                 if is_tight:
                     similarity_score = func.ts_rank_cd(
                         func.to_tsvector(tokenizer, ChunkEntity.text),
-                        func.to_tsquery(tokenizer, query)
+                        func.plainto_tsquery(tokenizer, query)
                     ).label("similarity_score")
                 else:
                     similarity_score = func.ts_rank_cd(
