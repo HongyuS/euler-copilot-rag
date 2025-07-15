@@ -137,8 +137,14 @@ class ChunkService:
                     chunk.text = TokenTool.compress_tokens(chunk.text)
                 dc = DocChunk(docId=chunk_entity.doc_id, docName=chunk_entity.doc_name, chunks=[chunk])
                 search_chunk_msg.doc_chunks.append(dc)
+        doc_entities = await DocumentManager.list_document_by_doc_ids(
+            [doc_chunk.doc_id for doc_chunk in search_chunk_msg.doc_chunks])
+        doc_map = {doc_entity.id: doc_entity for doc_entity in doc_entities}
         for doc_chunk in search_chunk_msg.doc_chunks:
-            doc_chunk.doc_link = await DocumentService.generate_doc_download_url(doc_chunk.doc_id)
+            doc_entity = doc_map.get(doc_chunk.doc_id)
+            doc_chunk.doc_abstract = doc_entity.abstract if doc_entity else ""
+            doc_chunk.doc_extension = doc_entity.extension if doc_entity else ""
+            doc_chunk.doc_size = doc_entity.size if doc_entity else 0
         return search_chunk_msg
 
     async def update_chunk_by_id(chunk_id: uuid.UUID, req: UpdateChunkRequest) -> uuid.UUID:

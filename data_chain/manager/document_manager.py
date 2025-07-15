@@ -97,10 +97,17 @@ class DocumentManager():
                         tokenizer = 'zhparser'
                 elif kb_entity.tokenizer == Tokenizer.EN.value:
                     tokenizer = 'english'
+
                 similarity_score = func.ts_rank_cd(
                     func.to_tsvector(tokenizer, DocumentEntity.abstract),
-                    func.plainto_tsquery(tokenizer, query)
+                    func.to_tsquery(
+                        func.replace(
+                            func.text(func.plainto_tsquery(tokenizer, query)),
+                            '&', '|'
+                        )
+                    )
                 ).label("similarity_score")
+
                 stmt = (
                     select(DocumentEntity, similarity_score)
                     .where(DocumentEntity.kb_id == kb_id)

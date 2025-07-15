@@ -23,7 +23,7 @@ from data_chain.entities.response_data import (
 from data_chain.apps.base.zip_handler import ZipHandler
 from data_chain.apps.service.task_queue_service import TaskQueueService
 from data_chain.entities.enum import Tokenizer, ParseMethod, TeamType, TeamStatus, KnowledgeBaseStatus, TaskType
-from data_chain.entities.common import DEFAULT_DOC_TYPE_ID, default_roles, IMPORT_KB_PATH_IN_OS, EXPORT_KB_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
+from data_chain.entities.common import DEFAULT_KNOWLEDGE_BASE_ID, DEFAULT_DOC_TYPE_ID, default_roles, IMPORT_KB_PATH_IN_OS, EXPORT_KB_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
 from data_chain.stores.database.database import TeamEntity, KnowledgeBaseEntity, DocumentTypeEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.apps.base.convertor import Convertor
@@ -46,6 +46,8 @@ class KnowledgeBaseService:
     async def validate_user_action_to_knowledge_base(
             user_sub: str, kb_id: uuid.UUID, action: str) -> bool:
         """验证用户在知识库中的操作权限"""
+        if kb_id == DEFAULT_KNOWLEDGE_BASE_ID:
+            return True
         try:
             kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
             if kb_entity is None:

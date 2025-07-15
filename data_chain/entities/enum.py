@@ -158,6 +158,7 @@ class SearchMethod(str, Enum):
     """搜索方法"""
     KEYWORD = "keyword"
     VECTOR = "vector"
+    DYNAMIC_WEIGHTED_KEYWORD_AND_VECTOR = "dynamic_weighted_keyword_and_vector"
     KEYWORD_AND_VECTOR = "keyword_and_vector"
     DOC2CHUNK = "doc2chunk"
     DOC2CHUNK_BFS = "doc2chunk_bfs"
