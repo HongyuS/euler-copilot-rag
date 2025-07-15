@@ -39,6 +39,8 @@ class DocumentService:
         """验证用户对文档的操作权限"""
         try:
             doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+            if doc_entity.kb_id == DEFAULT_KNOWLEDGE_BASE_ID:
+                return True
             if doc_entity is None:
                 err = f"文档不存在, 文档ID: {doc_id}"
                 logging.error("[DocumentService] %s", err)

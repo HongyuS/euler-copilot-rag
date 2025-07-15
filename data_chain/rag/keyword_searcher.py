@@ -25,7 +25,9 @@ class KeyWordSearcher(BaseSearcher):
         :return: 检索结果
         """
         try:
-            chunk_entities = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k, doc_ids, banned_ids)
+            chunk_entities = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k//3, doc_ids, banned_ids)
+            banned_ids += [chunk_entity.id for chunk_entity in chunk_entities]
+            chunk_entities += await ChunkManager.get_top_k_chunk_by_kb_id_keyword(kb_id, query, top_k-len(chunk_entities), doc_ids, banned_ids, is_tight=False)
         except Exception as e:
             err = f"[KeyWordSearcher] 关键词检索失败，error: {e}"
             logging.exception(err)
