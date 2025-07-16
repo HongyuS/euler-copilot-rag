@@ -534,6 +534,23 @@ class TaskReportEntity(Base):
     )
 
 
+class TaskQueueEntity(Base):
+    __tablename__ = 'task_queue'
+
+    id = Column(UUID, default=uuid4, primary_key=True)  # 任务ID
+    status = Column(String)  # 任务状态
+    created_time = Column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        server_default=func.current_timestamp()
+    )
+    # 添加索引以提高查询性能
+    __table_args__ = (
+        Index('idx_task_queue_status', 'status'),
+        Index('idx_task_queue_created_time', 'created_time'),
+    )
+
+
 class DataBase:
 
     # 对密码进行 URL 编码

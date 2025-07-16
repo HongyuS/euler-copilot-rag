@@ -29,7 +29,7 @@ from data_chain.manager.chunk_manager import ChunkManager
 from data_chain.manager.image_manager import ImageManager
 from data_chain.manager.task_report_manager import TaskReportManager
 from data_chain.manager.task_queue_mamanger import TaskQueueManager
-from data_chain.stores.database.database import TaskEntity, DocumentEntity, DocumentTypeEntity, ChunkEntity, ImageEntity
+from data_chain.stores.database.database import TaskEntity, DocumentEntity, DocumentTypeEntity, ChunkEntity, ImageEntity, TaskQueueEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.stores.mongodb.mongodb import Task
 
@@ -539,7 +539,7 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.add_parse_result_to_db(parse_result, doc_entity)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '添加解析结果到数据库', current_stage, stage_cnt)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.SUCCESS.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.SUCCESS.value))
             task_report = await ParseDocumentWorker.assemble_task_report(task_id)
             report_path = os.path.join(tmp_path, 'task_report.txt')
             with open(report_path, 'w') as f:
@@ -552,7 +552,7 @@ class ParseDocumentWorker(BaseWorker):
         except Exception as e:
             err = f"[DocParseWorker] 任务失败，task_id: {task_id}，错误信息: {e}"
             logging.exception(err)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.FAILED.value))
             await ParseDocumentWorker.report(task_id, err, 0, 1)
             task_report = await ParseDocumentWorker.assemble_task_report(task_id)
             report_path = os.path.join(tmp_path, 'task_report.txt')
