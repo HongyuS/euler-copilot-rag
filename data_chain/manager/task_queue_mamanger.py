@@ -1,12 +1,10 @@
 
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from sqlalchemy import select, delete, update, desc, asc, func, exists, or_, and_
-from sqlalchemy.orm import aliased
 import uuid
 from typing import Dict, List, Optional, Tuple
 from data_chain.logger.logger import logger as logging
-from data_chain.stores.database.database import DataBase, TaskEntity, TaskQueueEntity
-# from data_chain.stores.mongodb.mongodb import MongoDB, Task
+from data_chain.stores.database.database import DataBase, TaskQueueEntity
 from data_chain.entities.enum import TaskStatus
 
 
@@ -48,8 +46,7 @@ class TaskQueueManager():
                     .order_by(asc(TaskQueueEntity.created_time))
                     .limit(1)
                 )
-                result = await session.execute(stmt)
-                return result.scalars().first()
+                return await session.scalars(stmt).first()
         except Exception as e:
             err = "获取最早的任务失败"
             logging.exception("[TaskQueueManager] %s", err)
@@ -61,8 +58,7 @@ class TaskQueueManager():
         try:
             async with await DataBase.get_session() as session:
                 stmt = select(TaskQueueEntity).where(TaskQueueEntity.id == task_id)
-                result = await session.execute(stmt)
-                return result.scalars().first()
+                return await session.scalars(stmt).first()
         except Exception as e:
             err = "获取任务失败"
             logging.exception("[TaskQueueManager] %s", err)
