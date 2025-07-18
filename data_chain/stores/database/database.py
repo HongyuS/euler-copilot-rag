@@ -1,13 +1,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import Index
-from uuid import uuid4
+from datetime import datetime
+import uuid
 import urllib.parse
 from data_chain.logger.logger import logger as logging
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, Float, String, func
 from sqlalchemy.types import TIMESTAMP, UUID
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, DeclarativeBase, MappedAsDataclass, Mapped, mapped_column
 from data_chain.config.config import config
 from data_chain.entities.enum import (Tokenizer,
                                       ParseMethod,
@@ -531,6 +532,23 @@ class TaskReportEntity(Base):
         TIMESTAMP(timezone=True),
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp()
+    )
+
+
+class TaskQueueEntity(DeclarativeBase, MappedAsDataclass):
+    __tablename__ = 'task_queue'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID, default_factory=uuid.uuid4, primary_key=True)  # 任务ID
+    status: Mapped[str] = mapped_column(String)  # 任务状态
+    created_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        server_default=func.current_timestamp()
+    )
+    # 添加索引以提高查询性能
+    __table_args__ = (
+        Index('idx_task_queue_status', 'status'),
+        Index('idx_task_queue_created_time', 'created_time'),
     )
 
 

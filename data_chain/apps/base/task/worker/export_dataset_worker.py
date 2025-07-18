@@ -23,7 +23,7 @@ from data_chain.manager.chunk_manager import ChunkManager
 from data_chain.manager.dataset_manager import DatasetManager
 from data_chain.manager.qa_manager import QAManager
 from data_chain.manager.task_queue_mamanger import TaskQueueManager
-from data_chain.stores.database.database import TaskEntity, DocumentEntity, DocumentTypeEntity, QAEntity, DataSetEntity, DataSetDocEntity
+from data_chain.stores.database.database import TaskEntity, DocumentEntity, DocumentTypeEntity, QAEntity, DataSetEntity, DataSetDocEntity, TaskQueueEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.stores.mongodb.mongodb import Task
 
@@ -190,11 +190,11 @@ class ExportDataSetWorker(BaseWorker):
             await ExportDataSetWorker.upload_file_to_minio(task_id, zip_path)
             current_stage += 1
             await ExportDataSetWorker.report(task_id, "上传文件到minio", current_stage, stage_cnt)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.SUCCESS.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.SUCCESS.value))
         except Exception as e:
             err = f"[ExportDataSetWorker] 任务失败，task_id: {task_id}, 错误信息: {e}"
             logging.exception(err)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.FAILED.value))
             await ExportDataSetWorker.report(task_id, "任务失败", 0, 1)
 
     @staticmethod

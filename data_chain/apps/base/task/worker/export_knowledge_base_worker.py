@@ -13,7 +13,7 @@ from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_manager import DocumentManager
 from data_chain.manager.task_queue_mamanger import TaskQueueManager
-from data_chain.stores.database.database import TaskEntity, DocumentEntity
+from data_chain.stores.database.database import TaskEntity, DocumentEntity, TaskQueueEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.stores.mongodb.mongodb import Task
 
@@ -197,11 +197,11 @@ class ExportKnowledgeBaseWorker(BaseWorker):
             await ExportKnowledgeBaseWorker.upload_zip_to_minio(zip_path, task_id)
             current_stage += 1
             await ExportKnowledgeBaseWorker.report(task_id, "上传压缩包到minio", current_stage, stage_cnt)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.SUCCESS.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.SUCCESS.value))
         except Exception as e:
             err = f"[ExportKnowledgeBaseWorker] 运行任务失败，task_id: {task_id}，错误信息: {e}"
             logging.exception(err)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.FAILED.value))
             await ExportKnowledgeBaseWorker.report(task_id, err, 0, 1)
 
     @staticmethod

@@ -28,7 +28,7 @@ from data_chain.manager.testing_manager import TestingManager
 from data_chain.manager.testcase_manager import TestCaseManager
 from data_chain.manager.qa_manager import QAManager
 from data_chain.manager.task_queue_mamanger import TaskQueueManager
-from data_chain.stores.database.database import TaskEntity, QAEntity, DataSetEntity, DataSetDocEntity, TestingEntity, TestCaseEntity
+from data_chain.stores.database.database import TaskEntity, QAEntity, DataSetEntity, DataSetDocEntity, TestingEntity, TestCaseEntity, TaskQueueEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.stores.mongodb.mongodb import Task
 from data_chain.config.config import config
@@ -431,11 +431,11 @@ class TestingWorker(BaseWorker):
             await TestingWorker.generate_report_and_upload_to_minio(dataset_entity, testing_entity, testcase_entities, tmp_path)
             current_stage += 1
             await TestingWorker.report(task_id, "生成报告并上传到minio", current_stage, stage_cnt)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.SUCCESS.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.SUCCESS.value))
         except Exception as e:
             err = f"[TestingWorker] 任务失败，task_id: {task_id}, 错误信息: {e}"
             logging.exception(err)
-            await TaskQueueManager.add_task(Task(_id=task_id, status=TaskStatus.FAILED.value))
+            await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.FAILED.value))
             await TestingWorker.report(task_id, "任务失败", 0, 1)
 
     @staticmethod
