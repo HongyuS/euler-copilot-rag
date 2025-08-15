@@ -142,6 +142,8 @@ class ChunkService:
         doc_map = {doc_entity.id: doc_entity for doc_entity in doc_entities}
         for doc_chunk in search_chunk_msg.doc_chunks:
             doc_entity = doc_map.get(doc_chunk.doc_id)
+            doc_chunk.doc_author = doc_entity.author_name if doc_entity else ""
+            doc_chunk.doc_created_at = doc_entity.created_time.strftime('%Y-%m-%d %H:%M') if doc_entity else ""
             doc_chunk.doc_abstract = doc_entity.abstract if doc_entity else ""
             doc_chunk.doc_extension = doc_entity.extension if doc_entity else ""
             doc_chunk.doc_size = doc_entity.size if doc_entity else 0
