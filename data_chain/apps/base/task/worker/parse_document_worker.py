@@ -450,15 +450,17 @@ class ParseDocumentWorker(BaseWorker):
         '''嵌入chunk'''
         async def _embedding(node: ParseNode) -> None:
             node.vector = await Embedding.vectorize_embedding(node.text_feature)
+
         group_size = 32
         index = 0
         while index < len(parse_result.nodes):
             sub_nodes = parse_result.nodes[index:index + group_size]
             task_list = []
             for node in sub_nodes:
-                # 通过asyncio.create_task来异步执行嵌入
+                # 与OCR代码风格保持一致
                 task_list.append(asyncio.create_task(_embedding(node)))
-            asyncio.run(asyncio.gather(*task_list))
+            # 直接await任务集合
+            await asyncio.gather(*task_list)
             index += group_size
 
     @staticmethod
