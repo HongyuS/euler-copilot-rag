@@ -46,7 +46,8 @@ class TaskQueueManager():
                     .order_by(asc(TaskQueueEntity.created_time))
                     .limit(1)
                 )
-                return await session.scalars(stmt).first()
+                result = await session.execute(stmt)
+                return result.scalars().first()
         except Exception as e:
             err = "获取最早的任务失败"
             logging.exception("[TaskQueueManager] %s", err)
@@ -58,7 +59,8 @@ class TaskQueueManager():
         try:
             async with await DataBase.get_session() as session:
                 stmt = select(TaskQueueEntity).where(TaskQueueEntity.id == task_id)
-                return await session.scalars(stmt).first()
+                result = await session.execute(stmt)
+                return result.scalars().first()
         except Exception as e:
             err = "获取任务失败"
             logging.exception("[TaskQueueManager] %s", err)
