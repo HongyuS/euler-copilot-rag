@@ -448,8 +448,8 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def embedding_chunk(parse_result: ParseResult) -> None:
         '''嵌入chunk'''
-        def _embedding(node: ParseNode) -> None:
-            node.vector = Embedding.vectorize_embedding(node.text_feature)
+        async def _embedding(node: ParseNode) -> None:
+            node.vector = await Embedding.vectorize_embedding(node.text_feature)
         group_size = 32
         index = 0
         while index < len(parse_result.nodes):
