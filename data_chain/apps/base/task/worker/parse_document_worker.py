@@ -448,8 +448,18 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def embedding_chunk(parse_result: ParseResult) -> None:
         '''嵌入chunk'''
-        for node in parse_result.nodes:
-            node.vector = await Embedding.vectorize_embedding(node.text_feature)
+        def _embedding(node: ParseNode) -> None:
+            node.vector = Embedding.vectorize_embedding(node.text_feature)
+        group_size = 32
+        index = 0
+        while index < len(parse_result.nodes):
+            sub_nodes = parse_result.nodes[index:index + group_size]
+            task_list = []
+            for node in sub_nodes:
+                # 通过asyncio.create_task来异步执行嵌入
+                task_list.append(asyncio.create_task(_embedding(node)))
+            asyncio.run(asyncio.gather(*task_list))
+            index += group_size
 
     @staticmethod
     async def add_parse_result_to_db(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
