@@ -56,7 +56,7 @@ class EnhancedByLLMSearcher(BaseSearcher):
                 sub_chunk_entities_vector = []
                 for _ in range(3):
                     try:
-                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=3)
+                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=10)
                         break
                     except Exception as e:
                         err = f"[EnhancedByLLMSearcher] 向量检索失败，error: {e}"
