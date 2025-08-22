@@ -97,8 +97,6 @@ class PostgresDB:
                 echo=False,
                 pool_recycle=300,
                 pool_pre_ping=True)
-
-            Base.metadata.create_all(cls.engine)
             if config['DATABASE_TYPE'].lower() == 'opengauss':
                 from sqlalchemy import event
                 from opengauss_sqlalchemy.register_async import register_vector
@@ -106,6 +104,7 @@ class PostgresDB:
                 @event.listens_for(cls.engine.sync_engine, "connect")
                 def connect(dbapi_connection, connection_record):
                     dbapi_connection.run_async(register_vector)
+            Base.metadata.create_all(cls.engine)
         return cls._engine
 
     @classmethod

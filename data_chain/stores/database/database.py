@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import Index
 from datetime import datetime
 import uuid
+from uuid import uuid4
 import urllib.parse
 from data_chain.logger.logger import logger as logging
 from pgvector.sqlalchemy import Vector
@@ -535,12 +536,12 @@ class TaskReportEntity(Base):
     )
 
 
-class TaskQueueEntity(DeclarativeBase, MappedAsDataclass):
+class TaskQueueEntity(Base):
     __tablename__ = 'task_queue'
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, default_factory=uuid.uuid4, primary_key=True)  # 任务ID
-    status: Mapped[str] = mapped_column(String)  # 任务状态
-    created_time: Mapped[datetime] = mapped_column(
+    id = Column(UUID, default=uuid4, primary_key=True)  # 任务ID
+    status = Column(String)  # 任务状态
+    created_time = Column(
         TIMESTAMP(timezone=True),
         nullable=True,
         server_default=func.current_timestamp()

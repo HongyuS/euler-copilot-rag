@@ -58,6 +58,8 @@ class OcrTool:
     async def merge_text_from_ocr_result(ocr_result: list) -> str:
         text = ''
         try:
+            if ocr_result[0] is None or len(ocr_result[0]) == 0:
+                return ""
             for _ in ocr_result[0]:
                 text += str(_[1][0])
             return text

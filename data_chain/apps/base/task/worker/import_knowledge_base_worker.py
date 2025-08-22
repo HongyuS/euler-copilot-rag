@@ -252,7 +252,7 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             err = f"[ExportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
             return None
-        if task_entity.status == TaskStatus.CANCLED or TaskStatus.FAILED.value:
+        if task_entity.status == TaskStatus.CANCLED.value or task_entity.status == TaskStatus.FAILED.value:
             await KnowledgeBaseManager.update_knowledge_base_by_kb_id(task_entity.op_id, {"status": KnowledgeBaseStatus.DELETED.value})
             await MinIO.delete_object(IMPORT_KB_PATH_IN_MINIO, str(task_entity.op_id))
         return task_id

@@ -98,7 +98,8 @@ class DatasetManager:
                     stmt = stmt.where(DataSetEntity.is_chunk_related == req.is_chunk_related)
                 if req.generate_status is not None:
                     status_list = [status.value for status in req.generate_status]
-                    status_list += [DataSetStatus.DELETED.value]
+                    if TaskStatus.SUCCESS in req.generate_status:
+                        status_list += [TaskStatus.DELETED.value]
                     stmt = stmt.where(subq.c.status.in_(status_list))
                 stmt = stmt.order_by(DataSetEntity.created_at.desc(), DataSetEntity.id.desc())
                 if req.score_order:

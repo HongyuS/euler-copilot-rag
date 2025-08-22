@@ -8,6 +8,7 @@ import random
 import io
 import numpy as np
 from PIL import Image
+import asyncio
 from data_chain.parser.tools.ocr_tool import OcrTool
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.parser.tools.image_tool import ImageTool
@@ -271,24 +272,40 @@ class ParseDocumentWorker(BaseWorker):
             index += 1024
 
     @staticmethod
-    async def ocr_from_parse_image(parse_result: ParseResult, llm: LLM = None) -> list:
+    async def ocr_from_parse_image(parse_result: ParseResult, llm: LLM = None) -> None:
         '''从解析图片中获取ocr'''
-        for node in parse_result.nodes:
+        async def _ocr(node: ParseNode) -> None:
+            try:
+                img_blob = node.content
+                image = Image.open(io.BytesIO(img_blob))
+                img_np = np.array(image)
+                image_related_text = ''
+                for related_node in node.link_nodes:
+                    if related_node.type != ChunkType.IMAGE:
+                        image_related_text += related_node.content + '\n'
+                ocr_result = (await OcrTool.image_to_text(img_np, image_related_text, llm))
+                node.text_feature = ocr_result
+                node.content = ocr_result
+            except Exception as e:
+                err = f"[OCRTool] OCR识别失败: {e}"
+                logging.exception(err)
+                return None
+
+        image_node_ids = []
+        for i, node in enumerate(parse_result.nodes):
             if node.type == ChunkType.IMAGE:
-                try:
-                    image_blob = node.content
-                    image = Image.open(io.BytesIO(image_blob))
-                    img_np = np.array(image)
-                    image_related_text = ''
-                    for related_node in node.link_nodes:
-                        if related_node.type != ChunkType.IMAGE:
-                            image_related_text += related_node.content
-                    node.content = await OcrTool.image_to_text(img_np, image_related_text, llm)
-                    node.text_feature = node.content
-                except Exception as e:
-                    err = f"[ParseDocumentWorker] OCR失败 error: {e}"
-                    logging.exception(err)
-                    continue
+                image_node_ids.append(i)
+        group_size = 5
+        index = 0
+        while index < len(image_node_ids):
+            sub_image_node_ids = image_node_ids[index:index + group_size]
+            task_list = []
+            for node_id in sub_image_node_ids:
+                # 通过asyncio.create_task来异步执行OCR
+                node = parse_result.nodes[node_id]
+                task_list.append(asyncio.create_task(_ocr(node)))
+            await asyncio.gather(*task_list)
+            index += group_size
 
     @staticmethod
     async def merge_and_split_text(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
@@ -431,8 +448,20 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def embedding_chunk(parse_result: ParseResult) -> None:
         '''嵌入chunk'''
-        for node in parse_result.nodes:
+        async def _embedding(node: ParseNode) -> None:
             node.vector = await Embedding.vectorize_embedding(node.text_feature)
+
+        group_size = 32
+        index = 0
+        while index < len(parse_result.nodes):
+            sub_nodes = parse_result.nodes[index:index + group_size]
+            task_list = []
+            for node in sub_nodes:
+                # 与OCR代码风格保持一致
+                task_list.append(asyncio.create_task(_embedding(node)))
+            # 直接await任务集合
+            await asyncio.gather(*task_list)
+            index += group_size
 
     @staticmethod
     async def add_parse_result_to_db(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
