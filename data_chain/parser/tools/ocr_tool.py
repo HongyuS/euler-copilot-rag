@@ -2,11 +2,13 @@ from PIL import Image, ImageEnhance
 import yaml
 import cv2
 import numpy as np
+import requests
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.logger.logger import logger as logging
 from data_chain.config.config import config
 from data_chain.llm.llm import LLM
 from data_chain.parser.tools.instruct_scan_tool import InstructScanTool
+from data_chain.config.config import config
 
 
 class OcrTool:
@@ -30,6 +32,10 @@ class OcrTool:
     async def ocr_from_image_path(image_path: str) -> list:
         try:
             # 打开图片
+            if config['OCR_METHOD'] == 'online' and config['OCR_API_URL']:
+                result = requests.get(config['OCR_API_URL'], files={'file': (
+                    image_path, open(image_path, 'rb'), 'image/jpeg')}).json()
+                return result.get("result", [])
             if OcrTool.model is None:
                 err = "[OCRTool] 当前机器不支持 AVX-512，无法进行OCR识别"
                 logging.error(err)
