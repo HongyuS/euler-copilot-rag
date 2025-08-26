@@ -71,6 +71,9 @@ class ConfigModel(DictBaseModel):
     USE_CPU_LIMIT: int = Field(default=64, description="文档解析器使用CPU核数")
     # Task Retry Time limit
     TASK_RETRY_TIME_LIMIT: int = Field(default=3, description="任务重试次数限制")
+    # Ocr Method
+    OCR_METHOD: str = Field(default="offline", description="ocr识别方式，online or offline")
+    OCR_API_URL: str = Field(default="", description="ocr在线识别接口地址", pattern=r'^https?://.+')
 
 
 class Config:
