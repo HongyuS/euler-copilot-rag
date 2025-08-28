@@ -1,6 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field
 import uuid
@@ -24,6 +24,7 @@ from data_chain.entities.enum import (
     TaskType,
     TaskStatus,
     OrderType)
+from data_chain.parser.parse_result import ParseResult
 
 
 class ResponseData(BaseModel):
@@ -281,6 +282,11 @@ class DeleteTemporaryDocumentResponse(ResponseData):
 class ParseDocumentResponse(ResponseData):
     """POST /doc/parse 响应"""
     result: list[uuid.UUID] = Field(default=[], description="文档ID列表")
+
+
+class ParseDocumentRealTimeResponse(ResponseData):
+    """POST /doc/parse/realtime 响应"""
+    result: list[Union[ParseResult, None]] = Field(default=[], description="文档内容列表")
 
 
 class UpdateDocumentResponse(ResponseData):

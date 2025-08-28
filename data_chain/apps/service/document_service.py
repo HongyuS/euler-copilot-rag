@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 import uuid
 import traceback
 import shutil
+from typing import Union
 import os
+import hashlib
 from data_chain.entities.request_data import (
     ListDocumentRequest,
     UploadTemporaryRequest,
@@ -30,6 +32,8 @@ from data_chain.stores.minio.minio import MinIO
 from data_chain.entities.enum import ParseMethod, DataSetStatus, DocumentStatus, TaskType, TaskStatus
 from data_chain.entities.common import DOC_PATH_IN_OS, DOC_PATH_IN_MINIO, REPORT_PATH_IN_MINIO, DEFAULT_KNOWLEDGE_BASE_ID, DEFAULT_DOC_TYPE_ID
 from data_chain.logger.logger import logger as logging
+from data_chain.parser.parse_result import ParseResult
+from data_chain.parser.handler.base_parser import BaseParser
 
 
 class DocumentService:
@@ -378,6 +382,42 @@ class DocumentService:
             err = "解析文档失败"
             logging.exception("[DocumentService] %s", err)
             raise e
+
+    @staticmethod
+    async def parse_docs_realtime(docs: list[UploadFile]) -> list[Union[ParseResult, None]]:
+        """实时解析文档"""
+        parse_results = []
+        tmp_path = os.path.join(DOC_PATH_IN_OS, str(uuid.uuid4()))
+        for doc in docs:
+            try:
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+                os.makedirs(tmp_path)
+                doc_path = os.path.join(tmp_path, doc.filename)
+                doc_hash = None
+                async with aiofiles.open(doc_path, "wb") as f:
+                    content = await doc.read()
+                    doc_hash = await hashlib.sha256(content).hexdigest()
+                    await f.write(content)
+                # 获取文件扩展名
+                extension = doc.filename.split('.')[-1]
+                if not extension:
+                    parse_results.append(None)
+                    if os.path.exists(tmp_path):
+                        shutil.rmtree(tmp_path)
+                    continue
+                parse_result = await BaseParser.parser(extension, tmp_path)
+                parse_result.doc_hash = doc_hash[64:]
+                parse_results.append(parse_result)
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+            except Exception as e:
+                err = f"实时解析文档失败, 文档名: {doc.filename}, 错误信息: {e}"
+                logging.error("[DocumentService] %s", err)
+                parse_results.append(None)
+                if os.path.exists(tmp_path):
+                    shutil.rmtree(tmp_path)
+        return parse_results
 
     @staticmethod
     async def update_doc(doc_id: uuid.UUID, req: UpdateDocumentRequest) -> uuid.UUID:
