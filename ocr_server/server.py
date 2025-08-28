@@ -51,7 +51,8 @@ ocr = PaddleOCR(
     # （可选）关闭不需要的功能（如文档矫正，根据需求调整）
     use_doc_unwarping=False,  # 若不需要 UVDoc 文档矫正，可关闭
     lang=None,  # 因已指定本地模型，lang/ocr_version 会被自动忽略（符合原代码逻辑）
-    ocr_version=None
+    ocr_version=None,
+    device="npu:0"
 )
 
 
