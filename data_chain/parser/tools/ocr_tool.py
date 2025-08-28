@@ -106,10 +106,6 @@ class OcrTool:
     @staticmethod
     async def image_to_text(image_file_path: str, image_related_text: str = '', llm: LLM = None) -> str:
         try:
-            if OcrTool.model is None:
-                err = "[OCRTool] 当前机器不支持 AVX-512，无法进行OCR识别"
-                logging.error(err)
-                return ''
             ocr_result = await OcrTool.ocr_from_image_path(image_file_path)
             if ocr_result is None:
                 return ''
