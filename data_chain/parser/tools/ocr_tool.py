@@ -16,7 +16,7 @@ class OcrTool:
     rec_model_dir = 'data_chain/parser/model/ocr/ch_PP-OCRv4_rec_infer'
     cls_model_dir = 'data_chain/parser/model/ocr/ch_ppocr_mobile_v2.0_cls_infer'
     # 优化 OCR 参数配置
-    if InstructScanTool.check_avx512_support():
+    if InstructScanTool.check_avx512_support() and config['OCR_METHOD'] == "offline":
         from paddleocr import PaddleOCR
         model = PaddleOCR(
             det_model_dir=det_model_dir,
@@ -104,13 +104,13 @@ class OcrTool:
             return OcrTool.merge_text_from_ocr_result(ocr_result)
 
     @staticmethod
-    async def image_to_text(image: np.ndarray, image_related_text: str = '', llm: LLM = None) -> str:
+    async def image_to_text(image_file_path: str, image_related_text: str = '', llm: LLM = None) -> str:
         try:
             if OcrTool.model is None:
                 err = "[OCRTool] 当前机器不支持 AVX-512，无法进行OCR识别"
                 logging.error(err)
                 return ''
-            ocr_result = await OcrTool.ocr_from_image(image)
+            ocr_result = await OcrTool.ocr_from_image_path(image_file_path)
             if ocr_result is None:
                 return ''
             if llm is None:

@@ -272,18 +272,17 @@ class ParseDocumentWorker(BaseWorker):
             index += 1024
 
     @staticmethod
-    async def ocr_from_parse_image(parse_result: ParseResult, llm: LLM = None) -> None:
+    async def ocr_from_parse_image(parse_result: ParseResult, image_path: str, llm: LLM = None) -> None:
         '''从解析图片中获取ocr'''
         async def _ocr(node: ParseNode) -> None:
             try:
-                img_blob = node.content
-                image = Image.open(io.BytesIO(img_blob))
-                img_np = np.array(image)
                 image_related_text = ''
                 for related_node in node.link_nodes:
                     if related_node.type != ChunkType.IMAGE:
                         image_related_text += related_node.content + '\n'
-                ocr_result = (await OcrTool.image_to_text(img_np, image_related_text, llm))
+                extension = ImageTool.get_image_type(node.content)
+                image_file_path = os.path.join(image_path, str(node.id) + '.' + extension)
+                ocr_result = (await OcrTool.image_to_text(image_file_path, image_related_text, llm))
                 node.text_feature = ocr_result
                 node.content = ocr_result
             except Exception as e:
@@ -549,7 +548,7 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.upload_parse_image_to_minio_and_postgres(parse_result, doc_entity, image_path)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '上传解析图片', current_stage, stage_cnt)
-            await ParseDocumentWorker.ocr_from_parse_image(parse_result, llm)
+            await ParseDocumentWorker.ocr_from_parse_image(parse_result, image_path, llm)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, 'OCR图片', current_stage, stage_cnt)
             await ParseDocumentWorker.merge_and_split_text(parse_result, doc_entity)
