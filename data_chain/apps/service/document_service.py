@@ -222,7 +222,7 @@ class DocumentService:
                     name=file_name,
                     extension=extension,
                     size=os.path.getsize(document_file_path),
-                    parse_method=ParseMethod.OCR.value,
+                    parse_method=doc.parse_method.value,
                     parse_relut_topology=None,
                     chunk_size=1024,
                     type_id=DEFAULT_DOC_TYPE_ID,
