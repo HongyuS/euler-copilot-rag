@@ -129,6 +129,8 @@ class GetTemporaryDocumentStatusRequest(BaseModel):
 
 class TemporaryDocument(BaseModel):
     id: uuid.UUID = Field(description="临时文档id", alias="id")
+    parse_method: ParseMethod = Field(
+        default=ParseMethod.OCR, description="临时文档解析方法", alias="parseMethod")
     name: str = Field(default='这是一个默认的临时文档名称', min_length=1, max_length=256, alias="name")
     bucket_name: str = Field(default='default', description="临时文档存储的桶名称")
     type: str = Field(default='txt', description="临时文档的类型", alias="type")
