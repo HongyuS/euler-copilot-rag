@@ -48,20 +48,20 @@ class ListTeamUserRequest(BaseModel):
 
 
 class CreateTeamRequest(BaseModel):
-    team_name: str = Field(default='这是一个默认的团队名称', min_length=1, max_length=30, alias="teamName")
-    description: str = Field(default='', max_length=150)
+    team_name: str = Field(default='这是一个默认的团队名称', min_length=1, max_length=256, alias="teamName")
+    description: str = Field(default='', max_length=256)
     is_public: bool = Field(default=False, alias="isPublic")
 
 
 class UpdateTeamRequest(BaseModel):
-    team_name: str = Field(default='这是一个默认的团队名称', min_length=1, max_length=30, alias="teamName")
-    description: str = Field(default='', max_length=150)
+    team_name: str = Field(default='这是一个默认的团队名称', min_length=1, max_length=256, alias="teamName")
+    description: str = Field(default='', max_length=256)
     is_public: bool = Field(default=False, alias="isPublic")
 
 
 class DocumentType(BaseModel):
     doc_type_id: uuid.UUID = Field(description="文档类型的id", alias="docTypeId")
-    doc_type_name: str = Field(default='这是一个默认的文档类型名称', min_length=1, max_length=20, alias="docTypeName")
+    doc_type_name: str = Field(default='这是一个默认的文档类型名称', min_length=1, max_length=256, alias="docTypeName")
 
 
 class ListKnowledgeBaseRequest(BaseModel):
@@ -74,8 +74,8 @@ class ListKnowledgeBaseRequest(BaseModel):
 
 
 class CreateKnowledgeBaseRequest(BaseModel):
-    kb_name: str = Field(default='这是一个默认的资产名称', min_length=1, max_length=20, alias="kbName")
-    description: str = Field(default='', max_length=150)
+    kb_name: str = Field(default='这是一个默认的资产名称', min_length=1, max_length=256, alias="kbName")
+    description: str = Field(default='', max_length=256)
     tokenizer: Tokenizer = Field(default=Tokenizer.ZH)
     embedding_model: str = Field(default='', description="知识库使用的embedding模型", alias="embeddingModel")
     default_chunk_size: int = Field(default=512, description="知识库默认文件分块大小", alias="defaultChunkSize", min=128, max=2048)
@@ -87,8 +87,8 @@ class CreateKnowledgeBaseRequest(BaseModel):
 
 
 class UpdateKnowledgeBaseRequest(BaseModel):
-    kb_name: str = Field(default='这是一个默认的资产名称', min_length=1, max_length=30, alias="kbName")
-    description: str = Field(default='', max_length=150)
+    kb_name: str = Field(default='这是一个默认的资产名称', min_length=1, max_length=256, alias="kbName")
+    description: str = Field(default='', max_length=256)
     tokenizer: Tokenizer = Field(default=Tokenizer.ZH)
     default_chunk_size: int = Field(default=512, description="知识库默认文件分块大小", alias="defaultChunkSize", min=128, max=2048)
     default_parse_method: ParseMethod = Field(
@@ -115,7 +115,7 @@ class ListDocumentRequest(BaseModel):
 
 
 class UpdateDocumentRequest(BaseModel):
-    doc_name: str = Field(default='这是一个默认的文档名称', min_length=1, max_length=150, alias="docName")
+    doc_name: str = Field(default='这是一个默认的文档名称', min_length=1, max_length=256, alias="docName")
     doc_type_id: uuid.UUID = Field(default=DEFAULT_DOC_TYPE_ID, description="文档类型的id", alias="docTypeId")
     parse_method: ParseMethod = Field(
         default=ParseMethod.GENERAL, description="知识库默认解析方法", alias="parseMethod")
@@ -129,7 +129,7 @@ class GetTemporaryDocumentStatusRequest(BaseModel):
 
 class TemporaryDocument(BaseModel):
     id: uuid.UUID = Field(description="临时文档id", alias="id")
-    name: str = Field(default='这是一个默认的临时文档名称', min_length=1, max_length=150, alias="name")
+    name: str = Field(default='这是一个默认的临时文档名称', min_length=1, max_length=256, alias="name")
     bucket_name: str = Field(default='default', description="临时文档存储的桶名称")
     type: str = Field(default='txt', description="临时文档的类型", alias="type")
 
@@ -194,8 +194,8 @@ class ListDataInDatasetRequest(BaseModel):
 class CreateDatasetRequest(BaseModel):
     kb_id: uuid.UUID = Field(description="资产id", alias="kbId")
     dataset_name: str = Field(default='这是一个默认的数据集名称', description="测试数据集名称",
-                              min_length=1, max_length=30, alias="datasetName")
-    description: str = Field(default='', description="测试数据集简介", max_length=200)
+                              min_length=1, max_length=256, alias="datasetName")
+    description: str = Field(default='', description="测试数据集简介", max_length=256)
     document_ids: List[uuid.UUID] = Field(default=[], description="测试数据集关联的文档", alias="documentIds")
     data_cnt: int = Field(default=64, alias="dataCnt", description="测试数据集内的数据数量", min=1, max=512)
     llm_id: str = Field(description="测试数据集使用的大模型id", alias="llmId")
@@ -205,15 +205,15 @@ class CreateDatasetRequest(BaseModel):
 
 class UpdateDatasetRequest(BaseModel):
     dataset_name: str = Field(default='这是一个默认的数据集名称', description="测试数据集名称",
-                              min_length=1, max_length=30, alias="datasetName")
-    description: str = Field(default='', description="测试数据集简介", max_length=200)
+                              min_length=1, max_length=256, alias="datasetName")
+    description: str = Field(default='', description="测试数据集简介", max_length=256)
 
 
 class UpdateDataRequest(BaseModel):
     question: str = Field(default='这是一个默认的问题', description="问题",
-                          min_length=1, max_length=200, alias="question")
+                          min_length=1, max_length=256, alias="question")
     answer: str = Field(default='这是一个默认的答案', description="答案",
-                        min_length=1, max_length=1024, alias="answer")
+                        min_length=1, max_length=4096, alias="answer")
 
 
 class ListTestingRequest(BaseModel):
@@ -237,8 +237,8 @@ class ListTestCaseRequest(BaseModel):
 
 class CreateTestingRequest(BaseModel):
     testing_name: str = Field(default='这是一个默认的测试名称', description="测试名称",
-                              min_length=1, max_length=30, alias="testingName")
-    description: str = Field(default='', description="测试简介", max_length=200)
+                              min_length=1, max_length=256, alias="testingName")
+    description: str = Field(default='', description="测试简介", max_length=256)
     dataset_id: uuid.UUID = Field(description="测试数据集id", alias="datasetId")
     llm_id: str = Field(description="测试使用的大模型id", alias="llmId")
     search_method: SearchMethod = Field(default=SearchMethod.KEYWORD_AND_VECTOR,
@@ -248,8 +248,8 @@ class CreateTestingRequest(BaseModel):
 
 class UpdateTestingRequest(BaseModel):
     testing_name: str = Field(default='这是一个默认的测试名称', description="测试名称",
-                              min_length=1, max_length=150, alias="testingName")
-    description: str = Field(default='', description="测试简介", max_length=200)
+                              min_length=1, max_length=256, alias="testingName")
+    description: str = Field(default='', description="测试简介", max_length=256)
     llm_id: str = Field(description="测试使用的大模型id", alias="llmId")
     search_method: SearchMethod = Field(default=SearchMethod.KEYWORD_AND_VECTOR,
                                         description="测试使用的检索方法", alias="searchMethod")
@@ -265,12 +265,12 @@ class ListRoleRequest(BaseModel):
 
 
 class CreateRoleRequest(BaseModel):
-    role_name: str = Field(default='这是一个默认的角色名称', min_length=1, max_length=30, alias="roleName")
+    role_name: str = Field(default='这是一个默认的角色名称', min_length=1, max_length=256, alias="roleName")
     actions: List[str] = Field(default=[], description="角色拥有的操作的列表", alias="actions")
 
 
 class UpdateRoleRequest(BaseModel):
-    role_name: str = Field(default='这是一个默认的角色名称', min_length=1, max_length=30, alias="roleName")
+    role_name: str = Field(default='这是一个默认的角色名称', min_length=1, max_length=256, alias="roleName")
     actions: List[str] = Field(default=[], description="角色拥有的操作的列表", alias="actions")
 
 

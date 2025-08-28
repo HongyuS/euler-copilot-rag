@@ -22,6 +22,7 @@ from data_chain.entities.response_data import (
     GetDocumentReportResponse,
     UploadDocumentResponse,
     ParseDocumentResponse,
+    ParseDocumentRealTimeResponse,
     UpdateDocumentResponse,
     DeleteDocumentResponse,
     GetTemporaryDocumentStatusResponse,
@@ -134,6 +135,15 @@ async def parse_docuement_by_doc_ids(
             raise Exception("用户没有权限解析该文档")
     doc_ids = await DocumentService.parse_docs(doc_ids, parse)
     return ParseDocumentResponse(result=doc_ids)
+
+
+@router.post('/parse/realtime', response_model=ParseDocumentRealTimeResponse, dependencies=[Depends(verify_user)])
+async def parse_docuement_realtime(
+    user_sub: Annotated[str, Depends(get_user_sub)],
+    docs: list[UploadFile] = File(...)
+):
+    doc_contents = await DocumentService.parse_docs_realtime(docs)
+    return ParseDocumentRealTimeResponse(result=doc_contents)
 
 
 @router.put('', response_model=UpdateDocumentResponse, dependencies=[Depends(verify_user)])

@@ -24,5 +24,6 @@ class ParseNode(BaseModel):
 
 class ParseResult(BaseModel):
     """解析结果"""
+    doc_hash: str = Field(default='', description="文档hash值")
     parse_topology_type: DocParseRelutTopology = Field(..., description="解析拓扑类型")
     nodes: list[ParseNode] = Field(..., description="节点列表")
