@@ -176,7 +176,7 @@ class ChunkManager():
             async with await DataBase.get_session() as session:
                 fetch_cnt = top_k
                 chunk_entities = []
-                while True:
+                for i in range(20):
                     # 计算相似度分数
                     similarity_score = ChunkEntity.text_vector.cosine_distance(vector).label("similarity_score")
 
