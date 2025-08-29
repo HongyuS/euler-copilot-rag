@@ -274,6 +274,11 @@ class UploadTemporaryDocumentResponse(ResponseData):
     result: list[uuid.UUID] = Field(default=[], description="临时文档ID列表")
 
 
+class GetTemporaryDocumentTextResponse(ResponseData):
+    """GET /doc/temporary/parse_result 响应"""
+    result: str = Field(default="", description="临时文档解析结果")
+
+
 class DeleteTemporaryDocumentResponse(ResponseData):
     """DELETE /doc/temporary 响应"""
     result: list[uuid.UUID] = Field(default=[], description="临时文档ID列表")

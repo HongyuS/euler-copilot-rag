@@ -27,6 +27,7 @@ from data_chain.entities.response_data import (
     DeleteDocumentResponse,
     GetTemporaryDocumentStatusResponse,
     UploadTemporaryDocumentResponse,
+    GetTemporaryDocumentTextResponse,
     DeleteTemporaryDocumentResponse
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
@@ -137,7 +138,7 @@ async def parse_docuement_by_doc_ids(
     return ParseDocumentResponse(result=doc_ids)
 
 
-@router.post('/parse/realtime', response_model=ParseDocumentRealTimeResponse, dependencies=[Depends(verify_user)])
+@router.post('/metadata', response_model=ParseDocumentRealTimeResponse, dependencies=[Depends(verify_user)])
 async def parse_docuement_realtime(
     user_sub: Annotated[str, Depends(get_user_sub)],
     docs: list[UploadFile] = File(...)
@@ -185,6 +186,15 @@ async def upload_temporary_docs(
         req: Annotated[UploadTemporaryRequest, Body()]):
     doc_ids = await DocumentService.upload_temporary_docs(user_sub, req)
     return UploadTemporaryDocumentResponse(result=doc_ids)
+
+
+@router.get('/temporary/text', response_model=GetTemporaryDocumentTextResponse,
+            dependencies=[Depends(verify_user)])
+async def get_temporary_docs_text(
+        user_sub: Annotated[str, Depends(get_user_sub)],
+        id: Annotated[UUID, Query()]):
+    doc_text = await DocumentService.get_temporary_doc_text(user_sub, id)
+    return GetTemporaryDocumentTextResponse(result=doc_text)
 
 
 @router.post('/temporary/delete', response_model=DeleteTemporaryDocumentResponse, dependencies=[Depends(verify_user)])
