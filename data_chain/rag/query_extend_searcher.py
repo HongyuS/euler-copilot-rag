@@ -64,7 +64,7 @@ class QueryExtendSearcher(BaseSearcher):
             chunk_entities_get_by_vector = []
             for _ in range(3):
                 try:
-                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids), timeout=10)
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids), timeout=20)
                     break
                 except Exception as e:
                     err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
