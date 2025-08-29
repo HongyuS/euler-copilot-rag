@@ -383,14 +383,14 @@ CONTENT_TO_ABSTRACT_PROMPT:
 
 CONTENT_TO_STATEMENTS_PROMPT:
   en: |
-    You are a text parsing expert. Your task is to extract multiple statements from a given text and return them as a list.
+    You are a text parsing expert. Your task is to extract multiple English statements from a given text and return them as a list.
     
     Note:
     #01 Statements must be derived from key points in the text.
     #02 Statements must be arranged in relative order.
     #03 Each statement must be at least 20 characters long and no more than 50 characters long.
     #04 The total number of statements output must not exceed three.
-    #05 Please output only the list of statements, not any other content. Each statement must be in Chinese.
+    #05 Please output only the list of statements, not any other content. Each statement must be in English.
     Example:
     
     Input: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
@@ -398,7 +398,7 @@ CONTENT_TO_STATEMENTS_PROMPT:
     
     The following is the given text: {content}
   中文: |
-    你是一个文本分解专家，你的任务是根据我给出的文本，将文本提取为多个陈述，陈述使用列表形式返回
+    你是一个文本分解专家，你的任务是根据我给出的文本，将文本提取为多个中文陈述，陈述使用列表形式返回
     
     注意：
     #01 陈述必须来源于文本中的重点内容
