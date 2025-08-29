@@ -349,11 +349,11 @@ CHUNK_QUERY_MATCH_PROMPT:
 
 CONTENT_TO_ABSTRACT_PROMPT:
   en: |
-    You are a text summarization expert. Your task is to generate a new summary based on a given text and an existing summary. 
+    You are a text summarization expert. Your task is to generate a new English summary based on a given text and an existing summary. 
     Note: 
     #01 Please combine the most important content from the text and the existing summary to generate the new summary. 
     #02 The length of the new summary must be greater than 200 words and less than 500 words. 
-    #03 Please only output the new summary; do not output any other content. 
+    #03 Please only output the new English summary; do not output any other content. 
     
     Example: 
     Input 1: 
@@ -365,11 +365,11 @@ CONTENT_TO_ABSTRACT_PROMPT:
     Text: {content} 
     Abstract: {abstract}
   中文: |
-    你是一个文本摘要专家，你的任务是根据给出的文本和已有摘要，生成一个新的摘要。
+    你是一个文本摘要专家，你的任务是根据给出的文本和已有摘要，生成一个新的中文摘要。
     注意：
     #01 请结合文本和已有摘要中最重要的内容，生成新的摘要；
     #02 新的摘要长度必须大于200字且小于500字；
-    #03 请仅输出新的摘要，不要输出其他内容。
+    #03 请仅输出新的中文摘要，不要输出其他内容。
     
     例子：
     输入1：
