@@ -14,6 +14,7 @@ from data_chain.entities.enum import SearchMethod
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.llm.llm import LLM
 from data_chain.config.config import config
+from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 
 
 class QueryExtendSearcher(BaseSearcher):
@@ -35,7 +36,9 @@ class QueryExtendSearcher(BaseSearcher):
         """
         with open('./data_chain/common/prompt.yaml', 'r', encoding='utf-8') as f:
             prompt_dict = yaml.safe_load(f)
-        prompt_template = prompt_dict['QUERY_EXTEND_PROMPT']
+        konwledge_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+        prompt_template = prompt_dict.get('QUERY_EXTEND_PROMPT', {})
+        prompt_template = prompt_template.get(konwledge_entity.tokenizer, '')
         chunk_entities = []
         llm = LLM(
             openai_api_key=config['OPENAI_API_KEY'],
@@ -61,7 +64,7 @@ class QueryExtendSearcher(BaseSearcher):
             chunk_entities_get_by_vector = []
             for _ in range(3):
                 try:
-                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids), timeout=10)
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword), doc_ids, banned_ids), timeout=20)
                     break
                 except Exception as e:
                     err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"

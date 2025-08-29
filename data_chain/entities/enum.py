@@ -26,7 +26,7 @@ class Tokenizer(str, Enum):
 
     ZH = "中文"
     EN = "en"
-    MIX = "mix"
+    # MIX = "mix"
 
 
 class Embedding(str, Enum):

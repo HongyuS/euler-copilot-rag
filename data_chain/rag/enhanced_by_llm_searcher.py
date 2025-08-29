@@ -13,6 +13,7 @@ from data_chain.entities.enum import SearchMethod
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.llm.llm import LLM
 from data_chain.config.config import config
+from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 
 
 class EnhancedByLLMSearcher(BaseSearcher):
@@ -36,7 +37,9 @@ class EnhancedByLLMSearcher(BaseSearcher):
         try:
             with open('./data_chain/common/prompt.yaml', 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.safe_load(f)
-            prompt_template = prompt_dict['CHUNK_QUERY_MATCH_PROMPT']
+            knowledge_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+            prompt_template = prompt_dict.get('CHUNK_QUERY_MATCH_PROMPT', {})
+            prompt_template = prompt_template.get(knowledge_entity.tokenizer, '')
             chunk_entities = []
             rd = 0
             max_retry = 5
@@ -56,7 +59,7 @@ class EnhancedByLLMSearcher(BaseSearcher):
                 sub_chunk_entities_vector = []
                 for _ in range(3):
                     try:
-                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=10)
+                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=20)
                         break
                     except Exception as e:
                         err = f"[EnhancedByLLMSearcher] 向量检索失败，error: {e}"

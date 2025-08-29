@@ -75,11 +75,12 @@ class OcrTool:
             return ''
 
     @staticmethod
-    async def enhance_ocr_result(ocr_result, image_related_text='', llm: LLM = None) -> str:
+    async def enhance_ocr_result(ocr_result, image_related_text='', llm: LLM = None, language: str = "中文") -> str:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-                prompt_template = prompt_dict.get('OCR_ENHANCED_PROMPT', '')
+                prompt_template = prompt_dict.get('OCR_ENHANCED_PROMPT', {})
+                prompt_template = prompt_template.get(language, '')
             pre_part_description = ""
             token_limit = llm.max_tokens//2
             image_related_text = TokenTool.get_k_tokens_words_from_content(image_related_text, token_limit)
@@ -104,7 +105,8 @@ class OcrTool:
             return OcrTool.merge_text_from_ocr_result(ocr_result)
 
     @staticmethod
-    async def image_to_text(image_file_path: str, image_related_text: str = '', llm: LLM = None) -> str:
+    async def image_to_text(
+            image_file_path: str, image_related_text: str = '', llm: LLM = None, language: str = '中文') -> str:
         try:
             ocr_result = await OcrTool.ocr_from_image_path(image_file_path)
             if ocr_result is None:
@@ -112,7 +114,7 @@ class OcrTool:
             if llm is None:
                 text = await OcrTool.merge_text_from_ocr_result(ocr_result)
             else:
-                text = await OcrTool.enhance_ocr_result(ocr_result, image_related_text, llm)
+                text = await OcrTool.enhance_ocr_result(ocr_result, image_related_text, llm, language)
             if "图片内容为空" in text:
                 return ""
             return text

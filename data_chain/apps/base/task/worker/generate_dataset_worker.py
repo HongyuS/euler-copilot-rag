@@ -15,6 +15,7 @@ from data_chain.entities.enum import TaskType, TaskStatus, KnowledgeBaseStatus, 
 from data_chain.entities.common import DEFAULT_DOC_TYPE_ID
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.manager.task_manager import TaskManager
+from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_manager import DocumentManager
 from data_chain.manager.chunk_manager import ChunkManager
 from data_chain.manager.dataset_manager import DatasetManager
@@ -116,7 +117,9 @@ class GenerateDataSetWorker(BaseWorker):
         return doc_chunks
 
     @staticmethod
-    async def generate_qa(dataset_entity: DataSetEntity, doc_chunks: list[DocChunk], llm: LLM) -> list[QAEntity]:
+    async def generate_qa(
+            dataset_entity: DataSetEntity, doc_chunks: list[DocChunk],
+            llm: LLM, language: str) -> list[QAEntity]:
         chunk_cnt = 0
         for doc_chunk in doc_chunks:
             chunk_cnt += len(doc_chunk.chunks)
@@ -138,9 +141,12 @@ class GenerateDataSetWorker(BaseWorker):
         random.shuffle(doc_chunks)
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-        q_generate_prompt_template = prompt_dict.get('GENREATE_QUESTION_FROM_CONTENT_PROMPT', '')
-        answer_generate_prompt_template = prompt_dict.get('GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT', '')
-        cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', '')
+        q_generate_prompt_template = prompt_dict.get('GENERATE_QUESTION_FROM_CONTENT_PROMPT', {})
+        q_generate_prompt_template = q_generate_prompt_template.get(language, '')
+        answer_generate_prompt_template = prompt_dict.get('GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT', {})
+        answer_generate_prompt_template = answer_generate_prompt_template.get(language, '')
+        cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', {})
+        cal_qa_score_prompt_template = cal_qa_score_prompt_template.get(language, '')
         dataset_score = 0
         logging.error(f"{chunk_index_list}")
         exist_q_set = set()
@@ -301,8 +307,9 @@ class GenerateDataSetWorker(BaseWorker):
             doc_chunks = await GenerateDataSetWorker.get_chunks(dataset_entity)
             current_stage += 1
             await GenerateDataSetWorker.report(task_id, "获取文档分块信息", current_stage, stage_cnt)
+            knowlege_base_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(dataset_entity.kb_id)
             qa_entities = await GenerateDataSetWorker.generate_qa(
-                dataset_entity, doc_chunks, llm)
+                dataset_entity, doc_chunks, llm, knowlege_base_entity.tokenizer)
             current_stage += 1
             await GenerateDataSetWorker.report(task_id, "生成QA", current_stage, stage_cnt)
             await GenerateDataSetWorker.add_qa_to_db(qa_entities)

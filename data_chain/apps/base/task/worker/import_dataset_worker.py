@@ -21,6 +21,7 @@ from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.chunk_manager import ChunkManager
 from data_chain.manager.dataset_manager import DatasetManager
 from data_chain.manager.qa_manager import QAManager
+from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.task_queue_mamanger import TaskQueueManager
 from data_chain.stores.database.database import TaskEntity, DocumentEntity, DocumentTypeEntity, QAEntity, DataSetEntity, DataSetDocEntity, TaskQueueEntity
 from data_chain.stores.minio.minio import MinIO
@@ -185,14 +186,15 @@ class ImportDataSetWorker(BaseWorker):
         return qa_entities
 
     @staticmethod
-    async def update_dataset_score(dataset_id: uuid.UUID, qa_entities: list[QAEntity], llm: LLM) -> None:
+    async def update_dataset_score(dataset_id: uuid.UUID, qa_entities: list[QAEntity], llm: LLM, language: str) -> None:
         '''更新数据集分数'''
         if not qa_entities:
             return
         databse_score = 0
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-        cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', '')
+        cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', {})
+        cal_qa_score_prompt_template = cal_qa_score_prompt_template.get(language, '')
         for qa_entity in qa_entities:
             chunk = qa_entity.chunk
             question = qa_entity.question
@@ -234,6 +236,7 @@ class ImportDataSetWorker(BaseWorker):
             await DatasetManager.update_dataset_by_dataset_id(dataset_entity.id, {"status": DataSetStatus.IMPORTING.value})
             current_stage = 0
             stage_cnt = 4
+            knowlege_base_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(dataset_entity.kb_id)
             tmp_path = await ImportDataSetWorker.init_path(task_id)
             current_stage += 1
             await ImportDataSetWorker.report(task_id, "初始化路径", current_stage, stage_cnt)
@@ -243,7 +246,7 @@ class ImportDataSetWorker(BaseWorker):
             qa_entities = await ImportDataSetWorker.load_qa_entity_from_file(dataset_entity.id, file_path)
             current_stage += 1
             await ImportDataSetWorker.report(task_id, "加载qa实体", current_stage, stage_cnt)
-            await ImportDataSetWorker.update_dataset_score(dataset_entity.id, qa_entities, llm)
+            await ImportDataSetWorker.update_dataset_score(dataset_entity.id, qa_entities, llm, knowlege_base_entity.tokenizer)
             current_stage += 1
             await ImportDataSetWorker.report(task_id, "更新数据集分数", current_stage, stage_cnt)
             await TaskQueueManager.add_task(TaskQueueEntity(id=task_id, status=TaskStatus.SUCCESS.value))

@@ -59,11 +59,12 @@ class DocumentManager():
                     stmt = (
                         select(DocumentEntity, similarity_score)
                         .where(DocumentEntity.kb_id == kb_id)
-                        .where(DocumentEntity.id.notin_(banned_ids))
                         .where(DocumentEntity.status != DocumentStatus.DELETED.value)
                         .where(DocumentEntity.enabled == True)
                     )
-                    if doc_ids:
+                    if banned_ids:
+                        stmt = stmt.where(DocumentEntity.id.notin_(banned_ids))
+                    if doc_ids is not None:
                         stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                     stmt = stmt.order_by(
                         similarity_score

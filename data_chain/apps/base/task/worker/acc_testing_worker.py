@@ -132,7 +132,9 @@ class TestingWorker(BaseWorker):
         return tmp_path
 
     @staticmethod
-    async def testing(testing_entity: TestingEntity, qa_entities: list[QAEntity], llm: LLM) -> list[TestCaseEntity]:
+    async def testing(
+            testing_entity: TestingEntity, qa_entities: list[QAEntity],
+            llm: LLM, language: str) -> list[TestCaseEntity]:
         '''测试数据集'''
         testcase_entities = []
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
@@ -181,16 +183,16 @@ class TestingWorker(BaseWorker):
             )
             llm_answer = await llm.nostream([], prompt, question)
             sub_scores = []
-            pre = await TokenTool.cal_precision(question, answer, llm)
+            pre = await TokenTool.cal_precision(question, answer, llm, language)
             if pre != -1:
                 sub_scores.append(pre)
-            rec = await TokenTool.cal_recall(answer, llm_answer, llm)
+            rec = await TokenTool.cal_recall(answer, llm_answer, llm, language)
             if rec != -1:
                 sub_scores.append(rec)
-            fai = await TokenTool.cal_faithfulness(question, llm_answer, bac_info, llm)
+            fai = await TokenTool.cal_faithfulness(question, llm_answer, bac_info, llm, language)
             if fai != -1:
                 sub_scores.append(fai)
-            rel = await TokenTool.cal_relevance(question, llm_answer, llm)
+            rel = await TokenTool.cal_relevance(question, llm_answer, llm, language)
             if rel != -1:
                 sub_scores.append(rel)
             lcs = TokenTool.cal_lcs(answer, llm_answer)
@@ -421,7 +423,8 @@ class TestingWorker(BaseWorker):
             current_stage += 1
             await TestingWorker.report(task_id, "初始化路径", current_stage, stage_cnt)
             qa_entities = await QAManager.list_all_qa_by_dataset_id(testing_entity.dataset_id)
-            testcase_entities = await TestingWorker.testing(testing_entity, qa_entities, llm)
+            knowledge_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(testing_entity.kb_id)
+            testcase_entities = await TestingWorker.testing(testing_entity, qa_entities, llm, knowledge_entity.tokenizer)
             current_stage += 1
             await TestingWorker.report(task_id, "测试完成", current_stage, stage_cnt)
             testing_entity = await TestingWorker.update_testing_score(testing_entity.id, testcase_entities)

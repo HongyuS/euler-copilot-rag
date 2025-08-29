@@ -261,14 +261,15 @@ class TokenTool:
         return [sentence for index, sentence, score in top_k_sentence_and_score_list]
 
     @staticmethod
-    async def get_abstract_by_llm(content: str, llm: LLM) -> str:
+    async def get_abstract_by_llm(content: str, llm: LLM, language: str) -> str:
         """
         使用llm进行内容摘要
         """
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('CONTENT_TO_ABSTRACT_PROMPT', '')
+            prompt_template = prompt_dict.get('CONTENT_TO_ABSTRACT_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             sentences = TokenTool.split_str_with_slide_window(content, llm.max_tokens//3*2)
             abstract = ''
             for sentence in sentences:
@@ -282,14 +283,15 @@ class TokenTool:
             logging.exception("[TokenTool] %s", err)
 
     @staticmethod
-    async def get_title_by_llm(content: str, llm: LLM) -> str:
+    async def get_title_by_llm(content: str, llm: LLM, languate: str) -> str:
         """
         使用llm进行标题生成
         """
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('CONTENT_TO_TITLE_PROMPT', '')
+            prompt_template = prompt_dict.get('CONTENT_TO_TITLE_PROMPT', {})
+            prompt_template = prompt_template.get(languate, '')
             content = TokenTool.get_k_tokens_words_from_content(content, llm.max_tokens)
             sys_call = prompt_template.format(content=content)
             user_call = '请结合文本输出标题'
@@ -300,7 +302,7 @@ class TokenTool:
             logging.exception("[TokenTool] %s", err)
 
     @staticmethod
-    async def cal_recall(answer_1: str, answer_2: str, llm: LLM) -> float:
+    async def cal_recall(answer_1: str, answer_2: str, llm: LLM, language: str) -> float:
         """
         计算recall
         参数：
@@ -311,7 +313,8 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('ANSWER_TO_ANSWER_PROMPT', '')
+            prompt_template = prompt_dict.get('ANSWER_TO_ANSWER_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             answer_1 = TokenTool.get_k_tokens_words_from_content(answer_1, llm.max_tokens//2)
             answer_2 = TokenTool.get_k_tokens_words_from_content(answer_2, llm.max_tokens//2)
             prompt = prompt_template.format(text_1=answer_1, text_2=answer_2)
@@ -325,7 +328,7 @@ class TokenTool:
             return -1
 
     @staticmethod
-    async def cal_precision(question: str, content: str, llm: LLM) -> float:
+    async def cal_precision(question: str, content: str, llm: LLM, language: str) -> float:
         """
         计算precision
         参数：
@@ -335,17 +338,19 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('CONTENT_TO_STATEMENTS_PROMPT', '')
+            prompt_template = prompt_dict.get('CONTENT_TO_STATEMENTS_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             content = TokenTool.compress_tokens(content, llm.max_tokens)
             sys_call = prompt_template.format(content=content)
             user_call = '请结合文本输出陈诉列表'
             statements = await llm.nostream([], sys_call, user_call, st_str='[',
-                                             en_str=']')
+                                            en_str=']')
             statements = json.loads(statements)
             if len(statements) == 0:
                 return 0
             score = 0
-            prompt_template = prompt_dict.get('STATEMENTS_TO_QUESTION_PROMPT', '')
+            prompt_template = prompt_dict.get('STATEMENTS_TO_QUESTION_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             for statement in statements:
                 statement = TokenTool.get_k_tokens_words_from_content(statement, llm.max_tokens)
                 prompt = prompt_template.format(statement=statement, question=question)
@@ -362,7 +367,7 @@ class TokenTool:
             return -1
 
     @staticmethod
-    async def cal_faithfulness(question: str, answer: str, content: str, llm: LLM) -> float:
+    async def cal_faithfulness(question: str, answer: str, content: str, llm: LLM, language: str) -> float:
         """
         计算faithfulness
         参数：
@@ -372,15 +377,17 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('QA_TO_STATEMENTS_PROMPT', '')
+            prompt_template = prompt_dict.get('QA_TO_STATEMENTS_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             question = TokenTool.get_k_tokens_words_from_content(question, llm.max_tokens//8)
             answer = TokenTool.get_k_tokens_words_from_content(answer, llm.max_tokens//8*7)
             prompt = prompt_template.format(question=question, answer=answer)
             sys_call = prompt
             user_call = '请结合问题和答案输出陈诉'
-            statements = await llm.nostream([], sys_call, user_call,st_str='[',
-                                             en_str=']')
-            prompt_template = prompt_dict.get('STATEMENTS_TO_FRAGMENT_PROMPT', '')
+            statements = await llm.nostream([], sys_call, user_call, st_str='[',
+                                            en_str=']')
+            prompt_template = prompt_dict.get('STATEMENTS_TO_FRAGMENT_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             statements = json.loads(statements)
             if len(statements) == 0:
                 return 0
@@ -416,7 +423,7 @@ class TokenTool:
         return cosine_dist
 
     @staticmethod
-    async def cal_relevance(question: str, answer: str, llm: LLM) -> float:
+    async def cal_relevance(question: str, answer: str, llm: LLM, language: str) -> float:
         """
         计算relevance
         参数：
@@ -426,7 +433,8 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('GENREATE_QUESTION_FROM_CONTENT_PROMPT', '')
+            prompt_template = prompt_dict.get('GENERATE_QUESTION_FROM_CONTENT_PROMPT', {})
+            prompt_template = prompt_template.get(language, '')
             answer = TokenTool.get_k_tokens_words_from_content(answer, llm.max_tokens)
             sys_call = prompt_template.format(k=5, content=answer)
             user_call = '请结合文本输出问题列表'
