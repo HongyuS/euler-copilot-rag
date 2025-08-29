@@ -260,6 +260,20 @@ class DocumentService:
         return doc_ids
 
     @staticmethod
+    async def get_temporary_doc_text(user_sub: str, doc_id: uuid.UUID):
+        """获取临时文档解析结果文本"""
+        doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+        if doc_entity is None:
+            err = f"获取临时文档失败, 文档ID: {doc_id}"
+            logging.error("[DocumentService] %s", err)
+            raise ValueError(err)
+        if doc_entity.author_id != user_sub:
+            err = f"用户没有权限访问临时文档, 文档ID: {doc_entity.id}, 用户ID: {user_sub}"
+            logging.error("[DocumentService] %s", err)
+            raise PermissionError(err)
+        return doc_entity.full_text
+
+    @staticmethod
     async def delete_temporary_docs(user_sub: str, doc_ids: list[uuid.UUID]) -> list[uuid.UUID]:
         """删除临时文档"""
         try:

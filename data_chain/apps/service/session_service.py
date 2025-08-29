@@ -22,8 +22,13 @@ class UserHTTPException(HTTPException):
 
 async def verify_user(request: HTTPConnection):
     """验证用户是否在Session中"""
+    import os
     if config["DEBUG"]:
-        return
+        user_sub = os.environ.get('USER') or os.environ.get('USERNAME')
+        if not user_sub:
+            user_sub = 'admin'
+        return user_sub
+
     try:
         session_id = None
         auth_header = request.headers.get("Authorization")
@@ -45,8 +50,12 @@ async def verify_user(request: HTTPConnection):
 async def get_user_sub(request: HTTPConnection) -> uuid:
     """从Session中获取用户"""
     if config["DEBUG"]:
-        await UserManager.add_user((await Convertor.convert_user_sub_to_user_entity('admin')))
-        return "admin"
+        import os
+        user_sub = os.environ.get('USER') or os.environ.get('USERNAME')
+        if not user_sub:
+            user_sub = 'admin'
+        await UserManager.add_user((await Convertor.convert_user_sub_to_user_entity(user_sub)))
+        return user_sub
     else:
         try:
             session_id = None

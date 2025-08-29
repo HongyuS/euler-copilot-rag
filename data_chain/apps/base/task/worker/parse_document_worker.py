@@ -425,19 +425,20 @@ class ParseDocumentWorker(BaseWorker):
             await dfs(parse_result.nodes[0], None, llm)
 
     @staticmethod
-    async def update_doc_abstract(doc_id: uuid.UUID, parse_result: ParseResult, llm: LLM = None) -> str:
-        '''获取文档摘要'''
-        abstract = ""
+    async def update_doc_abstract_and_full_text(doc_id: uuid.UUID, parse_result: ParseResult, llm: LLM = None) -> str:
+        '''获取文档摘要和全文'''
+        full_text = ""
         for node in parse_result.nodes:
-            abstract += node.content
+            full_text += node.content
         if llm is not None:
-            abstract = await TokenTool.get_abstract_by_llm(abstract, llm)
+            abstract = await TokenTool.get_abstract_by_llm(full_text, llm)
         else:
-            abstract = abstract[:128]
+            abstract = full_text[:128]
         abstract_vector = await Embedding.vectorize_embedding(abstract)
         await DocumentManager.update_document_by_doc_id(
             doc_id,
             {
+                "full_text": full_text,
                 "abstract": abstract,
                 "abstract_vector": abstract_vector
             }
@@ -560,9 +561,9 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.embedding_chunk(parse_result)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '嵌入chunk', current_stage, stage_cnt)
-            await ParseDocumentWorker.update_doc_abstract(doc_entity.id, parse_result, llm)
+            await ParseDocumentWorker.update_doc_abstract_and_full_text(doc_entity.id, parse_result, llm)
             current_stage += 1
-            await ParseDocumentWorker.report(task_id, '更新文档摘要', current_stage, stage_cnt)
+            await ParseDocumentWorker.report(task_id, '更新文档摘要和全文', current_stage, stage_cnt)
             await ParseDocumentWorker.add_parse_result_to_db(parse_result, doc_entity)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '添加解析结果到数据库', current_stage, stage_cnt)
