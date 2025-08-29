@@ -154,7 +154,8 @@ class ParseDocumentWorker(BaseWorker):
             return str(js)
 
     @staticmethod
-    async def handle_parse_result(parse_result: ParseResult, doc_entity: DocumentEntity, llm: LLM = None) -> None:
+    async def handle_parse_result(
+            parse_result: ParseResult, doc_entity: DocumentEntity, llm: LLM = None, language: str = "中文") -> None:
         '''处理解析结果'''
         if doc_entity.parse_method == ParseMethod.GENERAL.value or doc_entity.parse_method == ParseMethod.QA.value:
             nodes = []
@@ -272,9 +273,10 @@ class ParseDocumentWorker(BaseWorker):
             index += 1024
 
     @staticmethod
-    async def ocr_from_parse_image(parse_result: ParseResult, image_path: str, llm: LLM = None) -> None:
+    async def ocr_from_parse_image(
+            parse_result: ParseResult, image_path: str, llm: LLM = None, language: str = '中文') -> None:
         '''从解析图片中获取ocr'''
-        async def _ocr(node: ParseNode) -> None:
+        async def _ocr(node: ParseNode, language: str) -> None:
             try:
                 image_related_text = ''
                 for related_node in node.link_nodes:
@@ -282,7 +284,7 @@ class ParseDocumentWorker(BaseWorker):
                         image_related_text += related_node.content + '\n'
                 extension = ImageTool.get_image_type(node.content)
                 image_file_path = os.path.join(image_path, str(node.id) + '.' + extension)
-                ocr_result = (await OcrTool.image_to_text(image_file_path, image_related_text, llm))
+                ocr_result = (await OcrTool.image_to_text(image_file_path, image_related_text, llm, language))
                 node.text_feature = ocr_result
                 node.content = ocr_result
             except Exception as e:
@@ -302,7 +304,7 @@ class ParseDocumentWorker(BaseWorker):
             for node_id in sub_image_node_ids:
                 # 通过asyncio.create_task来异步执行OCR
                 node = parse_result.nodes[node_id]
-                task_list.append(asyncio.create_task(_ocr(node)))
+                task_list.append(asyncio.create_task(_ocr(node, language)))
             await asyncio.gather(*task_list)
             index += group_size
 
@@ -385,9 +387,9 @@ class ParseDocumentWorker(BaseWorker):
         parse_result.nodes = nodes
 
     @staticmethod
-    async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None) -> None:
+    async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None, language: str = '中文') -> None:
         '''推送上层词特征'''
-        async def dfs(node: ParseNode, parent_node: ParseNode, llm: LLM = None) -> None:
+        async def dfs(node: ParseNode, parent_node: ParseNode, llm: LLM = None, language: str = '中文') -> None:
             if parent_node is not None:
                 node.pre_id = parent_node.id
             for child_node in node.link_nodes:
@@ -404,7 +406,7 @@ class ParseDocumentWorker(BaseWorker):
                                 if sentences:
                                     content += sentences[0] + '\n'
                         if content:
-                            title = await TokenTool.get_title_by_llm(content, llm)
+                            title = await TokenTool.get_title_by_llm(content, llm, language)
                             if "无法生成标题" in title:
                                 title = ''
                         else:
@@ -422,16 +424,17 @@ class ParseDocumentWorker(BaseWorker):
                     node.text_feature = node.title
                     node.content = node.text_feature
         if parse_result.parse_topology_type == DocParseRelutTopology.TREE:
-            await dfs(parse_result.nodes[0], None, llm)
+            await dfs(parse_result.nodes[0], None, llm, language)
 
     @staticmethod
-    async def update_doc_abstract_and_full_text(doc_id: uuid.UUID, parse_result: ParseResult, llm: LLM = None) -> str:
+    async def update_doc_abstract_and_full_text(
+            doc_id: uuid.UUID, parse_result: ParseResult, llm: LLM = None, language: str = "中文") -> str:
         '''获取文档摘要和全文'''
         full_text = ""
         for node in parse_result.nodes:
             full_text += node.content
         if llm is not None:
-            abstract = await TokenTool.get_abstract_by_llm(full_text, llm)
+            abstract = await TokenTool.get_abstract_by_llm(full_text, llm, language)
         else:
             abstract = full_text[:128]
         abstract_vector = await Embedding.vectorize_embedding(abstract)
@@ -536,6 +539,7 @@ class ParseDocumentWorker(BaseWorker):
             tmp_path, image_path = await ParseDocumentWorker.init_path(task_id)
             current_stage = 0
             stage_cnt = 10
+            knowledge_base_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(doc_entity.kb_id)
             await ParseDocumentWorker.download_doc_from_minio(task_entity.op_id, tmp_path)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '下载文档', current_stage, stage_cnt)
@@ -543,13 +547,13 @@ class ParseDocumentWorker(BaseWorker):
             parse_result = await ParseDocumentWorker.parse_doc(doc_entity, file_path)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '解析文档', current_stage, stage_cnt)
-            await ParseDocumentWorker.handle_parse_result(parse_result, doc_entity, llm)
+            await ParseDocumentWorker.handle_parse_result(parse_result, doc_entity, llm, knowledge_base_entity.tokenizer)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '处理解析结果', current_stage, stage_cnt)
             await ParseDocumentWorker.upload_parse_image_to_minio_and_postgres(parse_result, doc_entity, image_path)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '上传解析图片', current_stage, stage_cnt)
-            await ParseDocumentWorker.ocr_from_parse_image(parse_result, image_path, llm)
+            await ParseDocumentWorker.ocr_from_parse_image(parse_result, image_path, llm, knowledge_base_entity.tokenizer)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, 'OCR图片', current_stage, stage_cnt)
             await ParseDocumentWorker.merge_and_split_text(parse_result, doc_entity)
@@ -561,7 +565,7 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.embedding_chunk(parse_result)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '嵌入chunk', current_stage, stage_cnt)
-            await ParseDocumentWorker.update_doc_abstract_and_full_text(doc_entity.id, parse_result, llm)
+            await ParseDocumentWorker.update_doc_abstract_and_full_text(doc_entity.id, parse_result, llm, knowledge_base_entity.tokenizer)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '更新文档摘要和全文', current_stage, stage_cnt)
             await ParseDocumentWorker.add_parse_result_to_db(parse_result, doc_entity)

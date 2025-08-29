@@ -1,381 +1,708 @@
-INTENT_DETECT_PROMPT_TEMPLATE: "\n<instructions>\n          <instruction>\n      \
-  \      根据历史对话，推断用户的实际意图并补全用户的提问内容。\n            用户的提问内容将在<user_question>中给出，历史对话将在<history>中给出。\n\
-  \            要求：\n              1. 参考下面给出的样例，请直接输出补全后的提问内容；输出不要包含XML标签，不要包含任何解释说明；\n\
-  \              2. 若用户当前提问内容与对话上文不相关，或你认为用户的提问内容已足够完整，请直接输出用户的提问内容。\n           \
-  \   3. 补全内容必须精准、恰当，不要编造任何内容。\n          </instruction>\n\n          <example>\n\
-  \            <history>openEuler是什么</history>           \n            <question>有什么特点</question>\n\
-  \            <output>openEuler有什么特点？</output>\n          </example>\n          \n\
-  </instructions>\n        <history>\n            {history}\n        </history>\n\
-  \        <question>\n            {question}\n        </question>\n"
-LLM_PROMPT_TEMPLATE: "\n        <instructions>\n            你是EulerCopilot,openEuler社区的智能助手。请结合给出的背景信息,\
-  \ 回答用户的提问。\n            上下文背景信息将在<bac_info>中给出。\n            注意：输出不要包含任何XML标签，不要编造任何信息。若你认为用户提问与背景信息无关，请忽略背景信息直接作答。\n\
-  \        </instructions>\n\n        <bac_info>\n            {bac_info}\n       \
-  \ </bac_info>\n"
-OCR_ENHANCED_PROMPT: '你是一个图片ocr内容总结专家，你的任务是根据我提供的上下文、相邻图片组描述、当前图片上一次的ocr内容总结、当前图片部分ocr的结果（包含文字和文字的相对坐标）给出图片描述.
+ACC_ANALYSIS_RESULT_MERGE_PROMPT:
+  en: |
+    You are a text analysis expert. Your task is to combine two analysis results and output a new one. Note:
+    #01 Please combine the content of the two analysis results to produce a new analysis result.
+    #02 Please analyze using the four metrics of recall, precision, faithfulness, and interpretability.
+    #03 The new analysis result must be no longer than 500 characters.
+    #04 Please output only the new analysis result; do not output any other content.
+    Example:
+    Input 1:
+    Analysis Result 1:
+    Recall: Currently, the recall is 95.00, with room for improvement. We will optimize the vectorized search algorithm to further mine information in the original fragment that is relevant to the question but not retrieved, such as some specific practical cases in the openEuler ecosystem. The embedding model bge-m3 will be adjusted to more comprehensively and accurately capture semantics, expand the search scope, improve recall, and make the generated answers closer to the standard answer.
+    Accuracy: The accuracy is 99.00, which is quite high. However, further optimization is possible, including deeper semantic analysis of the retrieved snippets. By combining the features of the large model qwen2.5-32b, this can precisely match the question semantics and avoid subtle semantic deviations. For example, this can more precisely illustrate the specific manifestations of OpenEuler's high performance in cloud computing and edge computing.
+    Fidelity: The fidelity value is 90.00, indicating that some answers are not fully derived from the retrieved snippets. Optimizing the rag retrieval algorithm, improving the recall rate of the embedding model, and adjusting the text chunk size to 512 may be inappropriate and require re-evaluation based on the content. This ensures that the retrieved snippets contain sufficient context to support the answer, ensuring that the generated answer content is fully derived from the retrieved snippets. For example, regarding the development of the openEuler ecosystem, relevant technical details should be obtained from the retrieved snippets.
+    Interpretability: The interpretability is 85.00, which is relatively low. Improve the compliance of the large model qwen2.5-32b and optimize the recall of the rag retrieval algorithm and the embedding model bge-m3. This ensures that retrieved snippets better support answer generation and clearly answer questions. For example, when answering questions related to OpenEuler, this makes the answer logic clearer and more targeted, improving overall interpretability.
+    
+    Analysis Result 2:
+    The recall rate is currently 95.00. Further optimization of the rag retrieval algorithm and embedding model can be used to increase the semantic similarity between the generated answers and the standard answers, approaching or achieving a higher recall rate. For example, the algorithm can be continuously optimized to better match relevant snippets.
+    The precision is 99.00, close to the maximum score, indicating that the generated answers are semantically similar to the questions. However, further improvement is possible. This can be achieved by refining the embedding model to better understand the question semantics, optimizing the contextual completeness of the retrieved snippets, and reducing fluctuations in precision caused by insufficient context.
+    The faithfulness score is currently 90.00, indicating that some content in the generated answer is not fully derived from the retrieved snippet. The rag retrieval algorithm can be optimized to improve its recall rate. The text chunk size can also be adjusted appropriately to ensure that the retrieved snippet fully answers the question, thereby improving the faithfulness score.
+    Regarding interpretability, it is currently 85.00, indicating that the generated answer has room for improvement in terms of answering questions. On the one hand, the large model used can be optimized to improve its compliance, making the generated answer more accurate. On the other hand, the recall rates of the rag retrieval algorithm and embedding model can be further optimized to ensure that the retrieved snippet fully supports the answer and improve interpretability.
+    
+    Output:
+    Recall: Currently at 95.00, there is room for improvement. The vectorized retrieval algorithm can be optimized to further uncover information in the original snippet that is relevant to the question but not retrieved, as demonstrated in some specific practical cases within the openEuler ecosystem. Adjustments were made to the embedding model bge-m3 to enable it to more comprehensively and accurately capture semantics, expand the search scope, improve recall, and bring the generated answers closer to the standard answer.
+    Accuracy: The accuracy reached 99.00, which is already high. However, further optimization is needed to conduct deeper semantic analysis of the retrieved snippets. By combining the features of the large model qwen2.5-32b, this can precisely match the question semantics and avoid subtle semantic deviations. For example, this could more accurately demonstrate the specific characteristics of OpenEuler's high performance in cloud computing and edge computing.
+    Fidelity: The fidelity value was 90.00, indicating that some answer content was not fully derived from the retrieved snippet. The rag retrieval algorithm was optimized to improve the recall of the embedding model. Adjusting the text chunk size to 512 may be unreasonable and requires re-evaluation based on the content to ensure that the retrieved snippets contain sufficient context to support the answer, ensuring that the generated answer content is fully derived from the retrieved snippet. For example, relevant technical details regarding the development of the OpenEuler ecosystem should be obtained from the retrieved snippet.
+    Interpretability: The interpretability value was 85.00, which is relatively low. Improve the compliance of the large qwen2.5-32b model and optimize the recall of the rag retrieval algorithm and the embedding model bge-m3. This ensures that retrieval fragments can better support answer generation and clearly answer questions. For example, when answering questions related to OpenEuler, this improves answer logic, makes it more targeted, and improves overall interpretability.
+    
+    The following two analysis results:
+    Analysis Result 1: {analysis_result_1}
+    Analysis Result 2: {analysis_result_2}
 
-  注意：
+  中文: |
+    你是一个文本分析专家，你的任务融合两条分析结果输出一份新的分析结果。注意：
+    #01 请根据两条分析结果中的内容融合出一条新的分析结果
+    #02 请结合召回率、精确度、忠实值和可解释性四个指标进行分析
+    #03 新的分析结果长度不超过500字
+    #04 请仅输出新的分析结果，不要输出其他内容
+    例子：
+    输入1：
+    分析结果1：
+    召回率：目前召回率为 95.00，有提升空间。优化向量化检索算法，进一步挖掘原始片段中与问题相关但未被检索到的信息，如 openEuler 生态中一些具体实践案例等。调整 embedding 模型 bge-m3，使其能更全面准确地捕捉语义，扩大检索范围，提高召回率，使生成答案更接近标准答案。
+    精确度：精确度达 99.00，已较高。但可进一步优化，对检索到的片段进行更深入的语义分析，结合大模型 qwen2.5-32b 的特点，精准匹配问题语义，避免细微语义偏差，例如更精确阐述 openEuler 在云计算和边缘计算中高性能等特性的具体表现。
+    忠实值：忠实值为 90.00，说明部分答案内容未完全源于检索片段。优化 rag 检索算法，提高 embedding 模型召回率，调整文本分块大小为 512 可能存在不合理，需根据内容重新评估，确保检索片段包含足够上下文以支撑答案，使生成答案内容均来自检索片段，如关于 openEuler 生态建设中相关技术细节应从检索片段获取。
+    可解释性：可解释性为 85.00，相对较低。提升大模型 qwen2.5-32b 的遵从度，优化 rag 检索算法和 embedding 模型 bge-m3 的召回率，使检索片段能更好支撑生成答案，保证答案能清晰回答问题，例如在回答 openEuler 相关问题时，使答案逻辑更清晰、针对性更强，提高整体可解释性。
+    
+    分析结果2：
+    从召回率来看，目前为 95.00，可进一步优化 rag 检索算法和 embedding 模型，以提高生成答案与标准回答之间的语义相似程度，接近或达到更高的召回率，例如可以持续优化算法来更好地匹配相关片段。
+    从精确度来看，为 99.00，接近满分，说明生成的答案与问题语义相似程度较高，但仍可进一步提升，可通过完善 embedding 模型来更好地理解问题语义，优化检索到的片段的上下文完整性，减少因上下文不足导致的精确度波动。
+    对于忠实值，目前为 90.00，说明生成的答案中部分内容未完全来自检索到的片段。可优化 rag 检索算法，提高其召回率，同时合理调整文本分块大小，确保检索到的片段能充分回答问题，从而提高忠实值。
+    关于可解释性，当前为 85.00，说明生成的答案在用于回答问题方面有一定提升空间。一方面可以优化使用的大模型，提高其遵从度，使其生成的答案更准确地回答问题；另一方面，继续优化 rag 检索算法和 embedding 模型的召回率，保证检索到的片段能全面支撑问题的回答，提高可解释性。
+    
+    输出：
+    召回率：目前召回率为 95.00，有提升空间。优化向量化检索算法，进一步挖掘原始片段中与问题相关但未被检索到的信息，如 openEuler 生态中一些具体实践案例等。调整 embedding 模型 bge-m3，使其能更全面准确地捕捉语义，扩大检索范围，提高召回率，使生成答案更接近标准答案。
+    精确度：精确度达 99.00，已较高。但可进一步优化，对检索到的片段进行更深入的语义分析，结合大模型 qwen2.5-32b 的特点，精准匹配问题语义，避免细微语义偏差，例如更精确阐述 openEuler 在云计算和边缘计算中高性能等特性的具体表现。
+    忠实值：忠实值为 90.00，说明部分答案内容未完全源于检索片段。优化 rag 检索算法，提高 embedding 模型召回率，调整文本分块大小为 512 可能存在不合理，需根据内容重新评估，确保检索片段包含足够上下文以支撑答案，使生成答案内容均来自检索片段，如关于 openEuler 生态建设中相关技术细节应从检索片段获取。
+    可解释性：可解释性为 85.00，相对较低。提升大模型 qwen2.5-32b 的遵从度，优化 rag 检索算法和 embedding 模型 bge-m3 的召回率，使检索片段能更好支撑生成答案，保证答案能清晰回答问题，例如在回答 openEuler 相关问题时，使答案逻辑更清晰、针对性更强，提高整体可解释性。
+    
+    下面两条分析结果：
+    分析结果1：{analysis_result_1}
+    分析结果2：{analysis_result_2}
 
-  #01 必须使用大于200字小于500字详细详细描述这个图片的内容，可以详细列出数据.
+ACC_RESULT_ANALYSIS_PROMPT:
+  en: |
+    You are a text analysis expert. Your task is to: analyze the large model used in the test, the embedding model used in the test, the parsing method and chunk size of related documents, the snippets matched by the RAG algorithm for a single test result, and propose methods to improve the accuracy of question-answering in the current knowledge base.
+    
+    The test results include the following information:
+    - Question: The question used in the test
+    - Standard answer: The standard answer used in the test
+    - Generated answer: The answer output by the large model in the test results
+    - Original snippet: The original snippet provided in the test results
+    - Retrieved snippet: The snippet retrieved by the RAG algorithm in the test results
+    
+    The four evaluation metrics are defined as follows:
+    - Precision: Evaluates the semantic similarity between the generated answer and the question. A lower score indicates lower compliance of the large model; additionally, it may mean the snippets retrieved by the RAG algorithm lack context and are insufficient to support the answer.
+    - Recall: Evaluates the semantic similarity between the generated answer and the standard answer. A lower score indicates lower compliance of the large model.
+    - Fidelity: Evaluates whether the content of the generated answer is derived from the retrieved snippet. A lower score indicates lower recall of the RAG retrieval algorithm and embedding model (resulting in retrieved snippets insufficient to answer the question); additionally, it may mean the text chunk size is inappropriate.
+    - Interpretability: Evaluates whether the generated answer is useful for answering the question. A lower score indicates lower recall of the RAG retrieval algorithm and embedding model (resulting in retrieved snippets insufficient to answer the question); additionally, it may mean lower compliance of the used large model.
+    
+    Notes:
+    #01 Analyze methods to improve the accuracy of current knowledge base question-answering based on the test results.
+    #02 Conduct the analysis using the four metrics: Recall, Precision, Fidelity, and Interpretability.
+    #03 The analysis result must not exceed 500 words.
+    #04 Output only the analysis result; do not include any other content.
+    
+    Example:
+    Input:
+    Model name: qwen2.5-32b
+    Embedding model: bge-m3
+    Text chunk size: 512
+    Used RAG algorithm: Vectorized retrieval
+    Question: What is OpenEuler?
+    Standard answer: OpenEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Generated answer: OpenEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Original snippet: openEuler is an open source operating system incubated and operated by the Open Atom Open Source Foundation. Its mission is to build an open source operating system ecosystem for digital infrastructure and provide solid underlying support for cutting-edge fields such as cloud computing and edge computing. In cloud computing scenarios, openEuler can fully optimize resource scheduling and allocation mechanisms. Through a lightweight kernel design and efficient virtualization technology, it significantly improves the responsiveness and throughput of cloud services. In edge computing, its exceptional low resource consumption and real-time processing capabilities ensure the timeliness and accuracy of data processing at edge nodes in complex environments. openEuler boasts a series of exceptional features: In terms of performance, its independently developed intelligent scheduling algorithm dynamically adapts to different load scenarios, and combined with deep optimization of hardware resources, significantly improves system efficiency. Regarding security, its built-in multi-layered security system, including mandatory access control, vulnerability scanning, and remediation mechanisms, provides a solid defense for system data and applications. Regarding reliability, its distributed storage, automatic fault detection, and rapid recovery technologies ensure stable system operation in the face of unexpected situations such as network fluctuations and hardware failures, minimizing the risk of service interruptions. These features make openEuler a crucial technological cornerstone for promoting high-quality development of the digital economy, helping enterprises and developers seize the initiative in digital transformation.
+    Retrieved snippet: As a pioneer in the open source operating system field, openEuler deeply integrates the wisdom of community developers and continuously iterates and upgrades to adapt to the rapidly changing technological environment. In the current era of prevalent microservices architectures, openEuler Through deep optimization of containerization technology and support for mainstream orchestration tools such as Kubernetes, it makes application deployment and management more convenient and efficient, significantly enhancing the flexibility of enterprise business deployments. At the same time, it actively embraces the AI era. By adapting and optimizing machine learning frameworks, it provides powerful computing power for AI model training and inference, effectively reducing the development and operating costs of AI applications. Regarding ecosystem development, openEuler boasts a large and active open source community, bringing together technology enthusiasts and industry experts from around the world, forming a complete ecosystem from kernel development and driver adaptation to application optimization. The community regularly hosts technical exchanges and developer conferences to promote knowledge sharing and technological innovation, providing developers with a wealth of learning resources and practical opportunities. Numerous hardware and software manufacturers have joined the openEuler ecosystem, launching solutions and products based on the system across key industries such as finance, telecommunications, and energy. These efforts, validated through real-world application scenarios and feeding back into openEuler's technological development, have fostered a virtuous cycle of innovation, making openEuler not just an operating system but a powerful engine driving collaborative industry development.
+    Recall: 95.00
+    Precision: 99.00
+    Fidelity: 90.00
+    Interpretability: 85.00
+    
+    Output:
+    Based on the test results, methods for improving the accuracy of current knowledge base question-answering can be analyzed from the following aspects: Recall: The current recall is 95.00, with room for improvement. Optimize the vectorized retrieval algorithm to further mine question-related but unretrieved information in the original snippets, such as some specific practical cases in the openEuler ecosystem. Adjust the embedding model bge-m3 to more comprehensively and accurately capture semantics, expand the search scope, improve recall, and make the generated answers closer to the standard answer. Precision: The accuracy reached 99.00, which is already high. However, further optimization is possible, including deeper semantic analysis of retrieved snippets. By combining the features of the large model qwen2.5-32b, this can accurately match the question semantics and avoid subtle semantic deviations. For example, more precise demonstration of openEuler's high performance in cloud computing and edge computing can be achieved. Fidelity: A fidelity score of 90.00 indicates that some answers are not fully derived from the search snippet. We optimized the rag retrieval algorithm, improved the recall of the embedding model, and adjusted the text chunk size to 512. This may be inappropriate and requires reassessment based on the content. We need to ensure that the search snippet contains sufficient context to support the answer, ensuring that the generated answer content is derived from the search snippet. For example, relevant technical details regarding the development of the openEuler ecosystem should be obtained from the search snippet. Interpretability: The interpretability score is 85.00, which is relatively low. We improved the compliance of the large model qwen2.5-32b and optimized the recall of the rag retrieval algorithm and the embedding model bge-m3. This ensures that the search snippet better supports answer generation and clearly answers the question. For example, when answering openEuler-related questions, the answer logic is made clearer and more targeted, improving overall interpretability.
+    
+    The following is the test result content:
+    Used large model: {model_name}
+    Embedding model: {embedding_model}
+    Text chunk size: {chunk_size}
+    Used RAG parsing algorithm: {rag_algorithm}
+    Question: {question}
+    Standard answer: {standard_answer}
+    Generated answer: {generated_answer}
+    Original fragment: {original_fragment}
+    Retrieved fragment: {retrieved_fragment}
+    Recall: {recall}
+    Precision: {precision}
+    Faithfulness: {faithfulness}
+    Interpretability: {relevance}
 
-  #02 如果这个图是流程图，请按照流程图顺序描述内容。
-
-  #03 如果这张图是表格，请用markdown形式输出表格内容 .
-
-  #04 如果这张图是架构图，请按照架构图层次结构描述内容。
-
-  #05 总结的图片描述必须包含图片中的主要信息，不能只描述图片位置。
-
-  #6 图片识别结果中相邻的文字可能是同一段落的内容，请合并后总结
-
-  #7 文字可能存在错位，请修正顺序后进行总结
-
-  #8 请仅输出图片的总结即可，不要输出其他内容
-
-  #9 不要输出坐标等信息，输出每个部分相对位置的描述即可
-
-  #10 如果图片内容为空，请输出“图片内容为空”
-
-  #11 如果图片本身就是一段文字，请直接输出文字内容
-
-  上下文:{image_related_text}
-
-  当前图片上一部分的ocr内容总结:{pre_part_description}
-
-  当前图片部分ocr的结果：{part}'
-QA_TO_STATEMENTS_PROMPT: '你是一个文本分解专家，你的任务是根据我给出的问题和答案，将答案提取为多个陈诉，陈诉使用列表形式返回
-
-  注意：
-  #01 陈诉必须来源于答案中的重点内容
-  #02 陈诉按相对顺序排列
-  #03 输出的单个陈诉长度不超过50个字
-  #04 输出的陈诉总数不超过20个
-  #05 请仅输出陈诉列表，不要输出其他内容
-  例子：
-
-  输入：
-  问题：openEuler是什么操作系统？
-  答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出：
-  [
-    \"openEuler是一个开源的操作系统\",
-    \"openEuler旨在为云计算和边缘计算提供支持\",
-    \"openEuler具有高性能、高安全性和高可靠性等特点\"
-  ]
-
-  下面是给出的问题和答案：
-  问题：{question}
-  答案：{answer}
-'
-ANSWER_TO_ANSWER_PROMPT: '你是一个文本分析专家，你的任务对比两个文本之间的相似度，并输出一个0-100之间的分数且保留两位小数：
-注意：
-#01 请根据文本在语义、语序和关键字上的相似度进行打分
-#02 如果两个文本在核心表达上一致，那么分数也相对高
-#03 一个文本包含另一个文本的核心内容，那么分数也相对高
-#04 两个文本间内容有重合，那么按照重合内容的比例打分
-#05 请仅输出分数，不要输出其他内容
-例子：
-输入1：
-  文本1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  文本2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出1：100.00
-输入2：
-  文本1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  文本2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能和高安全性等特点。
-  输出2：90.00
-输入3：
-  文本1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  文本2：白马非马
-  输出3：00.00
-下面是给出的文本：
-  文本1：{text_1}
-  文本2：{text_2}
-'
-CONTENT_TO_STATEMENTS_PROMPT: '你是一个文本分解专家，你的任务是根据我给出的文本，将文本提取为多个陈诉，陈诉使用列表形式返回
-
-  注意：
-  #01 陈诉必须来源于文本中的重点内容
-  #02 陈诉按相对顺序排列
-  #03 输出的单个陈诉长度不少于20个字，不超过50个字
-  #04 输出的陈诉总数不超过3个
-  #05 请仅输出陈诉列表，不要输出其他内容
-  例子：
-
-  输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出：
-  [
-    \"openEuler是一个开源的操作系统\",
-    \"openEuler旨在为云计算和边缘计算提供支持\",
-    \"openEuler具有高性能、高安全性和高可靠性等特点\"
-  ]
-
-  下面是给出的文本：
-  {content}
-  '
-STATEMENTS_TO_FRAGMENT_PROMPT: '你是一个文本专家，你的任务是根据给出的陈诉是否与片段强相关
-  注意：
-  #01 如果陈诉与片段强相关或者来自于片段，请输出YES
-  #02 如果陈诉中的内容与片段无关，请输出NO
-  #03 如果陈诉是片段中某部分的提炼，请输出YES
-  #05 请仅输出YES或NO，不要输出其他内容
-  例子：
-  输入1：
-  
-    陈诉：openEuler是一个开源的操作系统。
-    片段：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出1：YES
-
-  输入2：
-    陈诉：白马非马
-    片段：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出2：NO
-
-  下面是给出的陈诉和片段：
-  陈诉：{statement}
-  片段：{fragment}
-  '
-STATEMENTS_TO_QUESTION_PROMPT: '你是一个文本分析专家，你的任务是根据给出的陈诉和问题判断，陈诉是否与问题相关
-  注意：
-  #01 如果陈诉是否与问题相关，请输出YES
-  #02 如果陈诉与问题不相关，请输出NO
-  #03 请仅输出YES或NO，不要输出其他内容
-  #04 陈诉与问题相关是指，陈诉中的内容可以回答问题或者与问题在内容上有交集
-  例子：
-  输入1：
-    陈诉：openEuler是一个开源的操作系统。
+  中文: |
+    你是一个文本分析专家，你的任务是：根据给出的测试使用的大模型、embedding模型、测试相关文档的解析方法和分块大小、单条测试结果分析RAG算法匹配到的片段，并分析当前知识库问答准确率的提升方法。
+    
+    测试结果包含以下内容：
+    - 问题：测试使用的问题
+    - 标准答案：测试使用的标准答案
+    - 生成的答案：测试结果中大模型输出的答案
+    - 原始片段：测试结果中的原始片段
+    - 检索的片段：测试结果中RAG算法检索到的片段
+    
+    四个评估指标定义如下：
+    - 精确率：评估生成的答案与问题之间的语义相似程度。评分越低，说明使用的大模型遵从度越低；其次可能是RAG检索到的片段缺少上下文，不足以支撑问题的回答。
+    - 召回率：评估生成的答案与标准回答之间的语义相似程度。评分越低，说明使用的大模型遵从度越低。
+    - 忠实值：评估生成的答案中的内容是否来自于检索到的片段。评分越低，说明RAG检索算法和embedding模型的召回率越低（导致检索到的片段不足以回答问题）；其次可能是文本分块大小不合理。
+    - 可解释性：评估生成的答案是否能用于回答问题。评分越低，说明RAG检索算法和embedding模型的召回率越低（导致检索到的片段不足以回答问题）；其次可能是使用的大模型遵从度越低。
+    
+    注意：
+    #01 请根据测试结果中的内容分析当前知识库问答准确率的提升方法。
+    #02 请结合召回率、精确率、忠实值和可解释性四个指标进行分析。
+    #03 分析结果长度不超过500字。
+    #04 请仅输出分析结果，不要输出其他内容。
+    
+    例子：
+    输入：
+    模型名称：qwen2.5-32b
+    embedding模型：bge-m3
+    文本的分块大小：512
+    使用解析的RAG算法：向量化检索
     问题：openEuler是什么操作系统？
-  输出1：YES
+    标准答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    生成的答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    原始片段：openEuler是由开放原子开源基金会孵化及运营的开源操作系统，以构建面向数字基础设施的开源操作系统生态为使命，致力于为云计算、边缘计算等前沿领域提供坚实的底层支持。在云计算场景中，openEuler能够充分优化资源调度与分配机制，通过轻量化的内核设计和高效的虚拟化技术，显著提升云服务的响应速度与吞吐量；在边缘计算领域，它凭借出色的低资源消耗特性与实时处理能力，保障了边缘节点在复杂环境下数据处理的及时性与准确性。openEuler具备一系列卓越特性：在性能方面，其自主研发的智能调度算法能够动态适配不同负载场景，结合对硬件资源的深度优化利用，大幅提升系统运行效率；安全性上，通过内置的多层次安全防护体系，包括强制访问控制、漏洞扫描与修复机制，为系统数据与应用程序构筑起坚实的安全防线；可靠性层面，基于分布式存储、故障自动检测与快速恢复技术，确保系统在面对网络波动、硬件故障等突发状况时，依然能够稳定运行，最大限度降低服务中断风险。这些特性使openEuler成为推动数字经济高质量发展的重要技术基石，助力企业与开发者在数字化转型进程中抢占先机。
+    检索的片段：openEuler作为开源操作系统领域的先锋力量，深度融合了社区开发者的智慧结晶，不断迭代升级以适应快速变化的技术环境。在微服务架构盛行的当下，openEuler通过对容器化技术的深度优化，支持Kubernetes等主流编排工具，让应用部署与管理变得更加便捷高效，极大提升了企业的业务部署灵活性。同时，它积极拥抱AI时代，通过对机器学习框架的适配与优化，为AI模型训练和推理提供强大的算力支撑，有效降低了AI应用的开发与运行成本。在生态建设方面，openEuler拥有庞大且活跃的开源社区，汇聚了来自全球的技术爱好者与行业专家，形成了从内核开发、驱动适配到应用优化的完整生态链。社区定期举办技术交流与开发者大会，推动知识共享与技术创新，为开发者提供了丰富的学习资源与实践机会。众多硬件厂商和软件企业纷纷加入openEuler生态，推出基于该系统的解决方案和产品，涵盖金融、电信、能源等关键行业，以实际应用场景验证并反哺openEuler的技术发展，形成了良性循环的创新生态，让openEuler不仅是一个操作系统，更成为推动产业协同发展的强大引擎。
+    召回率：95.00
+    精确率：99.00
+    忠实值：90.00
+    可解释性：85.00
+    
+    输出：
+    根据测试结果中的内容，当前知识库问答准确率提升的方法可以从以下几个方面进行分析：召回率：目前召回率为95.00，有提升空间。优化向量化检索算法，进一步挖掘原始片段中与问题相关但未被检索到的信息，如openEuler生态中一些具体实践案例等。调整embedding模型bge-m3，使其能更全面准确地捕捉语义，扩大检索范围，提高召回率，使生成答案更接近标准答案。精确率：精确率达99.00，已较高。但可进一步优化，对检索到的片段进行更深入的语义分析，结合大模型qwen2.5-32b的特点，精准匹配问题语义，避免细微语义偏差，例如更精确阐述openEuler在云计算和边缘计算中高性能等特性的具体表现。忠实值：忠实值为90.00，说明部分答案内容未完全源于检索片段。优化RAG检索算法，提高embedding模型召回率，文本分块大小为512可能存在不合理，需根据内容重新评估，确保检索片段包含足够上下文以支撑答案，使生成答案内容均来自检索片段，如关于openEuler生态建设中相关技术细节应从检索片段获取。可解释性：可解释性为85.00，相对较低。提升大模型qwen2.5-32b的遵从度，优化RAG检索算法和embedding模型bge-m3的召回率，使检索片段能更好支撑生成答案，保证答案能清晰回答问题，例如在回答openEuler相关问题时，使答案逻辑更清晰、针对性更强，提高整体可解释性。
+    
+    下面是测试结果中的内容：
+    使用的大模型：{model_name}
+    embedding模型：{embedding_model}
+    文本的分块大小：{chunk_size}
+    使用解析的RAG算法：{rag_algorithm}
+    问题：{question}
+    标准答案：{standard_answer}
+    生成的答案：{generated_answer}
+    原始片段：{original_fragment}
+    检索的片段：{retrieved_fragment}
+    召回率：{recall}
+    精确率：{precision}
+    忠实值：{faithfulness}
+    可解释性：{relevance}
 
-  输入2：
-    陈诉：白马非马
-    问题：openEuler是什么操作系统？
-  输出2：NO
+ANSWER_TO_ANSWER_PROMPT:
+  # 英文文本相似度评分提示词
+  en: |
+    You are a text analysis expert. Your task is to compare the similarity between two documents and output a score between 0 and 100 with two decimal places.
+    
+    Note:
+    #01 Score based on text similarity in three dimensions: semantics, word order, and keywords.
+    #02 If the core expressions of the two documents are consistent, the score will be relatively high.
+    #03 If one document contains the core content of the other, the score will also be relatively high.
+    #04 If there is content overlap between the two documents, the score will be determined by the proportion of the overlap.
+    #05 Output only the score (no other content).
+    
+    Example 1:
+    Input - Text 1: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+             Text 2: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output: 100.00
+    
+    Example 2:
+    Input - Text 1: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+             Text 2: openEuler is an open-source operating system designed to support cloud computing and edge computing. It features high performance and high security.
+    Output: 90.00
+    
+    Example 3:
+    Input - Text 1: openEuler is an open-source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+             Text 2: A white horse is not a horse
+    Output: 00.00
+    
+    The following are the given texts:
+    Text 1: {text_1}
+    Text 2: {text_2}
 
-  下面是给出的陈诉和问题：
-  陈诉：{statement}
-  问题：{question}
-  '
-GENREATE_QUESTION_FROM_CONTENT_PROMPT: '你是一个文本分析专家，你的任务是根据给出的文本生成{k}个问题并用列表返回
-  注意：
-  #01 问题必须来源于文本中的内容
-  #02 单个问题长度不超过50个字
-  #03 不要输出重复的问题
-  #04 输出的问题要多样，覆盖文本中的不同方面
-  #05 请仅输出问题列表，不要输出其他内容
-  例子：
-  输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出：
-  [\"openEuler是什么操作系统？\",\"openEuler旨在为哪个领域提供支持？\",\"openEuler具有哪些特点？\",\"openEuler的安全性如何？\",\"openEuler的可靠性如何？\"]
-  下面是给出的文本：
-  {content}
-'
-GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT: '你是一个文本分析专家，你的任务是根据给出的问题和文本
-  生成答案
-  注意：
-  #01 答案必须来源于文本中的内容
-  #02 答案长度不少于50字且不超过500个字
-  #03 请仅输出答案，不要输出其他内容
-  例子：
-  输入1：
-    问题：openEuler是什么操作系统？
-    文本：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。
+  # 中文文本相似度评分提示词
+  中文: |
+    你是一个文本分析专家，你的任务是对比两个文本之间的相似度，并输出一个 0-100 之间的分数（保留两位小数）。
+    
+    注意：
+    #01 请根据文本在语义、语序和关键字三个维度的相似度进行打分。
+    #02 如果两个文本在核心表达上一致，那么分数将相对较高。
+    #03 如果一个文本包含另一个文本的核心内容，那么分数也将相对较高。
+    #04 如果两个文本间存在内容重合，那么将按照重合内容的比例确定分数。
+    #05 仅输出分数，不要输出其他任何内容。
+    
+    例子 1：
+    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+           文本 2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出：100.00
+    
+    例子 2：
+    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+           文本 2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能和高安全性等特点。
+    输出：90.00
+    
+    例子 3：
+    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+           文本 2：白马非马
+    输出：00.00
+    
+    下面是给出的文本：
+    文本 1：{text_1}
+    文本 2：{text_2}
 
-  输入2：
-    问题：openEuler的安全性如何？
-    文本：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出2：openEuler具有高安全性。
+CAL_QA_SCORE_PROMPT:
+  en: >-
+    You are a text analysis expert. Your task is to evaluate the questions and answers generated from a given fragment, and assign a score between 0 and 100 (retaining two decimal places). Please evaluate based on the following criteria:
 
-  下面是给出的问题和文本：
-  问题：{question}
-  文本：{content}
-'
-CAL_QA_SCORE_PROMPT: '你是一个文本分析专家，你的任务是给出的问题 答案 片段 判断由片段生成的问题和答案的分数，输出一个0-100之间的数，保留两位小数
-请根据下面规则评估：
-问题评估
-相关性：问题是否与给定片段的主题紧密相关，是否准确地基于片段内容提出，有无偏离或曲解片段的核心信息。
-合理性：问题的表述是否清晰、逻辑连贯，是否符合正常的语言表达和思维习惯，不存在语义模糊、歧义或自相矛盾的情况。
-多样性：如果有多个问题，问题之间的角度和类型是否具有一定的多样性，避免过于单一或重复，能否从不同方面挖掘片段的内容。
-难度：问题的难度是否适中，既不过于简单，使答案可以直接从片段中照搬，也不过于困难，让回答者难以从片段中找到线索或依据。
-答案评估
-准确性：答案是否准确无误地回答了问题，与片段中的信息是否一致，有无错误或遗漏关键要点。
-完整性：答案是否完整，涵盖了问题所涉及的各个方面，对于需要详细阐述的问题，是否提供了足够的细节和解释。
-简洁性：在保证回答完整准确的前提下，答案是否简洁明了，避免冗长、啰嗦的表述，能否以简洁的语言传达关键信息。
-连贯性：答案的逻辑是否清晰，各部分内容之间的衔接是否自然流畅，有无跳跃或混乱的情况。
-整体评估
-一致性：问题和答案之间是否相互匹配，答案是否是针对所提出的问题进行的回答，两者在内容和逻辑上是否保持一致。
-融合性：答案是否能够很好地融合片段中的信息，不仅仅是简单的摘抄，而是经过整合和提炼，以合理的方式呈现出来。
-创新性：在某些情况下，评估答案是否具有一定的创新性或独特见解，是否能够在片段信息的基础上进行适当的拓展或深入思考。
+    ### 1. Question Evaluation
+    - **Relevance**: Is the question closely related to the topic of the given fragment? Is it accurately based on the fragment content? Does it deviate from or distort the core message of the fragment?
+    - **Plausibility**: Is the question formulated clearly and logically coherently? Does it conform to normal language and thinking habits? Is it free of semantic ambiguity, vagueness, or self-contradiction?
+    - **Variety**: If there are multiple questions, are their angles and types sufficiently varied to avoid being overly monotonous or repetitive? Can they explore the fragment content from different perspectives?
+    - **Difficulty**: Is the question difficulty appropriate? Not too easy (where answers can be directly copied from the fragment), nor too difficult (where respondents cannot find clues or evidence from the fragment)?
 
-注意：
-#01 请仅输出分数，不要输出其他内容
+    ### 2. Answer Evaluation
+    - **Accuracy**: Does the answer accurately address the question? Is it consistent with the information in the fragment? Does it contain errors or omit key points?
+    - **Completeness**: Is the answer comprehensive, covering all aspects of the question? For questions requiring elaboration, does it provide sufficient details and explanations?
+    - **Succinctness**: On the premise of ensuring completeness and accuracy, is the answer concise and clear? Does it avoid lengthy or redundant expressions, and convey key information in concise language?
+    - **Coherence**: Is the answer logically clear? Are transitions between content sections natural and smooth? Are there any jumps or confusion?
 
-例子：
-输入1：
-  问题：openEuler是什么操作系统？
-  答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  片段：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出1：100.00
+    ### 3. Overall Assessment
+    - **Consistency**: Do the question and answer match each other? Does the answer address the raised question? Are they consistent in content and logic?
+    - **Integration**: Does the answer effectively integrate information from the fragment? Is it not just a simple excerpt, but rather an integrated, refined presentation in a logical manner?
+    - **Innovation**: In some cases, evaluate whether the answer demonstrates innovation or unique insights? Does it appropriately expand or deepen the information in the fragment?
 
-下面是给出的问题、答案和片段：
-  问题：{question}
-  答案：{answer}
-  片段：{fragment}
-'
-CONTENT_TO_ABSTRACT_PROMPT: '你是一个文本摘要专家，你的任务是根据给出的文本和摘要生成一个新的摘要
-  注意：
-  #01 请结合文本和摘要中最重要的内容生成新的摘要
-  #02 新的摘要的长度必须大于200字小于500字
-  #03 请仅输出新的摘要，不要输出其他内容
-  例子：
-  输入1：
-    文本：openEuler具有高性能、高安全性和高可靠性等特点。
-    摘要：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。
-  输出1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。openEuler具有高性能、高安全性和高可靠性等特点。
+    ### Note
+    #01 Please output only the score (without any other content).
 
-  下面是给出的文本和摘要：
-  文本：{content}
-  摘要：{abstract}
-'
+    ### Example
+    Input 1:
+    Question: What operating system is openEuler?
+    Answer: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Snippet: openEuler is an open source operating system designed to support cloud and edge computing. It features high performance, high security, and high reliability.
+    Output 1: 100.00
 
-CONTENT_TO_TITLE_PROMPT: '你是一个标题提取专家，你的任务是根据给出的文本生成一个标题
-  注意：
-  #01 标题必须来源于文本中的内容
-  #02 标题长度不超过20个字
-  #03 请仅输出标题，不要输出其他内容
-  #04 如果给出的文本不够生成标题，请输出“无法生成标题”
-  例子：
-  输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-  输出：openEuler操作系统概述
-  下面是给出的文本：
-  {content}
-'
+    Below is the given question, answer, and snippet:
+    Question: {question}
+    Answer: {answer}
+    Snippet: {fragment}
+  中文: >-
+    你是文本分析专家，任务是评估由给定片段生成的问题与答案，输出 0-100 之间的分数（保留两位小数）。请根据以下标准进行评估：
 
-ACC_RESULT_ANALYSIS_PROMPT: '你是一个文本分析专家，你的任务根据给出的 测试使用的大模型 embdding模型 测试相关文档的解析方法和分块大小 单条测试结果分析rag算法匹配到的片段分析当前知识库问答准确率提升的方法
-测试结果包含下面内容：
-问题:测试使用的问题
-标准答案：测试使用的标准答案
-生成的答案:测试结果中大模型的答案
-原始片段:测试结果中原始片段
-检索的片段：测试结果中rag算法检索到的片段
-精确率：评估生成的答案与问题之间的语义相似程度，这个评分月越低说明使用的大模型遵从度越低，其次是rag检索到的片段缺少上下文，不足以支撑问题的回答
-召回率度：评估生成的答案与标准回答之间的语义相似程度，这个评分月越低说明使用的大模型遵从度越低
-忠实值：评估生成的答案中的内容是否来自于检索到的片段，这个评分越低说明rag检索算法和embedding模型的召回率越低，检索到的片段不足以回答问题，其次是文本分块大小不合理
-可解释性：评估生成的答案是否用于回答问题，这个评分越低说明rag检索算法和embedding模型的召回率越低，检索到的片段不足以回答问题，其次是使用的大模型遵从度越低
+    ### 1. 问题评估
+    - **相关性**：问题是否与给定片段的主题紧密相关？是否准确基于片段内容提出？有无偏离或曲解片段的核心信息？
+    - **合理性**：问题表述是否清晰、逻辑连贯？是否符合正常的语言表达和思维习惯？不存在语义模糊、歧义或自相矛盾的情况？
+    - **多样性**：若存在多个问题，问题之间的角度和类型是否具有足够多样性（避免过于单一或重复）？能否从不同方面挖掘片段内容？
+    - **难度**：问题难度是否适中？既不过于简单（答案可直接从片段中照搬），也不过于困难（回答者难以从片段中找到线索或依据）？
 
-注意：
-#01 请根据测试结果中的内容分析当前知识库问答准确率提升的方法
-#02 请结合召回率、精确度、忠实值和可解释性四个指标进行分析
-#03 分析结果长度不超过500字
-#04 请仅输出分析结果，不要输出其他内容
-例子：
-输入：
-模型名称：qwen2.5-32b
-embedding模型：bge-m3
-文本的分块大小：512
-使用解析的rag算法：向量化检索
-问题：openEuler是什么操作系统？
-标准答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-生成的答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-原始片段：openEuler 是由开放原子开源基金会孵化及运营的开源操作系统，以构建面向数字基础设施的开源操作系统生态为使命，致力于为云计算、边缘计算等前沿领域提供坚实的底层支持。在云计算场景中，openEuler 能够充分优化资源调度与分配机制，通过轻量化的内核设计和高效的虚拟化技术，显著提升云服务的响应速度与吞吐量；在边缘计算领域，它凭借出色的低资源消耗特性与实时处理能力，保障了边缘节点在复杂环境下数据处理的及时性与准确性。
-openEuler 具备一系列卓越特性：在性能方面，其自主研发的智能调度算法能够动态适配不同负载场景，结合对硬件资源的深度优化利用，大幅提升系统运行效率；安全性上，通过内置的多层次安全防护体系，包括强制访问控制、漏洞扫描与修复机制，为系统数据与应用程序构筑起坚实的安全防线；可靠性层面，基于分布式存储、故障自动检测与快速恢复技术，确保系统在面对网络波动、硬件故障等突发状况时，依然能够稳定运行，最大限度降低服务中断风险。这些特性使 openEuler 成为推动数字经济高质量发展的重要技术基石，助力企业与开发者在数字化转型进程中抢占先机。
-检索的片段：openEuler 作为开源操作系统领域的先锋力量，深度融合了社区开发者的智慧结晶，不断迭代升级以适应快速变化的技术环境。在微服务架构盛行的当下，openEuler 通过对容器化技术的深度优化，支持 Kubernetes 等主流编排工具，让应用部署与管理变得更加便捷高效，极大提升了企业的业务部署灵活性。同时，它积极拥抱 AI 时代，通过对机器学习框架的适配与优化，为 AI 模型训练和推理提供强大的算力支撑，有效降低了 AI 应用的开发与运行成本。
-在生态建设方面，openEuler 拥有庞大且活跃的开源社区，汇聚了来自全球的技术爱好者与行业专家，形成了从内核开发、驱动适配到应用优化的完整生态链。社区定期举办技术交流与开发者大会，推动知识共享与技术创新，为开发者提供了丰富的学习资源与实践机会。众多硬件厂商和软件企业纷纷加入 openEuler 生态，推出基于该系统的解决方案和产品，涵盖金融、电信、能源等关键行业，以实际应用场景验证并反哺 openEuler 的技术发展，形成了良性循环的创新生态，让 openEuler 不仅是一个操作系统，更成为推动产业协同发展的强大引擎 。
+    ### 2. 答案评估
+    - **准确性**：答案是否准确无误地回答了问题？与片段中的信息是否一致？有无错误或遗漏关键要点？
+    - **完整性**：答案是否完整，涵盖问题涉及的各个方面？对于需要详细阐述的问题，是否提供了足够的细节和解释？
+    - **简洁性**：在保证回答完整、准确的前提下，答案是否简洁明了？是否避免冗长、啰嗦的表述，能否以简洁语言传达关键信息？
+    - **连贯性**：答案逻辑是否清晰？各部分内容之间的衔接是否自然流畅？有无跳跃或混乱的情况？
 
-召回率：95.00
-精确度：99.00
-忠实值：90.00
-可解释性：85.00
+    ### 3. 整体评估
+    - **一致性**：问题与答案之间是否相互匹配？答案是否针对所提出的问题进行回答？两者在内容和逻辑上是否保持一致？
+    - **融合性**：答案是否能很好地融合片段中的信息？是否并非简单摘抄，而是经过整合、提炼后以合理方式呈现？
+    - **创新性**：在某些情况下，评估答案是否具有一定创新性或独特见解？是否能在片段信息基础上进行适当拓展或深入思考？
 
-输出：
-根据测试结果中的内容，当前知识库问答准确率提升的方法可以从以下几个方面进行分析：
-召回率：目前召回率为 95.00，有提升空间。优化向量化检索算法，进一步挖掘原始片段中与问题相关但未被检索到的信息，如 openEuler 生态中一些具体实践案例等。调整 embedding 模型 bge-m3，使其能更全面准确地捕捉语义，扩大检索范围，提高召回率，使生成答案更接近标准答案。
-精确度：精确度达 99.00，已较高。但可进一步优化，对检索到的片段进行更深入的语义分析，结合大模型 qwen2.5-32b 的特点，精准匹配问题语义，避免细微语义偏差，例如更精确阐述 openEuler 在云计算和边缘计算中高性能等特性的具体表现。
-忠实值：忠实值为 90.00，说明部分答案内容未完全源于检索片段。优化 rag 检索算法，提高 embedding 模型召回率，调整文本分块大小为 512 可能存在不合理，需根据内容重新评估，确保检索片段包含足够上下文以支撑答案，使生成答案内容均来自检索片段，如关于 openEuler 生态建设中相关技术细节应从检索片段获取。
-可解释性：可解释性为 85.00，相对较低。提升大模型 qwen2.5-32b 的遵从度，优化 rag 检索算法和 embedding 模型 bge-m3 的召回率，使检索片段能更好支撑生成答案，保证答案能清晰回答问题，例如在回答 openEuler 相关问题时，使答案逻辑更清晰、针对性更强，提高整体可解释性。
+    ### 注意事项
+    #01 请仅输出分数，不要输出其他内容。
 
+    ### 示例
+    输入 1：
+    问题：openEuler 是什么操作系统？
+    答案：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    片段：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出 1：100.00
 
-下面是测试结果中的内容：
-使用的大模型：{model_name}
-embedding模型：{embedding_model}
-文本的分块大小：{chunk_size}
-使用解析的rag算法：{rag_algorithm}
-问题：{question}
-标准答案：{standard_answer}
-生成的答案：{generated_answer}
-原始片段：{original_fragment}
-检索的片段：{retrieved_fragment}
-召回率：{recall}
-精确度：{precision}
-忠实值：{faithfulness}
-可解释性：{relevance}
-'
-ACC_ANALYSIS_RESULT_MERGE_PROMPT: '你是一个文本分析专家，你的任务融合两条分析结果输出一份新的分析结果
-注意：
-#01 请根据两条分析结果中的内容融合出一条新的分析结果
-#02 请结合召回率、精确度、忠实值和可解释性四个指标进行分析
-#03 新的分析结果长度不超过500字
-#04 请仅输出新的分析结果，不要输出其他内容
-例子：
-输入1：
-分析结果1：
+    下面是给出的问题、答案和片段：
+    问题：{question}
+    答案：{answer}
+    片段：{fragment}
 
-召回率：目前召回率为 95.00，有提升空间。优化向量化检索算法，进一步挖掘原始片段中与问题相关但未被检索到的信息，如 openEuler 生态中一些具体实践案例等。调整 embedding 模型 bge-m3，使其能更全面准确地捕捉语义，扩大检索范围，提高召回率，使生成答案更接近标准答案。
-精确度：精确度达 99.00，已较高。但可进一步优化，对检索到的片段进行更深入的语义分析，结合大模型 qwen2.5-32b 的特点，精准匹配问题语义，避免细微语义偏差，例如更精确阐述 openEuler 在云计算和边缘计算中高性能等特性的具体表现。
-忠实值：忠实值为 90.00，说明部分答案内容未完全源于检索片段。优化 rag 检索算法，提高 embedding 模型召回率，调整文本分块大小为 512 可能存在不合理，需根据内容重新评估，确保检索片段包含足够上下文以支撑答案，使生成答案内容均来自检索片段，如关于 openEuler 生态建设中相关技术细节应从检索片段获取。
-可解释性：可解释性为 85.00，相对较低。提升大模型 qwen2.5-32b 的遵从度，优化 rag 检索算法和 embedding 模型 bge-m3 的召回率，使检索片段能更好支撑生成答案，保证答案能清晰回答问题，例如在回答 openEuler 相关问题时，使答案逻辑更清晰、针对性更强，提高整体可解释性。
+CHUNK_QUERY_MATCH_PROMPT:
+  en: |
+    You are a text analysis expert. Your task is to determine whether a given fragment is relevant to a question. 
+    Note: 
+    #01 If the fragment is relevant, output YES. 
+    #02 If the fragment is not relevant, output NO. 
+    #03 Only output YES or NO, and do not output anything else. 
+    
+    Example: 
+    Input 1: 
+    Fragment: openEuler is an open source operating system. 
+    Question: What kind of operating system is openEuler? 
+    Output 1: YES
 
-分析结果2：
+    Input 2: 
+    Fragment: A white horse is not a horse. 
+    Question: What kind of operating system is openEuler? 
+    Output 2: NO
 
-从召回率来看，目前为 95.00，可进一步优化 rag 检索算法和 embedding 模型，以提高生成答案与标准回答之间的语义相似程度，接近或达到更高的召回率，例如可以持续优化算法来更好地匹配相关片段。
-从精确度来看，为 99.00，接近满分，说明生成的答案与问题语义相似程度较高，但仍可进一步提升，可通过完善 embedding 模型来更好地理解问题语义，优化检索到的片段的上下文完整性，减少因上下文不足导致的精确度波动。
-对于忠实值，目前为 90.00，说明生成的答案中部分内容未完全来自检索到的片段。可优化 rag 检索算法，提高其召回率，同时合理调整文本分块大小，确保检索到的片段能充分回答问题，从而提高忠实值。
-关于可解释性，当前为 85.00，说明生成的答案在用于回答问题方面有一定提升空间。一方面可以优化使用的大模型，提高其遵从度，使其生成的答案更准确地回答问题；另一方面，继续优化 rag 检索算法和 embedding 模型的召回率，保证检索到的片段能全面支撑问题的回答，提高可解释性。
-
-输出：
-召回率：目前召回率为 95.00，有提升空间。优化向量化检索算法，进一步挖掘原始片段中与问题相关但未被检索到的信息，如 openEuler 生态中一些具体实践案例等。调整 embedding 模型 bge-m3，使其能更全面准确地捕捉语义，扩大检索范围，提高召回率，使生成答案更接近标准答案。
-精确度：精确度达 99.00，已较高。但可进一步优化，对检索到的片段进行更深入的语义分析，结合大模型 qwen2.5-32b 的特点，精准匹配问题语义，避免细微语义偏差，例如更精确阐述 openEuler 在云计算和边缘计算中高性能等特性的具体表现。
-忠实值：忠实值为 90.00，说明部分答案内容未完全源于检索片段。优化 rag 检索算法，提高 embedding 模型召回率，调整文本分块大小为 512 可能存在不合理，需根据内容重新评估，确保检索片段包含足够上下文以支撑答案，使生成答案内容均来自检索片段，如关于 openEuler 生态建设中相关技术细节应从检索片段获取。
-可解释性：可解释性为 85.00，相对较低。提升大模型 qwen2.5-32b 的遵从度，优化 rag 检索算法和 embedding 模型 bge-m3 的召回率，使检索片段能更好支撑生成答案，保证答案能清晰回答问题，例如在回答 openEuler 相关问题时，使答案逻辑更清晰、针对性更强，提高整体可解释性。
-
-下面两条分析结果：
-分析结果1：{analysis_result_1}
-分析结果2：{analysis_result_2}
-'
-CHUNK_QUERY_MATCH_PROMPT: '你是一个文本分析专家，你的任务是根据给出的片段和问题判断，片段是否与问题相关
-  注意：
-  #01 如果片段与问题相关，请输出YES
-  #02 如果片段与问题不相关，请输出NO
-  #03 请仅输出YES或NO，不要输出其他内容
-  例子：
-  输入1：
+    Here are the given fragment and question: 
+    Fragment: {chunk} 
+    Question: {question}
+  中文: |
+    你是一个文本分析专家，你的任务是根据给出的片段和问题，判断片段是否与问题相关。
+    注意：
+    #01 如果片段与问题相关，请输出YES；
+    #02 如果片段与问题不相关，请输出NO；
+    #03 请仅输出YES或NO，不要输出其他内容。
+    
+    例子：
+    输入1：
     片段：openEuler是一个开源的操作系统。
     问题：openEuler是什么操作系统？
-  输出1：YES
+    输出1：YES
 
-  输入2：
+    输入2：
     片段：白马非马
     问题：openEuler是什么操作系统？
-  输出2：NO
+    输出2：NO
 
-  下面是给出的片段和问题：
-  片段：{chunk}
-  问题：{question}
-  '
-QUERY_EXTEND_PROMPT: '你是一个问题扩写专家，你的任务是根据给出的问题扩写{k}个问题
-  注意：
-  #01 扩写的问题的内容必须来源于原问题中的内容
-  #02 扩写的问题长度不超过50个字
-  #03 可以通过近义词替换 问题内词序交换 修改英文大小写等方式来改写问题
-  #04 请仅输出扩写的问题列表，不要输出其他内容
-  例子：
-  输入：openEuler是什么操作系统？
-  输出：
-  [
-    \"openEuler是一个什么样的操作系统？\",
-    \"openEuler操作系统的特点是什么？\",
-    \"openEuler操作系统有哪些功能？\",
-    \"openEuler操作系统的优势是什么？\"
-  ]
-  下面是给出的问题：
-  {question}
-  '
+    下面是给出的片段和问题：
+    片段：{chunk}
+    问题：{question}
+
+CONTENT_TO_ABSTRACT_PROMPT:
+  en: |
+    You are a text summarization expert. Your task is to generate a new summary based on a given text and an existing summary. 
+    Note: 
+    #01 Please combine the most important content from the text and the existing summary to generate the new summary. 
+    #02 The length of the new summary must be greater than 200 words and less than 500 words. 
+    #03 Please only output the new summary; do not output any other content. 
+    
+    Example: 
+    Input 1: 
+    Text: openEuler features high performance, high security, and high reliability. 
+    Abstract: openEuler is an open source operating system designed to support cloud computing and edge computing. 
+    Output 1: openEuler is an open source operating system designed to support cloud computing and edge computing. openEuler features high performance, high security, and high reliability.
+
+    Below is the given text and summary: 
+    Text: {content} 
+    Abstract: {abstract}
+  中文: |
+    你是一个文本摘要专家，你的任务是根据给出的文本和已有摘要，生成一个新的摘要。
+    注意：
+    #01 请结合文本和已有摘要中最重要的内容，生成新的摘要；
+    #02 新的摘要长度必须大于200字且小于500字；
+    #03 请仅输出新的摘要，不要输出其他内容。
+    
+    例子：
+    输入1：
+    文本：openEuler具有高性能、高安全性和高可靠性等特点。
+    摘要：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。
+    输出1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。openEuler具有高性能、高安全性和高可靠性等特点。
+
+    下面是给出的文本和摘要：
+    文本：{content}
+    摘要：{abstract}
+
+CONTENT_TO_STATEMENTS_PROMPT:
+  en: |
+    You are a text parsing expert. Your task is to extract multiple statements from a given text and return them as a list.
+    
+    Note:
+    #01 Statements must be derived from key points in the text.
+    #02 Statements must be arranged in relative order.
+    #03 Each statement must be at least 20 characters long and no more than 50 characters long.
+    #04 The total number of statements output must not exceed three.
+    #05 Please output only the list of statements, not any other content. Each statement must be in Chinese.
+    Example:
+    
+    Input: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output: [ "openEuler is an open source operating system", "openEuler is designed to support cloud computing and edge computing", "openEuler features high performance, high security, and high reliability" ]
+    
+    The following is the given text: {content}
+  中文: |
+    你是一个文本分解专家，你的任务是根据我给出的文本，将文本提取为多个陈述，陈述使用列表形式返回
+    
+    注意：
+    #01 陈述必须来源于文本中的重点内容
+    #02 陈述按相对顺序排列
+    #03 输出的单个陈述长度不少于20个字，不超过50个字
+    #04 输出的陈述总数不超过3个
+    #05 请仅输出陈述列表，不要输出其他内容，且每一条陈述都是中文。
+    例子：
+    
+    输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出：[ "openEuler是一个开源的操作系统", "openEuler旨在为云计算和边缘计算提供支持", "openEuler具有高性能、高安全性和高可靠性等特点" ]
+    
+    下面是给出的文本： {content}
+
+CONTENT_TO_TITLE_PROMPT:
+  en: >-
+    You are a title extraction expert. Your task is to generate an English title based on the given text.
+    Note:
+    #01 The title must be derived from the content of the text.
+    #02 The title must be no longer than 20 characters.
+    #03 Please output only the English title, and do not output any other content.
+    #04 If the given text is insufficient to generate a title, output "Unable to generate title."
+    Example:
+    Input: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output: Overview of the openEuler operating system.
+    Below is the given text: {content}
+  中文: >-
+    你是一个标题提取专家，你的任务是根据给出的文本生成一个中文标题。
+    注意：
+    #01 标题必须来源于文本中的内容
+    #02 标题长度不超过20个字
+    #03 请仅输出中文标题，不要输出其他内容
+    #04 如果给出的文本不够生成标题，请输出“无法生成标题”
+    例子：
+    输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出：openEuler操作系统概述
+    下面是给出的文本：{content}
+
+GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT:
+  en: |
+    You are a text analysis expert. Your task is to generate an English answer based on a given question and text. 
+    Note: 
+    #01 The answer must be derived from the content in the text. 
+    #02 The answer must be at least 50 words and no more than 500 words. 
+    #03 Please only output the English answer; do not output any other content. 
+    Example: 
+    Input 1: 
+      Question: What kind of operating system is openEuler? 
+      Text: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability. 
+    Output 1: openEuler is an open source operating system designed to support cloud computing and edge computing. 
+    
+    Input 2: 
+      Question: How secure is openEuler? 
+      Text: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability. 
+    Output 2: openEuler is highly secure. 
+    
+    Below is the given question and text: 
+    Question: {question} 
+    Text: {content}
+  中文: |
+    你是一个文本分析专家，你的任务是根据给出的问题和文本生成中文答案。
+    注意：
+    #01 答案必须来源于文本中的内容；
+    #02 答案长度不少于50字且不超过500个字；
+    #03 请仅输出中文答案，不要输出其他内容。
+    例子：
+    输入1：
+      问题：openEuler是什么操作系统？
+      文本：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。
+    
+    输入2：
+      问题：openEuler的安全性如何？
+      文本：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出2：openEuler具有高安全性。
+    
+    下面是给出的问题和文本：
+    问题：{question}
+    文本：{content}
+  
+GENERATE_QUESTION_FROM_CONTENT_PROMPT:
+  en: |
+    You are a text analysis expert. Your task is to generate {k} English questions based on the given text and return them as a list. 
+    Note: 
+    #01 Questions must be derived from the content of the text. 
+    #02 A single question must not exceed 50 characters. 
+    #03 Do not output duplicate questions. 
+    #04 The output questions should be diverse, covering different aspects of the text. 
+    #05 Please only output a list of English questions, not other content. 
+    Example: 
+    Input: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability. 
+    Output: ["What is openEuler?","What fields does openEuler support?","What are the characteristics of openEuler?","How secure is openEuler?","How reliable is openEuler?"]
+    The following is the given text: {content}
+  中文: |
+    你是一个文本分析专家，你的任务是根据给出的文本生成{k}个中文问题并用列表返回。
+    注意：
+    #01 问题必须来源于文本中的内容；
+    #02 单个问题长度不超过50个字；
+    #03 不要输出重复的问题；
+    #04 输出的问题要多样，覆盖文本中的不同方面；
+    #05 请仅输出中文问题列表，不要输出其他内容。
+    例子：
+    输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出：["openEuler是什么操作系统？","openEuler旨在为哪个领域提供支持？","openEuler具有哪些特点？","openEuler的安全性如何？","openEuler的可靠性如何？"]
+    下面是给出的文本：{content}
+
+OCR_ENHANCED_PROMPT:
+  en: |
+    You are an expert in image OCR content summarization. Your task is to describe the image based on the context I provide, descriptions of adjacent images, a summary of the previous OCR result for the current image, and the partial OCR results (including text and relative coordinates).
+
+    Note:
+    #01 The image content must be described in detail, using at least 200 and no more than 500 words. Detailed data listing is acceptable.
+    #02 If this diagram is a flowchart, please describe the content in the order of the flowchart.
+    #03 If this diagram is a table, please output the table content in Markdown format.
+    #04 If this diagram is an architecture diagram, please describe the content according to the hierarchy of the architecture diagram.
+    #05 The summarized image description must include the key information in the image; it cannot simply describe the image's location.
+    #06 Adjacent text in the image recognition results may be part of the same paragraph. Please merge them before summarizing.
+    #07 The text may be misplaced. Please correct the order before summarizing.
+    #08 Please only output the image summary; do not output any other content.
+    #09 Do not output coordinates or other information; only output a description of the relative position of each part.
+    #10 If the image content is empty, output "Image content is empty."
+    #11 If the image itself is a paragraph of text, output the text content directly.
+
+    Context: {image_related_text}
+    Summary of the OCR content of the previous part of the current image: {pre_part_description}
+    Result of the OCR of the current part of the image: {part}
+  中文: |
+    你是一个图片OCR内容总结专家，你的任务是根据我提供的上下文、相邻图片组描述、当前图片上一次的OCR内容总结、当前图片部分OCR的结果（包含文字和文字的相对坐标）给出图片描述。
+
+    注意：
+    #01 必须使用大于200字小于500字详细描述这个图片的内容，可以详细列出数据。
+    #02 如果这个图是流程图，请按照流程图顺序描述内容。
+    #03 如果这张图是表格，请用Markdown形式输出表格内容。
+    #04 如果这张图是架构图，请按照架构图层次结构描述内容。
+    #05 总结的图片描述必须包含图片中的主要信息，不能只描述图片位置。
+    #06 图片识别结果中相邻的文字可能是同一段落的内容，请合并后总结。
+    #07 文字可能存在错位，请修正顺序后进行总结。
+    #08 请仅输出图片的总结即可，不要输出其他内容。
+    #09 不要输出坐标等信息，输出每个部分相对位置的描述即可。
+    #10 如果图片内容为空，请输出“图片内容为空”。
+    #11 如果图片本身就是一段文字，请直接输出文字内容。
+
+    上下文：{image_related_text}
+    当前图片上一部分的OCR内容总结：{pre_part_description}
+    当前图片部分OCR的结果：{part}
+
+QA_TO_STATEMENTS_PROMPT:
+  en: |
+    You are a text parsing expert. Your task is to extract the answers from the questions and answers I provide into multiple English statements, returning them as a list.
+
+    Note:
+    #01 The statements must be derived from the key points of the answers.
+    #02 The statements must be arranged in relative order.
+    #03 The length of each statement output must not exceed 50 characters.
+    #04 The total number of statements output must not exceed 20.
+    #05 Please only output the list of English statements; do not output any other content.
+    
+    Example:
+    Input: Question: What is openEuler? Answer: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output: [ "openEuler is an open source operating system", "openEuler is designed to support cloud computing and edge computing", "openEuler features high performance, high security, and high reliability" ]
+
+    Below are the given questions and answers:
+    Question: {question}
+    Answer: {answer}
+  中文: |
+    你是一个文本分解专家，你的任务是根据我给出的问题和答案，将答案提取为多个中文陈述，陈述使用列表形式返回。
+
+    注意：
+    #01 陈述必须来源于答案中的重点内容
+    #02 陈述按相对顺序排列
+    #03 输出的单个陈述长度不超过50个字
+    #04 输出的陈述总数不超过20个
+    #05 请仅输出中文陈述列表，不要输出其他内容
+    
+    例子：
+    输入：问题：openEuler是什么操作系统？ 答案：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出：[ "openEuler是一个开源的操作系统", "openEuler旨在为云计算和边缘计算提供支持", "openEuler具有高性能、高安全性和高可靠性等特点" ]
+
+    下面是给出的问题和答案：
+    问题：{question}
+    答案：{answer}
+
+QUERY_EXTEND_PROMPT:
+  en: |
+    You are a question expansion expert. Your task is to expand {k} questions based on the given question.
+    
+    Note:
+    #01 The content of the expanded question must be derived from the content of the original question.
+    #02 The expanded question length must not exceed 50 characters.
+    #03 Questions can be rewritten by replacing synonyms, swapping word order within the question, changing English capitalization, etc.
+    #04 Please only output the expanded question list, do not output other content.
+    
+    Example:
+    Input: What operating system is openEuler?
+    Output: [ "What kind of operating system is openEuler?", "What are the characteristics of the openEuler operating system?", "What are the functions of the openEuler operating system?", "What are the advantages of the openEuler operating system?" ]
+    
+    The following is the given question: {question}
+  中文: |
+    你是一个问题扩写专家，你的任务是根据给出的问题扩写{k}个问题。
+    
+    注意：
+    #01 扩写的问题的内容必须来源于原问题中的内容
+    #02 扩写的问题长度不超过50个字
+    #03 可以通过近义词替换、问题内词序交换、修改英文大小写等方式来改写问题
+    #04 请仅输出扩写的问题列表，不要输出其他内容
+    
+    例子：
+    输入：openEuler是什么操作系统？
+    输出：[ "openEuler是一个什么样的操作系统？", "openEuler操作系统的特点是什么？", "openEuler操作系统有哪些功能？", "openEuler操作系统的优势是什么？" ]
+    
+    下面是给出的问题：{question}
+
+STATEMENTS_TO_FRAGMENT_PROMPT:
+  en: |
+    You are a text expert. Your task is to determine whether a given statement is strongly related to the fragment.
+    
+    Note:
+    #01 If the statement is strongly related to the fragment or is derived from the fragment, output YES.
+    #02 If the content in the statement is unrelated to the fragment, output NO.
+    #03 If the statement is a refinement of a portion of the fragment, output YES.
+    #05 Only output YES or NO, and do not output anything else.
+    
+    Example:
+    Input 1:
+    Statement: openEuler is an open source operating system.
+    Fragment: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output 1: YES
+
+    Input 2:
+    Statement: A white horse is not a horse.
+    Fragment: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output 2: NO
+
+    Below is a given statement and fragment:
+    Statement: {statement}
+    Fragment: {fragment}
+  中文: |
+    你是一个文本专家，你的任务是判断给出的陈述是否与片段强相关。
+    
+    注意：
+    #01 如果陈述与片段强相关或者来自于片段，请输出YES
+    #02 如果陈述中的内容与片段无关，请输出NO
+    #03 如果陈述是片段中某部分的提炼，请输出YES
+    #05 请仅输出YES或NO，不要输出其他内容
+    
+    例子：
+    输入1：
+    陈述：openEuler是一个开源的操作系统。
+    片段：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出1：YES
+
+    输入2：
+    陈述：白马非马
+    片段：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出2：NO
+
+    下面是给出的陈述和片段：
+    陈述：{statement}
+    片段：{fragment}
+
+STATEMENTS_TO_QUESTION_PROMPT:
+  en: |
+    You are a text analysis expert. Your task is to determine whether a given statement is relevant to a question.
+    
+    Note:
+    #01 If the statement is relevant to the question, output YES.
+    #02 If the statement is not relevant to the question, output NO.
+    #03 Only output YES or NO, and do not output anything else.
+    #04 A statement's relevance to the question means that the content in the statement can answer the question or overlaps with the question in terms of content.
+    
+    Example:
+    Input 1:
+    Statement: openEuler is an open source operating system.
+    Question: What kind of operating system is openEuler?
+    Output 1: YES
+
+    Input 2:
+    Statement: A white horse is not a horse.
+    Question: What kind of operating system is openEuler?
+    Output 2: NO
+
+    Below is the given statement and question:
+    Statement: {statement}
+    Question: {question}
+  中文: |
+    你是一个文本分析专家，你的任务是判断给出的陈述是否与问题相关。
+    
+    注意：
+    #01 如果陈述与问题相关，请输出YES
+    #02 如果陈述与问题不相关，请输出NO
+    #03 请仅输出YES或NO，不要输出其他内容
+    #04 陈述与问题相关是指，陈述中的内容可以回答问题或者与问题在内容上有交集
+    
+    例子：
+    输入1：
+    陈述：openEuler是一个开源的操作系统。
+    问题：openEuler是什么操作系统？
+    输出1：YES
+
+    输入2：
+    陈述：白马非马
+    问题：openEuler是什么操作系统？
+    输出2：NO
+
+    下面是给出的陈述和问题：
+    陈述：{statement}
+    问题：{question}
