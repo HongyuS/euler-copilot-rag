@@ -47,7 +47,8 @@ class KeywordVectorSearcher(BaseSearcher):
                     logging.info(f"[KeywordVectorSearcher] 向量检索成功完成，耗时: {end_time - start_time:.2f}秒")
                     break
                 except Exception as e:
-                    err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}"
+                    import traceback
+                    err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}, traceback: {traceback.format_exc()}"
                     logging.error(err)
                     continue
             chunk_entities = chunk_entities_get_by_keyword + chunk_entities_get_by_dynamic_weighted_keyword + chunk_entities_get_by_vector

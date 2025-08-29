@@ -191,9 +191,9 @@ class ChunkManager():
                         .where(ChunkEntity.kb_id == kb_id)
                         .where(ChunkEntity.enabled == True)
                         .where(ChunkEntity.status != ChunkStatus.DELETED.value)
-                        .where(ChunkEntity.id.notin_(banned_ids))
                     )
-
+                    if banned_ids:
+                        stmt = stmt.where(ChunkEntity.id.notin_(banned_ids))
                     # 添加可选条件
                     if doc_ids is not None:
                         stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
@@ -270,9 +270,9 @@ class ChunkManager():
                     .where(ChunkEntity.kb_id == kb_id)
                     .where(ChunkEntity.enabled == True)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
-                    .where(ChunkEntity.id.notin_(banned_ids))
                 )
-
+                if banned_ids:
+                    stmt = stmt.where(ChunkEntity.id.notin_(banned_ids))
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 if chunk_to_type is not None:
@@ -357,8 +357,9 @@ class ChunkManager():
                     .where(ChunkEntity.kb_id == kb_id)
                     .where(ChunkEntity.enabled == True)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
-                    .where(ChunkEntity.id.notin_(banned_ids))
                 )
+                if banned_ids:
+                    stmt = stmt.where(ChunkEntity.id.notin_(banned_ids))
                 # 添加 GROUP BY 子句，按 ChunkEntity.id 分组
                 stmt = stmt.group_by(ChunkEntity.id)
 
