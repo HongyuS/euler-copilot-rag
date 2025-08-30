@@ -393,7 +393,7 @@ class ParseDocumentWorker(BaseWorker):
             if parent_node is not None:
                 node.pre_id = parent_node.id
             for child_node in node.link_nodes:
-                await dfs(child_node, node, llm)
+                await dfs(child_node, node, llm, language)
             if node.title is not None:
                 if len(node.title) == 0:
                     if llm is not None:
