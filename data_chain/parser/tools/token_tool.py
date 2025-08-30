@@ -275,7 +275,10 @@ class TokenTool:
             for sentence in sentences:
                 abstract = TokenTool.get_k_tokens_words_from_content(abstract, llm.max_tokens//3)
                 sys_call = prompt_template.format(content=sentence, abstract=abstract)
-                user_call = '请结合文本和摘要输出新的摘要'
+                if language == 'en':
+                    user_call = 'Please output a new English abstract based on the text and the existing abstract'
+                else:
+                    user_call = '请结合文本和已有摘要生成新的中文摘要'
                 abstract = await llm.nostream([], sys_call, user_call)
                 return abstract
         except Exception as e:
@@ -283,7 +286,7 @@ class TokenTool:
             logging.exception("[TokenTool] %s", err)
 
     @staticmethod
-    async def get_title_by_llm(content: str, llm: LLM, languate: str) -> str:
+    async def get_title_by_llm(content: str, llm: LLM, language: str = '中文') -> str:
         """
         使用llm进行标题生成
         """
@@ -291,10 +294,13 @@ class TokenTool:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             prompt_template = prompt_dict.get('CONTENT_TO_TITLE_PROMPT', {})
-            prompt_template = prompt_template.get(languate, '')
+            prompt_template = prompt_template.get(language, '')
             content = TokenTool.get_k_tokens_words_from_content(content, llm.max_tokens)
             sys_call = prompt_template.format(content=content)
-            user_call = '请结合文本输出标题'
+            if language == 'en':
+                user_call = 'Please generate a English title based on the text'
+            else:
+                user_call = '请结合文本生成一个中文标题'
             title = await llm.nostream([], sys_call, user_call)
             return title
         except Exception as e:
