@@ -521,7 +521,7 @@ OCR_ENHANCED_PROMPT:
     #09 Do not output coordinates or other information; only output a description of the relative position of each part.
     #10 If the image content is empty, output "Image content is empty."
     #11 If the image itself is a paragraph of text, output the text content directly.
-
+    #12 Please use English for the output.
     Context: {image_related_text}
     Summary of the OCR content of the previous part of the current image: {pre_part_description}
     Result of the OCR of the current part of the image: {part}
@@ -540,7 +540,7 @@ OCR_ENHANCED_PROMPT:
     #09 不要输出坐标等信息，输出每个部分相对位置的描述即可。
     #10 如果图片内容为空，请输出“图片内容为空”。
     #11 如果图片本身就是一段文字，请直接输出文字内容。
-
+    #12 请使用中文输出。
     上下文：{image_related_text}
     当前图片上一部分的OCR内容总结：{pre_part_description}
     当前图片部分OCR的结果：{part}
