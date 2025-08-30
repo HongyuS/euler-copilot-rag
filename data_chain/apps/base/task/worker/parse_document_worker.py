@@ -221,7 +221,7 @@ class ParseDocumentWorker(BaseWorker):
                         node.text_feature = node.content
                     elif node.type == ChunkType.CODE:
                         if llm is not None:
-                            node.text_feature = await TokenTool.get_abstract_by_llm(node.content, llm)
+                            node.text_feature = await TokenTool.get_abstract_by_llm(node.content, llm, language)
                         if node.text_feature is None:
                             node.text_feature = TokenTool.get_top_k_keywords(node.content)
                     elif node.type == ChunkType.TABLE:
@@ -559,7 +559,7 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.merge_and_split_text(parse_result, doc_entity)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '合并和拆分文本', current_stage, stage_cnt)
-            await ParseDocumentWorker.push_up_words_feature(parse_result, llm)
+            await ParseDocumentWorker.push_up_words_feature(parse_result, llm, knowledge_base_entity.tokenizer)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '推送上层词特征', current_stage, stage_cnt)
             await ParseDocumentWorker.embedding_chunk(parse_result)
