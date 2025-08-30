@@ -85,7 +85,10 @@ class OcrTool:
             token_limit = llm.max_tokens//2
             image_related_text = TokenTool.get_k_tokens_words_from_content(image_related_text, token_limit)
             ocr_result_parts = TokenTool.split_str_with_slide_window(str(ocr_result), token_limit)
-            user_call = '请详细输出图片的摘要，不要输出其他内容'
+            if language == 'en':
+                user_call = 'Please provide a English summary of the image content, do not output anything else'
+            else:
+                user_call = '请详细输出图片的中文摘要，不要输出其他内容'
             for part in ocr_result_parts:
                 pre_part_description_cp = pre_part_description
                 try:
