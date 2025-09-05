@@ -49,3 +49,4 @@ xlrd==2.0.1
 py-cpuinfo==9.0.0
 opengauss-sqlalchemy==2.4.0
 #marker-pdf==1.8.0
+motor==3.7.1
