@@ -183,10 +183,10 @@ class TestingWorker(BaseWorker):
             )
             llm_answer = await llm.nostream([], prompt, question)
             sub_scores = []
-            pre = await TokenTool.cal_precision(question, answer, llm, language)
+            pre = await TokenTool.cal_precision(question, llm_answer, llm, language)
             if pre != -1:
                 sub_scores.append(pre)
-            rec = await TokenTool.cal_recall(answer, llm_answer, llm, language)
+            rec = await TokenTool.cal_recall(answer, bac_info, llm, language)
             if rec != -1:
                 sub_scores.append(rec)
             fai = await TokenTool.cal_faithfulness(question, llm_answer, bac_info, llm, language)
