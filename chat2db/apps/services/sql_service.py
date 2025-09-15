@@ -3,9 +3,9 @@ import logging
 import re
 import json
 
-from apps.llm import LLM, GENERATE_SQL_PROMPT, REPAIR_SQL_PROMPT, RISK_EVALUATE_SQL
-from apps.services.database_service import DatabaseService
-from apps.schemas.enum_var import DatabaseType
+from chat2db.apps.llm import LLM, GENERATE_SQL_PROMPT, REPAIR_SQL_PROMPT, RISK_EVALUATE_SQL
+from chat2db.apps.services.database_service import DatabaseService
+from chat2db.apps.schemas.enum_var import DatabaseType
 
 from config.config import config
 

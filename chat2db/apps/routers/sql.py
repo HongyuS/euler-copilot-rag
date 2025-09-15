@@ -2,11 +2,11 @@ import logging
 from fastapi import APIRouter, status
 import sys
 
-from apps.schemas.enum_var import RiskLevel, DatabaseType
-from apps.schemas.request import SqlGenerateRequest, SqlExecuteRequest, SqlRepairRequest
-from apps.schemas.response import ResponseData, SqlGenerateRsp, SqlExecuteRsp, SqlRepairRsp
-from apps.services import database_service
-from apps.services.sql_service import SqlService
+from chat2db.apps.schemas.enum_var import RiskLevel, DatabaseType
+from chat2db.apps.schemas.request import SqlGenerateRequest, SqlExecuteRequest, SqlRepairRequest
+from chat2db.apps.schemas.response import ResponseData, SqlGenerateRsp, SqlExecuteRsp, SqlRepairRsp
+from chat2db.apps.services import database_service
+from chat2db.apps.services.sql_service import SqlService
 
 router = APIRouter(prefix="/sql")
 

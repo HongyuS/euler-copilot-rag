@@ -2,7 +2,7 @@ import uuid
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from apps.schemas.enum_var import DatabaseType
+from chat2db.apps.schemas.enum_var import DatabaseType
 
 class SqlGenerateRequest(BaseModel):
     """

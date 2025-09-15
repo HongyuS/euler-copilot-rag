@@ -46,7 +46,7 @@ class Config:
         if os.getenv("CONFIG"):
             config_file = os.getenv("CONFIG")
         else:
-            config_file = "./.env"
+            config_file = "chat2db/common/.env"
         self.config = ConfigModel(**(dotenv_values(config_file)))
         if os.getenv("PROD"):
             os.remove(config_file)
