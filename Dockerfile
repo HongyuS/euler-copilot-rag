@@ -1,6 +1,6 @@
 FROM  hub.oepkgs.net/neocopilot/data_chain_back_end_base:0.9.6-x86
 
-COPY --chown=1001:1001 --chmod=750 ./ /rag-service/
+COPY --chmod=750 ./ /rag-service/
 WORKDIR /rag-service
 
 ENV PYTHONPATH /rag-service
@@ -13,6 +13,5 @@ RUN  sed -i 's/umask 002/umask 027/g' /etc/bashrc && \
     sh -c "find /usr /etc \( -name ps -o -name top \) -exec rm -rf {} + || true" && \
     sh -c "rm -f /usr/bin/find /usr/bin/oldfind || true"
 
-USER eulercopilot
 CMD ["/bin/bash", "run.sh"]
 

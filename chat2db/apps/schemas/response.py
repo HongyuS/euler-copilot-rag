@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Any
 
-from apps.schemas.enum_var import RiskLevel
+from chat2db.apps.schemas.enum_var import RiskLevel
 
 class ResponseData(BaseModel):
     code: int

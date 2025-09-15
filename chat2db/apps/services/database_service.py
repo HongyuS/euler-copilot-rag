@@ -1,6 +1,6 @@
 from typing import Any, Type
-from apps.schemas.enum_var import DatabaseType
-from apps.base import MySQL, MongoDB, OpenGauss, Postgres, MetaDatabase
+from chat2db.apps.schemas.enum_var import DatabaseType
+from chat2db.apps.base import MySQL, MongoDB, OpenGauss, Postgres, MetaDatabase
 
 class DatabaseService:
 
