@@ -3,7 +3,7 @@ from fastapi import FastAPI
 import sys
 import logging
 
-from apps.routers import sql
+from chat2db.apps.routers import sql
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(filename)s[line:%(lineno)d] - %(levelname)s: %(message)s')
