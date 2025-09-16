@@ -68,7 +68,7 @@ class SqlService:
         )
 
         try:
-            result = await llm.chat_with_model(prompt, "请给出你生成的 SQL 语句")
+            result = await llm.nostream([], prompt, "请给出你生成的 SQL 语句")
             sql = (await SqlService._extract_json(result))['command']
             logging.info(f"\n[生成SQL成功]\n\n{sql}")
             return sql
@@ -109,10 +109,10 @@ class SqlService:
             question=goal,
         )
         try:
-            repair_sql = await llm.chat_with_model(prompt, "请给出你修复的 SQL 语句")
+            repair_sql = await llm.nostream([], prompt, "请给出你修复的 SQL 语句")
             logging.info(f"\n[修复SQL成功]\n\n{repair_sql}")
             return repair_sql
-        
+
         except Exception as e:
             logging.error(f"\n[修复SQL失败]\n\n{e}")
             raise e
@@ -133,7 +133,6 @@ class SqlService:
         except Exception as e:
             logging.error(f"\n[执行失败]\n")
             raise e
-        
 
     @staticmethod
     async def sql_handler(
@@ -161,7 +160,7 @@ class SqlService:
 
         risk = await SqlService.risk_analysis(database_type, goal, sql, table_info, llm=llm)
 
-        ### 故意产生错误
+        # 故意产生错误
         # sql = sql.replace("SELECT", "SELCT")
         ###
 
@@ -200,7 +199,7 @@ class SqlService:
         error_msg: str | None = None,
         llm: LLM | None = None,
     ):
-        
+
         if llm == None:
             llm = LLM(
                 model_name=config["LLM_MODEL"],
@@ -221,22 +220,21 @@ class SqlService:
         )
 
         try:
-            result = await llm.chat_with_model(prompt, "请给出你评估的风险结果")
+            result = await llm.nostream([], prompt, "请给出你评估的风险结果")
             risk = await SqlService._extract_json(result)
             logging.info(f"\n[风险分析成功]\n\n{risk}")
             return risk
-        
+
         except Exception as e:
             logging.error(f"\n[风险分析失败]\n\n{type(e)}: {e}")
             raise e
 
     @staticmethod
     async def _extract_json(text: str):
-        try: 
+        try:
             match = re.search(r"\{.*?\}\s*$", text, re.DOTALL)
             if match:
                 return json.loads(match.group())
         except json.JSONDecodeError as e:
             logging.error("\n[JSON解析失败]\n\n{e}")
             raise e
-
