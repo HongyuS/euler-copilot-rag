@@ -135,18 +135,25 @@ class GenerateDataSetWorker(BaseWorker):
         chunk_cnt = len(chunk_index_list)
         division = data_cnt // chunk_cnt
         remainder = data_cnt % chunk_cnt
-        logging.error(f"数据集总条目 {dataset_entity.data_cnt}, 分块数量: {chunk_cnt}, 每块数据量: {division}, 余数: {remainder}")
+        logging.error(
+            f"数据集总条目 {dataset_entity.data_cnt}, 分块数量: {chunk_cnt}, 每块数据量: {division}, 余数: {remainder}")
         index = 0
         d_index = 0
         random.shuffle(doc_chunks)
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-        q_generate_prompt_template = prompt_dict.get('GENERATE_QUESTION_FROM_CONTENT_PROMPT', {})
-        q_generate_prompt_template = q_generate_prompt_template.get(language, '')
-        answer_generate_prompt_template = prompt_dict.get('GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT', {})
-        answer_generate_prompt_template = answer_generate_prompt_template.get(language, '')
-        cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', {})
-        cal_qa_score_prompt_template = cal_qa_score_prompt_template.get(language, '')
+        q_generate_prompt_template = prompt_dict.get(
+            'GENERATE_QUESTION_FROM_CONTENT_PROMPT', {})
+        q_generate_prompt_template = q_generate_prompt_template.get(
+            language, '')
+        answer_generate_prompt_template = prompt_dict.get(
+            'GENERATE_ANSWER_FROM_QUESTION_AND_CONTENT_PROMPT', {})
+        answer_generate_prompt_template = answer_generate_prompt_template.get(
+            language, '')
+        cal_qa_score_prompt_template = prompt_dict.get(
+            'CAL_QA_SCORE_PROMPT', {})
+        cal_qa_score_prompt_template = cal_qa_score_prompt_template.get(
+            language, '')
         dataset_score = 0
         logging.error(f"{chunk_index_list}")
         exist_q_set = set()
@@ -168,20 +175,24 @@ class GenerateDataSetWorker(BaseWorker):
                             break
                         if tokens_sub > 0:
                             if l >= 0:
-                                tokens_sub -= TokenTool.get_tokens(doc_chunk.chunks[l].text)
+                                tokens_sub -= TokenTool.get_tokens(
+                                    doc_chunk.chunks[l].text)
                                 chunk = doc_chunk.chunks[l].text+chunk
                                 l -= 1
                             else:
-                                tokens_sub += TokenTool.get_tokens(doc_chunk.chunks[r].text)
+                                tokens_sub += TokenTool.get_tokens(
+                                    doc_chunk.chunks[r].text)
                                 chunk += doc_chunk.chunks[r].text
                                 r += 1
                         else:
                             if r < len(doc_chunk.chunks):
-                                tokens_sub += TokenTool.get_tokens(doc_chunk.chunks[r].text)
+                                tokens_sub += TokenTool.get_tokens(
+                                    doc_chunk.chunks[r].text)
                                 chunk += doc_chunk.chunks[r].text
                                 r += 1
                             else:
-                                tokens_sub -= TokenTool.get_tokens(doc_chunk.chunks[l].text)
+                                tokens_sub -= TokenTool.get_tokens(
+                                    doc_chunk.chunks[l].text)
                                 chunk = doc_chunk.chunks[l].text+chunk
                                 l -= 1
                 qa_cnt = division+(d_index <= remainder)
@@ -193,11 +204,12 @@ class GenerateDataSetWorker(BaseWorker):
                     try:
                         sys_call = q_generate_prompt_template.format(
                             k=5*(qa_cnt-len(qs)),
-                            content=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens)
+                            content=TokenTool.get_k_tokens_words_from_content(
+                                chunk, llm.max_tokens)
                         )
                         usr_call = '请输出问题的列表'
                         sub_qs = await llm.nostream([], sys_call, usr_call, st_str='[', en_str=']')
-                        sub_qs = json.loads(sub_qs)
+                        sub_qs = TokenTool.loads_json_string(sub_qs)
                     except Exception as e:
                         err = f"[GenerateDataSetWorker] 生成问题失败，错误信息: {e}"
                         logging.exception(err)
@@ -214,8 +226,10 @@ class GenerateDataSetWorker(BaseWorker):
                     try:
                         for q in sub_qs:
                             sys_call = answer_generate_prompt_template.format(
-                                content=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens//8*7),
-                                question=TokenTool.get_k_tokens_words_from_content(q, llm.max_tokens//8)
+                                content=TokenTool.get_k_tokens_words_from_content(
+                                    chunk, llm.max_tokens//8*7),
+                                question=TokenTool.get_k_tokens_words_from_content(
+                                    q, llm.max_tokens//8)
                             )
                             usr_call = '请输出答案'
                             sub_answer = await llm.nostream([], sys_call, usr_call)
@@ -230,9 +244,12 @@ class GenerateDataSetWorker(BaseWorker):
                         try:
                             if dataset_entity.is_data_cleared:
                                 sys_call = cal_qa_score_prompt_template.format(
-                                    fragment=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens//9*4),
-                                    question=TokenTool.get_k_tokens_words_from_content(q, llm.max_tokens//9),
-                                    answer=TokenTool.get_k_tokens_words_from_content(answer, llm.max_tokens//9*4)
+                                    fragment=TokenTool.get_k_tokens_words_from_content(
+                                        chunk, llm.max_tokens//9*4),
+                                    question=TokenTool.get_k_tokens_words_from_content(
+                                        q, llm.max_tokens//9),
+                                    answer=TokenTool.get_k_tokens_words_from_content(
+                                        answer, llm.max_tokens//9*4)
                                 )
                                 usr_call = '请输出分数'
                                 score = await llm.nostream([], sys_call, usr_call)

@@ -20,7 +20,8 @@ class HTMLParser(BaseParser):
         table_data = []
         for row in rows:
             cells = row.find_all(['th', 'td'])
-            row_data = [cell.get_text(strip=True, separator=' ') for cell in cells]
+            row_data = [cell.get_text(strip=True, separator=' ')
+                        for cell in cells]
             if row_data:
                 table_data.append(row_data)
         return table_data
@@ -67,7 +68,8 @@ class HTMLParser(BaseParser):
                 continue
             if element.name == 'div' or element.name == 'head' or element.name == 'header' or \
                     element.name == 'body' or element.name == 'section' or element.name == 'article' or \
-                    element.name == 'nav' or element.name == 'main' or element.name == 'p' or element.name == 'ol':
+                    element.name == 'nav' or element.name == 'main' or element.name == 'p' or element.name == 'ol'\
+                    or element.name == 'hr' or element.name == 'ul':
                 # 处理div内部元素
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await HTMLParser.build_subtree(inner_html, current_level+1)
@@ -116,9 +118,26 @@ class HTMLParser(BaseParser):
                     content_html = ''.join(str(el) for el in content_elements)
                     child_subtree = await HTMLParser.build_subtree(content_html, level)
                     parse_topology_type = ChunkParseTopology.TREENORMAL
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        title=title,
+                        lv=level,
+                        parse_topology_type=parse_topology_type,
+                        content="",
+                        type=ChunkType.TEXT,
+                        link_nodes=child_subtree
+                    )
                 else:
-                    child_subtree = []
                     parse_topology_type = ChunkParseTopology.TREELEAF
+                    text = title
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=parse_topology_type,
+                        content=text,
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
 
                 node = ParseNode(
                     id=uuid.uuid4(),

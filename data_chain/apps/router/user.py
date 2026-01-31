@@ -11,7 +11,7 @@ from data_chain.entities.response_data import (
 )
 from data_chain.apps.service.session_service import get_user_sub, verify_user
 from data_chain.apps.service.router_service import get_route_info
-
+from data_chain.apps.service.user_service import UserService
 router = APIRouter(
     prefix="/user",
     tags=["User"]
@@ -20,7 +20,8 @@ router = APIRouter(
 
 @router.post("/list", response_model=ListUserResponse, dependencies=[Depends(verify_user)])
 async def list_users(
-    user_sub: Annotated[str, Query(default=None, alias="userSub")],
+    user_sub: Annotated[str, Depends(get_user_sub)],
     req: Annotated[ListUserRequest, Body()]
 ):
-    return ListUserResponse()
+    list_user_msg = await UserService.list_users(user_sub, req)
+    return ListUserResponse(message="用户列表获取成功", result=list_user_msg)

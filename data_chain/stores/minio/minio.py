@@ -19,35 +19,55 @@ from data_chain.config.config import config
 
 
 class MinIO():
-    client = Minio(
-        endpoint=config['MINIO_ENDPOINT'],
-        access_key=config['MINIO_ACCESS_KEY'],
-        secret_key=config['MINIO_SECRET_KEY'],
-        secure=config['MINIO_SECURE'])
-    found = client.bucket_exists(REPORT_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(REPORT_PATH_IN_MINIO)
-    found = client.bucket_exists(DOC_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(DOC_PATH_IN_MINIO)
-    found = client.bucket_exists(IMAGE_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(IMAGE_PATH_IN_MINIO)
-    found = client.bucket_exists(EXPORT_KB_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(EXPORT_KB_PATH_IN_MINIO)
-    found = client.bucket_exists(IMPORT_KB_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(IMPORT_KB_PATH_IN_MINIO)
-    found = client.bucket_exists(EXPORT_DATASET_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(EXPORT_DATASET_PATH_IN_MINIO)
-    found = client.bucket_exists(IMPORT_DATASET_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(IMPORT_DATASET_PATH_IN_MINIO)
-    found = client.bucket_exists(TESTING_REPORT_PATH_IN_MINIO)
-    if not found:
-        client.make_bucket(TESTING_REPORT_PATH_IN_MINIO)
+    _client = None
+    _initialized = False
+
+    @classmethod
+    def _get_client(cls):
+        """获取 MinIO 客户端，延迟初始化"""
+        if cls._client is None:
+            cls._client = Minio(
+                endpoint=config['MINIO_ENDPOINT'],
+                access_key=config['MINIO_ACCESS_KEY'],
+                secret_key=config['MINIO_SECRET_KEY'],
+                secure=config['MINIO_SECURE'])
+        return cls._client
+
+    @classmethod
+    def _ensure_buckets(cls):
+        """确保所有必需的 bucket 存在"""
+        if cls._initialized:
+            return
+        
+        client = cls._get_client()
+        buckets = [
+            REPORT_PATH_IN_MINIO,
+            DOC_PATH_IN_MINIO,
+            IMAGE_PATH_IN_MINIO,
+            EXPORT_KB_PATH_IN_MINIO,
+            IMPORT_KB_PATH_IN_MINIO,
+            EXPORT_DATASET_PATH_IN_MINIO,
+            IMPORT_DATASET_PATH_IN_MINIO,
+            TESTING_REPORT_PATH_IN_MINIO
+        ]
+        
+        for bucket_name in buckets:
+            try:
+                found = client.bucket_exists(bucket_name)
+                if not found:
+                    client.make_bucket(bucket_name)
+                    logging.info(f"[MinIO] 创建 bucket: {bucket_name}")
+            except Exception as e:
+                logging.error(f"[MinIO] 创建或检查 bucket {bucket_name} 失败: {e}")
+                raise
+        
+        cls._initialized = True
+
+    @property
+    def client(self):
+        """获取 MinIO 客户端属性"""
+        self._ensure_buckets()
+        return self._get_client()
 
     @staticmethod
     async def put_object(bucket_name: str, file_index: str, file_path: str):
@@ -58,7 +78,8 @@ class MinIO():
         @params file_path: 上传文件目录, 绝对路径
         """
         try:
-            await asyncio.to_thread(MinIO.client.fput_object, bucket_name, file_index, file_path)
+            minio_instance = MinIO()
+            await asyncio.to_thread(minio_instance.client.fput_object, bucket_name, file_index, file_path)
             return True
         except Exception as e:
             err = f"上传文件 {file_index} 到桶 {bucket_name} 失败: {e}"
@@ -73,7 +94,8 @@ class MinIO():
         @params file_name: 文件名
         """
         try:
-            MinIO.client.remove_object(bucket_name=bucket_name, object_name=file_index)
+            minio_instance = MinIO()
+            minio_instance.client.remove_object(bucket_name=bucket_name, object_name=file_index)
             return True
         except Exception as e:
             err = f"删除文件 {file_index} 在桶 {bucket_name} 失败: {e}"
@@ -89,7 +111,8 @@ class MinIO():
         @params file_path: 下载指定目录, 绝对路径
         """
         try:
-            await asyncio.to_thread(MinIO.client.fget_object, bucket_name, file_index, file_path)
+            minio_instance = MinIO()
+            await asyncio.to_thread(minio_instance.client.fget_object, bucket_name, file_index, file_path)
             return True
         except Exception as e:
             err = f"下载文件 {file_index} 在桶 {bucket_name} 失败: {e}"
@@ -105,7 +128,8 @@ class MinIO():
         @params expires: 下载链接过期时间
         """
         try:
-            return MinIO.client.presigned_get_object(bucket_name=bucket_name, object_name=file_name, expires=expires)
+            minio_instance = MinIO()
+            return minio_instance.client.presigned_get_object(bucket_name=bucket_name, object_name=file_name, expires=expires)
         except Exception as e:
             err = f"生成文件 {file_name} 在桶 {bucket_name} 的下载链接失败: {e}"
             logging.error("[MinIO] %s", err)

@@ -172,66 +172,47 @@ ACC_RESULT_ANALYSIS_PROMPT:
     忠实值：{faithfulness}
     可解释性：{relevance}
 
-ANSWER_TO_ANSWER_PROMPT:
+FRAGMENT_TO_ANSWER_PROMPT:
   # 英文文本相似度评分提示词
   en: |
-    You are a text analysis expert. Your task is to compare the similarity between two documents and output a score between 0 and 100 with two decimal places.
+    You are a text analysis expert. Your task is to determine whether the current answer is generated based on the given fragment and output a score between 0-100, retaining two decimal places.
     
     Note:
-    #01 Score based on text similarity in three dimensions: semantics, word order, and keywords.
-    #02 If the core expressions of the two documents are consistent, the score will be relatively high.
-    #03 If one document contains the core content of the other, the score will also be relatively high.
-    #04 If there is content overlap between the two documents, the score will be determined by the proportion of the overlap.
-    #05 Output only the score (no other content).
+    #01 Please output only the score (without any other content).
     
-    Example 1:
-    Input - Text 1: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-             Text 2: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-    Output: 100.00
-    
-    Example 2:
-    Input - Text 1: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-             Text 2: openEuler is an open-source operating system designed to support cloud computing and edge computing. It features high performance and high security.
-    Output: 90.00
-    
-    Example 3:
-    Input - Text 1: openEuler is an open-source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-             Text 2: A white horse is not a horse
-    Output: 00.00
-    
-    The following are the given texts:
-    Text 1: {text_1}
-    Text 2: {text_2}
+    ### Example
+    Input 1:
+    Fragment: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Answer: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output 1: 100.00 
+    Input 2:
+    Fragment: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Answer: openEuler is a commercial operating system primarily aimed at enterprise users, emphasizing ease of use and technical support.
+    Output 2: 20.00
+    Below is the given fragment and answer:
+    Fragment: {fragment}
+    Answer: {answer}
+
 
   # 中文文本相似度评分提示词
   中文: |
-    你是一个文本分析专家，你的任务是对比两个文本之间的相似度，并输出一个 0-100 之间的分数（保留两位小数）。
+    你是一个文本分析专家，你的任务是判断当前的答案是否基于给定的片段生成，并输出 0-100 之间的分数，保留两位小数。
     
     注意：
-    #01 请根据文本在语义、语序和关键字三个维度的相似度进行打分。
-    #02 如果两个文本在核心表达上一致，那么分数将相对较高。
-    #03 如果一个文本包含另一个文本的核心内容，那么分数也将相对较高。
-    #04 如果两个文本间存在内容重合，那么将按照重合内容的比例确定分数。
-    #05 仅输出分数，不要输出其他任何内容。
+    #01 请仅输出分数（不要输出其他内容）。
     
-    例子 1：
-    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-           文本 2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-    输出：100.00
-    
-    例子 2：
-    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-           文本 2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能和高安全性等特点。
-    输出：90.00
-    
-    例子 3：
-    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-           文本 2：白马非马
-    输出：00.00
-    
-    下面是给出的文本：
-    文本 1：{text_1}
-    文本 2：{text_2}
+    ### 示例
+    输入1：
+    片段：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    答案：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出1：100.00 
+    输入2：
+    片段：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    答案：openEuler 是一个商业操作系统，主要面向企业用户，强调易用性和技术支持。
+    输出2：20.00
+    以下是给定的片段和答案：
+    片段：{fragment}
+    答案：{answer}
 
 CAL_QA_SCORE_PROMPT:
   en: >-
@@ -240,8 +221,8 @@ CAL_QA_SCORE_PROMPT:
     ### 1. Question Evaluation
     - **Relevance**: Is the question closely related to the topic of the given fragment? Is it accurately based on the fragment content? Does it deviate from or distort the core message of the fragment?
     - **Plausibility**: Is the question formulated clearly and logically coherently? Does it conform to normal language and thinking habits? Is it free of semantic ambiguity, vagueness, or self-contradiction?
-    - **Variety**: If there are multiple questions, are their angles and types sufficiently varied to avoid being overly monotonous or repetitive? Can they explore the fragment content from different perspectives?
     - **Difficulty**: Is the question difficulty appropriate? Not too easy (where answers can be directly copied from the fragment), nor too difficult (where respondents cannot find clues or evidence from the fragment)?
+    - **Completeness**: Does the question cover the key information in the fragment? Does it have a complete subject-predicate-object structure?
 
     ### 2. Answer Evaluation
     - **Accuracy**: Does the answer accurately address the question? Is it consistent with the information in the fragment? Does it contain errors or omit key points?
@@ -274,13 +255,13 @@ CAL_QA_SCORE_PROMPT:
     ### 1. 问题评估
     - **相关性**：问题是否与给定片段的主题紧密相关？是否准确基于片段内容提出？有无偏离或曲解片段的核心信息？
     - **合理性**：问题表述是否清晰、逻辑连贯？是否符合正常的语言表达和思维习惯？不存在语义模糊、歧义或自相矛盾的情况？
-    - **多样性**：若存在多个问题，问题之间的角度和类型是否具有足够多样性（避免过于单一或重复）？能否从不同方面挖掘片段内容？
     - **难度**：问题难度是否适中？既不过于简单（答案可直接从片段中照搬），也不过于困难（回答者难以从片段中找到线索或依据）？
+    - **完整性**：问题是否涵盖了片段中的关键信息？是否主谓宾齐全，表达完整？
 
     ### 2. 答案评估
     - **准确性**：答案是否准确无误地回答了问题？与片段中的信息是否一致？有无错误或遗漏关键要点？
     - **完整性**：答案是否完整，涵盖问题涉及的各个方面？对于需要详细阐述的问题，是否提供了足够的细节和解释？
-    - **简洁性**：在保证回答完整、准确的前提下，答案是否简洁明了？是否避免冗长、啰嗦的表述，能否以简洁语言传达关键信息？
+    - **简洁性**：在保证回答完整、准确的前提下，答案是否简洁明了？是否避免冗长、啰嗦的表述，能否以简洁语言传达关键信息؟
     - **连贯性**：答案逻辑是否清晰？各部分内容之间的衔接是否自然流畅？有无跳跃或混乱的情况？
 
     ### 3. 整体评估
@@ -487,7 +468,8 @@ GENERATE_QUESTION_FROM_CONTENT_PROMPT:
     #02 A single question must not exceed 50 characters. 
     #03 Do not output duplicate questions. 
     #04 The output questions should be diverse, covering different aspects of the text. 
-    #05 Please only output a list of English questions, not other content. 
+    #05 The generated questions should be rich in content, containing key information from the text, and have complete subject-predicate-object structure.
+    #06 Please only output a list of English questions, not other content. 
     Example: 
     Input: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability. 
     Output: ["What is openEuler?","What fields does openEuler support?","What are the characteristics of openEuler?","How secure is openEuler?","How reliable is openEuler?"]
@@ -499,7 +481,8 @@ GENERATE_QUESTION_FROM_CONTENT_PROMPT:
     #02 单个问题长度不超过50个字；
     #03 不要输出重复的问题；
     #04 输出的问题要多样，覆盖文本中的不同方面；
-    #05 请仅输出中文问题列表，不要输出其他内容。
+    #05 生成的问题内容要丰富，要含有文本中的关键信息，并且主谓宾完整；
+    #06 请仅输出中文问题列表，不要输出其他内容。
     例子：
     输入：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
     输出：["openEuler是什么操作系统？","openEuler旨在为哪个领域提供支持？","openEuler具有哪些特点？","openEuler的安全性如何？","openEuler的可靠性如何？"]
@@ -706,3 +689,30 @@ STATEMENTS_TO_QUESTION_PROMPT:
     下面是给出的陈述和问题：
     陈述：{statement}
     问题：{question}
+LLM_PROMPT_TEMPLATE:
+  en: |
+    You are an intelligent assistant. Your task is to answer the user's question based on the background information.
+    Note:
+    #01 If the answer can be derived from the valid content in the background information, please provide the answer.
+    #02 Please answer the user's question in English.
+
+    Example:
+    Background information: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    User's question: What kind of operating system is openEuler?
+    Output: openEuler is an open source operating system designed to support cloud computing and edge computing.
+
+    Background information:
+    {bac_info}
+  中文: |
+    你是一个智能助手你的任务是根据背景信息，回答用户的问题。
+    注意：
+    #01 如果结合背景信息中的有效内容回答用户的问题，请给出答案。
+    #02 请使用中文回答用户的问题
+
+    例子：
+    背景信息：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    用户的问题：openEuler是什么操作系统？
+    输出：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。
+
+    背景信息：
+    {bac_info}

@@ -46,17 +46,22 @@ class KnowledgeBaseManager():
                 stmt = select(KnowledgeBaseEntity).where(
                     KnowledgeBaseEntity.status != KnowledgeBaseStatus.DELETED.value)
                 if req.team_id is not None:
-                    stmt = stmt.where(KnowledgeBaseEntity.team_id == req.team_id)
+                    stmt = stmt.where(
+                        KnowledgeBaseEntity.team_id == req.team_id)
                 if req.kb_id is not None:
                     stmt = stmt.where(KnowledgeBaseEntity.id == req.kb_id)
                 if req.kb_name is not None:
-                    stmt = stmt.where(KnowledgeBaseEntity.name.like(f"%{req.kb_name}%"))
+                    stmt = stmt.where(
+                        KnowledgeBaseEntity.name.like(f"%{req.kb_name}%"))
                 if req.author_name is not None:
-                    stmt = stmt.where(KnowledgeBaseEntity.author_name.like(f"%{req.author_name}%"))
+                    stmt = stmt.where(
+                        KnowledgeBaseEntity.author_name.like(f"%{req.author_name}%"))
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()
-                stmt = stmt.limit(req.page_size).offset((req.page - 1) * req.page_size)
-                stmt = stmt.order_by(KnowledgeBaseEntity.created_time.desc(), KnowledgeBaseEntity.id.desc())
+                stmt = stmt.order_by(
+                    KnowledgeBaseEntity.created_time.desc(), KnowledgeBaseEntity.id.desc())
+                stmt = stmt.limit(req.page_size).offset(
+                    (req.page - 1) * req.page_size)
                 result = await session.execute(stmt)
                 knowledge_base_entities = result.scalars().all()
                 return (total, knowledge_base_entities)
@@ -79,7 +84,10 @@ class KnowledgeBaseManager():
                 if kb_id:
                     stmt = stmt.where(KnowledgeBaseEntity.id == kb_id)
                 if kb_name:
-                    stmt = stmt.where(KnowledgeBaseEntity.name.like(f"%{kb_name}%"))
+                    stmt = stmt.where(
+                        KnowledgeBaseEntity.name.like(f"%{kb_name}%"))
+                stmt = stmt.order_by(
+                    KnowledgeBaseEntity.created_time.desc(), KnowledgeBaseEntity.id.desc())
                 result = await session.execute(stmt)
                 knowledge_base_entities = result.scalars().all()
                 return knowledge_base_entities
@@ -93,7 +101,8 @@ class KnowledgeBaseManager():
         """列出知识库文档类型"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = select(DocumentTypeEntity).where(DocumentTypeEntity.kb_id == kb_id)
+                stmt = select(DocumentTypeEntity).where(
+                    DocumentTypeEntity.kb_id == kb_id)
                 result = await session.execute(stmt)
                 document_type_entities = result.scalars().all()
                 return document_type_entities
@@ -107,10 +116,12 @@ class KnowledgeBaseManager():
         """根据知识库ID更新知识库"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = update(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id).values(**kb_dict)
+                stmt = update(KnowledgeBaseEntity).where(
+                    KnowledgeBaseEntity.id == kb_id).values(**kb_dict)
                 await session.execute(stmt)
                 await session.commit()
-                stmt = select(KnowledgeBaseEntity).where(KnowledgeBaseEntity.id == kb_id)
+                stmt = select(KnowledgeBaseEntity).where(
+                    KnowledgeBaseEntity.id == kb_id)
                 result = await session.execute(stmt)
                 knowledge_base_entity = result.scalars().first()
                 return knowledge_base_entity

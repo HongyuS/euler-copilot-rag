@@ -7,6 +7,7 @@ import json
 import re
 import uuid
 import numpy as np
+import json_repair
 from pydantic import BaseModel, Field
 from data_chain.llm.llm import LLM
 from data_chain.embedding.embedding import Embedding
@@ -25,13 +26,39 @@ class TokenTool:
         stopwords = set(line.strip() for line in f)
 
     @staticmethod
+    # 基于json_repair修复json字符串
+    def repair_json_string(json_string: str) -> str:
+        try:
+            repaired_json = json_repair.json_repair.repair_json(
+                json_string, ensure_ascii=False)
+            return repaired_json
+        except Exception as e:
+            err = f"[TokenTool] 修复json字符串失败 {e}"
+            logging.exception("[TokenTool] %s", err)
+        return json_string
+
+    @staticmethod
+    def loads_json_string(json_string: str):
+        """
+        加载json字符串，若失败则尝试修复
+        """
+        try:
+            return json.loads(json_string)
+        except json.JSONDecodeError as e:
+            warning_msg = f"[TokenTool] 解析JSON字符串失败，尝试修复: {e}"
+            logging.warning(warning_msg)
+            repaired_json_string = TokenTool.repair_json_string(json_string)
+            return json.loads(repaired_json_string)
+
+    @staticmethod
     def filter_stopwords(content: str) -> str:
         """
         过滤停用词
         """
         try:
             words = TokenTool.split_words(content)
-            filtered_words = [word for word in words if word not in TokenTool.stopwords]
+            filtered_words = [
+                word for word in words if word not in TokenTool.stopwords]
             return ' '.join(filtered_words)
         except Exception as e:
             err = f"[TokenTool] 过滤停用词失败 {e}"
@@ -131,7 +158,8 @@ class TokenTool:
         result = []
         try:
             while len(content) > 0:
-                sub_content = TokenTool.get_k_tokens_words_from_content(content, slide_window_size)
+                sub_content = TokenTool.get_k_tokens_words_from_content(
+                    content, slide_window_size)
                 result.append(sub_content)
                 content = content[len(sub_content):]
             return result
@@ -164,7 +192,8 @@ class TokenTool:
     def get_top_k_keywords_and_weights(content: str, k=10) -> list:
         try:
             # 使用jieba提取关键词
-            keyword_weight_list = extract_tags(content, topK=k, withWeight=True)
+            keyword_weight_list = extract_tags(
+                content, topK=k, withWeight=True)
             keywords = [keyword for keyword, weight in keyword_weight_list]
             weights = [weight for keyword, weight in keyword_weight_list]
             return keywords, weights
@@ -184,7 +213,8 @@ class TokenTool:
             filtered_content = ''.join(filtered_words)
             if k is not None:
                 # 如果k不为None，则获取k个token的词
-                filtered_content = TokenTool.get_k_tokens_words_from_content(filtered_content, k)
+                filtered_content = TokenTool.get_k_tokens_words_from_content(
+                    filtered_content, k)
             return filtered_content
         except Exception as e:
             err = f"[TokenTool] 压缩token失败 {e}"
@@ -242,7 +272,8 @@ class TokenTool:
         filtered_words = [
             word for word in words if word not in TokenTool.stopwords
         ]
-        keywords = TokenTool.get_top_k_keywords(''.join(filtered_words), leave_tokens)
+        keywords = TokenTool.get_top_k_keywords(
+            ''.join(filtered_words), leave_tokens)
         keywords = set(keywords)
         sentences = TokenTool.content_to_sentences(content)
         sentence_and_score_list = []
@@ -270,11 +301,14 @@ class TokenTool:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             prompt_template = prompt_dict.get('CONTENT_TO_ABSTRACT_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
-            sentences = TokenTool.split_str_with_slide_window(content, llm.max_tokens//3*2)
+            sentences = TokenTool.split_str_with_slide_window(
+                content, llm.max_tokens//3*2)
             abstract = ''
             for sentence in sentences:
-                abstract = TokenTool.get_k_tokens_words_from_content(abstract, llm.max_tokens//3)
-                sys_call = prompt_template.format(content=sentence, abstract=abstract)
+                abstract = TokenTool.get_k_tokens_words_from_content(
+                    abstract, llm.max_tokens//3)
+                sys_call = prompt_template.format(
+                    content=sentence, abstract=abstract)
                 if language == 'en':
                     user_call = 'Please output a new English abstract based on the text and the existing abstract'
                 else:
@@ -295,7 +329,8 @@ class TokenTool:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             prompt_template = prompt_dict.get('CONTENT_TO_TITLE_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
-            content = TokenTool.get_k_tokens_words_from_content(content, llm.max_tokens)
+            content = TokenTool.get_k_tokens_words_from_content(
+                content, llm.max_tokens)
             sys_call = prompt_template.format(content=content)
             if language == 'en':
                 user_call = 'Please generate a English title based on the text'
@@ -308,7 +343,34 @@ class TokenTool:
             logging.exception("[TokenTool] %s", err)
 
     @staticmethod
-    async def cal_recall(answer_1: str, answer_2: str, llm: LLM, language: str) -> float:
+    def fullwidth_to_halfwidth(s: str) -> str:
+        result = ""
+        for char in s:
+            code_point = ord(char)
+            # 全角空格
+            if code_point == 0x3000:
+                code_point = 0x0020
+            # 其他全角字符
+            elif 0xFF01 <= code_point <= 0xFF5E:
+                code_point -= 0xFEE0
+            result += chr(code_point)
+        return result
+
+    @staticmethod
+    def extract_number_from_string(s: str) -> float:
+        try:
+            match = re.search(r"[-+]?\d*\.\d+|\d+", s)
+            if match:
+                return float(match.group())
+            else:
+                return -1
+        except Exception as e:
+            err = f"[TokenTool] 提取数字失败 {e}"
+            logging.exception("[TokenTool] %s", err)
+            return -1
+
+    @staticmethod
+    async def cal_recall(answer: str, bac_info: str, llm: LLM, language: str) -> float:
         """
         计算recall
         参数：
@@ -319,15 +381,23 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('ANSWER_TO_ANSWER_PROMPT', {})
+            prompt_template = prompt_dict.get('FRAGMENT_TO_ANSWER_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
-            answer_1 = TokenTool.get_k_tokens_words_from_content(answer_1, llm.max_tokens//2)
-            answer_2 = TokenTool.get_k_tokens_words_from_content(answer_2, llm.max_tokens//2)
-            prompt = prompt_template.format(text_1=answer_1, text_2=answer_2)
+            answer = TokenTool.get_k_tokens_words_from_content(
+                answer, llm.max_tokens//8)
+            bac_info = TokenTool.get_k_tokens_words_from_content(
+                bac_info, llm.max_tokens-llm.max_tokens//8)
+            prompt = prompt_template.format(fragment=bac_info, answer=answer)
             sys_call = prompt
-            user_call = '请输出相似度'
+            if language == 'en':
+                user_call = 'Please output the recall score, do not output other content'
+            else:
+                user_call = '请输出分数，不要输出其他内容'
             similarity = await llm.nostream([], sys_call, user_call)
-            return eval(similarity)
+            similarity = TokenTool.fullwidth_to_halfwidth(similarity)
+            similarity = similarity.strip()
+            similarity = TokenTool.extract_number_from_string(similarity)
+            return similarity
         except Exception as e:
             err = f"[TokenTool] 计算recall失败 {e}"
             logging.exception("[TokenTool] %s", err)
@@ -344,7 +414,8 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('CONTENT_TO_STATEMENTS_PROMPT', {})
+            prompt_template = prompt_dict.get(
+                'CONTENT_TO_STATEMENTS_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
             content = TokenTool.compress_tokens(content, llm.max_tokens)
             sys_call = prompt_template.format(content=content)
@@ -355,16 +426,19 @@ class TokenTool:
             if len(statements) == 0:
                 return 0
             score = 0
-            prompt_template = prompt_dict.get('STATEMENTS_TO_QUESTION_PROMPT', {})
+            prompt_template = prompt_dict.get(
+                'STATEMENTS_TO_QUESTION_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
             for statement in statements:
-                statement = TokenTool.get_k_tokens_words_from_content(statement, llm.max_tokens)
-                prompt = prompt_template.format(statement=statement, question=question)
+                statement = TokenTool.get_k_tokens_words_from_content(
+                    statement, llm.max_tokens)
+                prompt = prompt_template.format(
+                    statement=statement, question=question)
                 sys_call = prompt
                 user_call = '请结合文本输出YES或NO'
                 yn = await llm.nostream([], sys_call, user_call)
                 yn = yn.lower()
-                if yn == 'yes':
+                if 'yes' in yn:
                     score += 1
             return score/len(statements)*100
         except Exception as e:
@@ -385,14 +459,17 @@ class TokenTool:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
             prompt_template = prompt_dict.get('QA_TO_STATEMENTS_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
-            question = TokenTool.get_k_tokens_words_from_content(question, llm.max_tokens//8)
-            answer = TokenTool.get_k_tokens_words_from_content(answer, llm.max_tokens//8*7)
+            question = TokenTool.get_k_tokens_words_from_content(
+                question, llm.max_tokens//8)
+            answer = TokenTool.get_k_tokens_words_from_content(
+                answer, llm.max_tokens//8*7)
             prompt = prompt_template.format(question=question, answer=answer)
             sys_call = prompt
             user_call = '请结合问题和答案输出陈诉'
             statements = await llm.nostream([], sys_call, user_call, st_str='[',
                                             en_str=']')
-            prompt_template = prompt_dict.get('STATEMENTS_TO_FRAGMENT_PROMPT', {})
+            prompt_template = prompt_dict.get(
+                'STATEMENTS_TO_FRAGMENT_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
             statements = json.loads(statements)
             if len(statements) == 0:
@@ -400,14 +477,16 @@ class TokenTool:
             score = 0
             content = TokenTool.compress_tokens(content, llm.max_tokens//8*7)
             for statement in statements:
-                statement = TokenTool.get_k_tokens_words_from_content(statement, llm.max_tokens//8)
-                prompt = prompt_template.format(statement=statement, fragment=content)
+                statement = TokenTool.get_k_tokens_words_from_content(
+                    statement, llm.max_tokens//8)
+                prompt = prompt_template.format(
+                    statement=statement, fragment=content)
                 sys_call = prompt
                 user_call = '请输出YES或NO'
                 user_call = user_call
                 yn = await llm.nostream([], sys_call, user_call)
                 yn = yn.lower()
-                if yn == 'yes':
+                if 'yes' in yn:
                     score += 1
             return score/len(statements)*100
         except Exception as e:
@@ -427,6 +506,25 @@ class TokenTool:
         # 计算余弦距离
         cosine_dist = 1 - cosine_similarity
         return cosine_dist
+    # 通过向量计算语义相似度
+
+    @staticmethod
+    async def cal_semantic_similarity(content1: str, content2: str) -> float:
+        """
+        计算语义相似度
+        参数：
+        content1:内容1
+        content2:内容2
+        """
+        try:
+            vector1 = await Embedding.vectorize_embedding(content1)
+            vector2 = await Embedding.vectorize_embedding(content2)
+            similarity = TokenTool.cosine_distance_numpy(vector1, vector2)
+            return (1 - similarity) * 100
+        except Exception as e:
+            err = f"[TokenTool] 计算语义相似度失败 {e}"
+            logging.exception("[TokenTool] %s", err)
+            return -1
 
     @staticmethod
     async def cal_relevance(question: str, answer: str, llm: LLM, language: str) -> float:
@@ -439,20 +537,23 @@ class TokenTool:
         try:
             with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
                 prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-            prompt_template = prompt_dict.get('GENERATE_QUESTION_FROM_CONTENT_PROMPT', {})
+            prompt_template = prompt_dict.get(
+                'GENERATE_QUESTION_FROM_CONTENT_PROMPT', {})
             prompt_template = prompt_template.get(language, '')
-            answer = TokenTool.get_k_tokens_words_from_content(answer, llm.max_tokens)
+            answer = TokenTool.get_k_tokens_words_from_content(
+                answer, llm.max_tokens)
             sys_call = prompt_template.format(k=5, content=answer)
             user_call = '请结合文本输出问题列表'
             question_vector = await Embedding.vectorize_embedding(question)
             qs = await llm.nostream([], sys_call, user_call)
-            qs = json.loads(qs)
+            qs = TokenTool.loads_json_string(qs)
             if len(qs) == 0:
                 return 0
             score = 0
             for q in qs:
                 q_vector = await Embedding.vectorize_embedding(q)
-                score += TokenTool.cosine_distance_numpy(question_vector, q_vector)
+                score += TokenTool.cosine_distance_numpy(
+                    question_vector, q_vector)
             return (score/len(qs)+1)/2*100
         except Exception as e:
             err = f"[TokenTool] 计算relevance失败 {e}"
@@ -528,9 +629,11 @@ class TokenTool:
                     if new_words1[i-1] == new_words2[j-1]:
                         dp[i][j] = dp[i-1][j-1]
                     else:
-                        dp[i][j] = min(dp[i-1][j]+1, dp[i][j-1]+1, dp[i-1][j-1]+1)
+                        dp[i][j] = min(dp[i-1][j]+1, dp[i]
+                                       [j-1]+1, dp[i-1][j-1]+1)
             edit_distance = dp[m][n]
-            score = (1 - edit_distance / max(len(new_words1), len(new_words2))) * 100
+            score = (1 - edit_distance /
+                     max(len(new_words1), len(new_words2))) * 100
             return score
         except Exception as e:
             err = f"[TokenTool] 计算leve失败 {e}"

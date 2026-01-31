@@ -8,6 +8,22 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 from enum import Enum
 
 
+class EmbeddingType(str, Enum):
+    """embedding 服务的类型"""
+    OPENAI = "openai"
+    MINDIE = "mindie"
+
+
+class RerankType(str, Enum):
+    """rerank 服务的类型"""
+    EMPTY = ""
+    ALGORITHM = "algorithm"
+    BAILIAN = "bailian"
+    GUIJILIUDONG = "guijiliudong"
+    VLLM = "vllm"
+    ASCEND = "ascend"
+
+
 class TeamType(str, Enum):
     """团队类型"""
     MYCREATED = "mycreated"
@@ -19,6 +35,43 @@ class TeamStatus(str, Enum):
     """团队状态"""
     EXISTED = "existed"
     DELETED = "deleted"
+
+
+class TeamMessageStatus(str, Enum):
+    """团队消息状态"""
+    EXISTED = "existed"
+    DELETED = "deleted"
+
+
+class TeamUserStaus(str, Enum):
+    """团队用户状态"""
+    EXISTED = "existed"
+    DELETED = "deleted"
+
+
+class RoleStatus(str, Enum):
+    """角色状态"""
+    EXISTED = "existed"
+    DELETED = "deleted"
+
+
+class RoleActionStatus(str, Enum):
+    """角色操作状态"""
+    EXISTED = "existed"
+    DELETED = "deleted"
+
+
+class UserRoleStatus(str, Enum):
+    """用户角色状态"""
+    EXISTED = "existed"
+    DELETED = "deleted"
+
+
+class DeafaultRole(str, Enum):
+    """默认角色"""
+    OWENER = "owner"
+    ADMINISTRATOR = "administrator"
+    MEMBER = "member"
 
 
 class Tokenizer(str, Enum):
@@ -40,6 +93,7 @@ class ParseMethod(str, Enum):
     OCR = "ocr"
     EHANCED = "enhanced"
     QA = "qa"
+    TREE = "tree"
     DEEP = "deep"
     FINE = "fine"
 
@@ -53,8 +107,8 @@ class UserStatus(str, Enum):
 
 class UserMessageType(str, Enum):
     """用户消息类型"""
-    Invitation = "invitation"
-    Application = "application"
+    INVITATION = "invitation"
+    APPLICATION = "application"
 
 
 class UserMessageStatus(str, Enum):
@@ -62,6 +116,7 @@ class UserMessageStatus(str, Enum):
     UNREAD = "unread"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
+    DELETED = "deleted"
 
 
 class KnowledgeBaseStatus(str, Enum):
@@ -196,13 +251,52 @@ class OrderType(str, Enum):
 
 class ActionType(str, Enum):
     """操作类型"""
+    ZH_TEAM = "团队"
+    ZH_USER = "用户"
+    ZH_ROLE = "角色"
+    ZH_KNOWLEDGE_BASE = "知识库"
+    ZH_DOCUMENT = "文档"
+    ZH_CHUNK = "文档片段"
+    ZH_DATASET = "数据集"
+    ZH_DATASET_DATA = "数据集数据"
+    ZH_TESTING = "测试"
+    ZH_TASK = "任务"
+    EN_TEAM = "team"
+    EN_USER = "user"
+    EN_ROLE = "role"
+    EN_KNOWLEDGE_BASE = "knowledge_base"
+    EN_DOCUMENT = "document"
+    EN_CHUNK = "chunk"
+    EN_DATASET = "dataset"
+    EN_DATASET_DATA = "dataset_data"
+    EN_TESTING = "testing"
+    EN_TASK = "task"
+
+
+class IdType(str, Enum):
+    """ID类型"""
     TEAM = "team"
-    USER = "user"
     ROLE = "role"
+    MSG = "msg"
+    USER = "user"
     KNOWLEDGE_BASE = "knowledge_base"
     DOCUMENT = "document"
     CHUNK = "chunk"
     DATASET = "dataset"
-    TESTING = "testing"
     DATASET_DATA = "dataset_data"
+    TESTING = "testing"
+    TEST_CASE = "testing_case"
     TASK = "task"
+
+
+class MessageLevel(str, Enum):
+    """消息等级"""
+    INFO = "info"
+    WARNING = "warning"
+
+
+class LanguageType(str, Enum):
+    """语言类型"""
+
+    CHINESE = "zh"
+    ENGLISH = "en"

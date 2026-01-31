@@ -49,17 +49,16 @@ class EnhancedByLLMSearcher(BaseSearcher):
                 model_name=config['MODEL_NAME'],
                 max_tokens=config['MAX_TOKENS'],
             )
-            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
             while len(chunk_entities) < top_k and rd < max_retry:
                 rd += 1
                 sub_chunk_entities_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(
-                    kb_id, keywords, weights, top_k, doc_ids, banned_ids)
+                    kb_id, query, top_k, doc_ids, banned_ids)
                 chunk_ids = [chunk_entity.id for chunk_entity in sub_chunk_entities_keyword]
                 banned_ids += chunk_ids
                 sub_chunk_entities_vector = []
                 for _ in range(3):
                     try:
-                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=20)
+                        sub_chunk_entities_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k, doc_ids, banned_ids), timeout=300)
                         break
                     except Exception as e:
                         err = f"[EnhancedByLLMSearcher] 向量检索失败，error: {e}"

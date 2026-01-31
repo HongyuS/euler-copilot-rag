@@ -6,12 +6,14 @@ import hashlib
 from typing import Annotated
 from uuid import UUID
 from data_chain.config.config import config
-from data_chain.entities.enum import Embedding, Tokenizer, ParseMethod, SearchMethod
+from data_chain.entities.enum import Embedding, RerankType, Tokenizer, ParseMethod, SearchMethod
 from data_chain.entities.response_data import (
     LLM,
     ListLLMMsg,
     ListLLMResponse,
     ListEmbeddingResponse,
+    RerankMethod,
+    ListRerankResponse,
     ListTokenizerResponse,
     ListParseMethodResponse,
     ListSearchMethodResponse
@@ -38,7 +40,8 @@ async def list_llms_by_user_sub(
         'MAX_TOKENS': config['MAX_TOKENS'],
         'TEMPERATURE': config['TEMPERATURE']
     }
-    config_json = json.dumps(config_params, sort_keys=True, ensure_ascii=False).encode('utf-8')
+    config_json = json.dumps(
+        config_params, sort_keys=True, ensure_ascii=False).encode('utf-8')
     hash_object = hashlib.sha256(config_json)
     hash_hex = hash_object.hexdigest()
     llm = LLM(
@@ -54,6 +57,16 @@ async def list_llms_by_user_sub(
 async def list_embeddings():
     embeddings = [config['EMBEDDING_MODEL_NAME']]
     return ListEmbeddingResponse(result=embeddings)
+
+
+@router.get('/rerank', response_model=ListRerankResponse, dependencies=[Depends(verify_user)])
+async def list_reranks():
+    aloghrithm_rerank = RerankMethod(
+        rerankMethod=RerankType.ALGORITHM, rerankerName="jaccard dis reranker")
+    model_rerank = RerankMethod(
+        rerankMethod=RerankType(config['RERANK_TYPE']), rerankerName=config['RERANK_MODEL_NAME'])
+    reranks = [aloghrithm_rerank, model_rerank]
+    return ListRerankResponse(result=reranks)
 
 
 @router.get('/tokenizer', response_model=ListTokenizerResponse, dependencies=[Depends(verify_user)])

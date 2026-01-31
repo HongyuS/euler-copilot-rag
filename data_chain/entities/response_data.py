@@ -8,9 +8,11 @@ import uuid
 from data_chain.entities.enum import (
     TeamType,
     ActionType,
+    RerankType,
     Tokenizer,
     ParseMethod,
     UserStatus,
+    UserMessageStatus,
     UserMessageType,
     UserMessageStatus,
     KnowledgeBaseStatus,
@@ -27,6 +29,21 @@ from data_chain.entities.enum import (
 from data_chain.parser.parse_result import ParseResult
 
 
+class SpeedTestResult(BaseModel):
+    """速度测试结果"""
+    success: bool = Field(default=False, description="测试是否成功")
+    file_size: int = Field(default=0, description="文件大小（字节）")
+    processing_time_ms: float = Field(default=0.0, description="处理时间（毫秒）")
+
+
+class SpeedTestResponse(BaseModel):
+    """速度测试响应"""
+    code: int = Field(default=200, description="返回码")
+    result: SpeedTestResult = Field(
+        default=SpeedTestResult(), description="速度测试结果")
+    message: str = Field(default="测试失败", description="测试结果消息")
+
+
 class ResponseData(BaseModel):
     """基础返回数据结构"""
 
@@ -38,11 +55,17 @@ class ResponseData(BaseModel):
 class Team(BaseModel):
     """团队信息"""
     team_id: uuid.UUID = Field(description="团队ID", alias="teamId")
-    team_name: str = Field(min_length=1, max_length=30, description="团队名称", alias="teamName")
+    team_name: str = Field(min_length=1, max_length=30,
+                           description="团队名称", alias="teamName")
     description: str = Field(max_length=150, description="团队描述")
-    author_name: str = Field(description="团队创建者的用户ID", alias="authorName")
+    author_id: str = Field(description="团队创建者的用户ID", alias="authorId")
+    author_name: str = Field(description="团队创建者的用户名", alias="authorName")
     member_cnt: int = Field(description="团队成员数量", alias="memberCount")
     is_public: bool = Field(description="是否为公开团队", alias="isPublic")
+    is_my_joined: bool = Field(
+        default=False, description="是否为我加入的团队", alias="isMyJoined")
+    is_my_created: bool = Field(
+        default=False, description="是否为我创建的团队", alias="isMyCreated")
     created_time: str = Field(description="团队创建时间", alias="createdTime")
 
 
@@ -60,36 +83,45 @@ class ListTeamResponse(ResponseData):
 
 class TeamUser(BaseModel):
     """团队成员信息"""
-    user_id: uuid.UUID = Field(description="用户ID", alias="userId")
+    user_id: str = Field(description="用户ID", alias="userId")
     user_name: str = Field(description="用户名", alias="userName")
+    role_id: uuid.UUID = Field(description="角色ID", alias="roleId")
     role_name: str = Field(description="角色名称", alias="roleName")
+    is_editable: bool = Field(
+        default=True, description="是否可编辑", alias="isEditable")
 
 
 class ListTeamUserMsg(BaseModel):
     """GET /team/usr 数据结构"""
     total: int = Field(default=0, description="总数")
-    team_users: list[TeamUser] = Field(default=[], description="团队成员列表", alias="teamUsers")
+    team_users: list[TeamUser] = Field(
+        default=[], description="团队成员列表", alias="teamUsers")
 
 
 class ListTeamUserResponse(ResponseData):
-    result: ListTeamUserMsg = Field(default=ListTeamUserMsg(), description="团队成员列表数据结构")
+    result: ListTeamUserMsg = Field(
+        default=ListTeamUserMsg(), description="团队成员列表数据结构")
 
 
 class TeamMsg(BaseModel):
     """团队信息"""
     msg_id: uuid.UUID = Field(description="消息ID", alias="msgId")
-    author_name: str = Field(description="消息发送者的用户名", alias="authorName")
-    message: str = Field(description="消息内容")
+    author_name: str = Field(description="消息创建者的用户名", alias="authorName")
+    meggage_level: str = Field(description="消息等级", alias="messageLevel")
+    msg: str = Field(description="消息内容")
+    created_time: str = Field(description="消息创建时间", alias="createdTime")
 
 
 class ListTeamMsgMsg(BaseModel):
     """GET /team/msg 数据结构"""
     total: int = Field(default=0, description="总数")
-    team_msgs: list[TeamMsg] = Field(default=[], description="团队消息列表", alias="teamMsgs")
+    team_msgs: list[TeamMsg] = Field(
+        default=[], description="团队消息列表", alias="teamMsgs")
 
 
 class ListTeamMsgResponse(ResponseData):
-    result: ListTeamMsgMsg = Field(default=ListTeamMsgMsg(), description="团队消息列表数据结构")
+    result: ListTeamMsgMsg = Field(
+        default=ListTeamMsgMsg(), description="团队消息列表数据结构")
 
 
 class CreateTeamResponse(ResponseData):
@@ -99,12 +131,12 @@ class CreateTeamResponse(ResponseData):
 
 class InviteTeamUserResponse(ResponseData):
     """POST /team/invitation 响应"""
-    result: Optional[uuid.UUID] = Field(default=None, description="邀请ID")
+    result: list[str] = Field(default=[], description="被邀请的用户ID列表")
 
 
 class JoinTeamResponse(ResponseData):
     """POST /team/application 响应"""
-    result: Optional[uuid.UUID] = Field(default=None, description="申请ID")
+    result: Optional[str] = Field(default=None, description="申请ID")
 
 
 class UpdateTeamResponse(ResponseData):
@@ -114,7 +146,7 @@ class UpdateTeamResponse(ResponseData):
 
 class UpdateTeamUserRoleResponse(ResponseData):
     """PUT /team/usr 响应"""
-    result: Optional[uuid.UUID] = Field(default=None, description="团队成员ID")
+    result: Optional[str] = Field(default=None, description="团队成员ID")
 
 
 class UpdateTeamAuthorResponse(ResponseData):
@@ -129,7 +161,7 @@ class DeleteTeamResponse(ResponseData):
 
 class DeleteTeamUserResponse(ResponseData):
     """DELETE /team/usr 响应"""
-    result: list[uuid.UUID] = Field(default=[], description="团队成员ID列表")
+    result: list[str] = Field(default=[], description="团队成员ID列表")
 
 
 class DocumentType(BaseModel):
@@ -145,37 +177,52 @@ class Knowledgebase(BaseModel):
     author_name: str = Field(description="知识库创建者的用户名", alias="authorName")
     tokenizer: Tokenizer = Field(description="分词器", alias="tokenizer")
     embedding_model: str = Field(description="嵌入模型", alias="embeddingModel")
+    rerank_methond: RerankType = Field(
+        default=RerankType.ALGORITHM, description="知识库使用的rerank模型", alias="rerankMethod")
+    rerank_name: str = Field(
+        default="jaccard dis reranker", description="知识库使用的rerank模型名称", alias="rerankName")
+    separating_characters: Optional[str] = Field(default=None,
+                                                 description="分隔符", alias="separatingCharacters")
     description: str = Field(description="知识库描述", max=150)
     doc_cnt: int = Field(description="知识库文档数量", alias="docCnt")
     doc_size: int = Field(description="知识库文档大小", alias="docSize")
-    upload_count_limit: int = Field(description="知识库单次文件上传数量限制", alias="uploadCountLimit")
-    upload_size_limit: int = Field(description="知识库单次文件上传大小限制", alias="uploadSizeLimit")
-    default_parse_method: ParseMethod = Field(description="默认解析方法", alias="defaultParseMethod")
-    default_chunk_size: int = Field(description="默认分块大小", alias="defaultChunkSize")
+    upload_count_limit: int = Field(
+        description="知识库单次文件上传数量限制", alias="uploadCountLimit")
+    upload_size_limit: int = Field(
+        description="知识库单次文件上传大小限制", alias="uploadSizeLimit")
+    default_parse_method: ParseMethod = Field(
+        description="默认解析方法", alias="defaultParseMethod")
+    default_chunk_size: int = Field(
+        description="默认分块大小", alias="defaultChunkSize")
     created_time: str = Field(description="知识库创建时间", alias="createdTime")
-    doc_types: list[DocumentType] = Field(default=[], description="知识库文档类型列表", alias="docTypes")
+    doc_types: list[DocumentType] = Field(
+        default=[], description="知识库文档类型列表", alias="docTypes")
 
 
 class TeamKnowledgebase(BaseModel):
     """团队知识库信息"""
     team_id: uuid.UUID = Field(description="团队ID", alias="teamId")
     team_name: str = Field(description="团队名称", alias="teamName")
-    kb_list: list[Knowledgebase] = Field(default=[], description="知识库列表", alias="kbList")
+    kb_list: list[Knowledgebase] = Field(
+        default=[], description="知识库列表", alias="kbList")
 
 
 class ListAllKnowledgeBaseMsg(BaseModel):
     """GET /kb 数据结构"""
-    team_knowledge_bases: list[TeamKnowledgebase] = Field(default=[], description="团队知识库列表", alias="teamKnowledgebases")
+    team_knowledge_bases: list[TeamKnowledgebase] = Field(
+        default=[], description="团队知识库列表", alias="teamKnowledgebases")
 
 
 class ListAllKnowledgeBaseResponse(ResponseData):
     """GET /kb 响应"""
-    result: ListAllKnowledgeBaseMsg = Field(default=ListAllKnowledgeBaseMsg(), description="团队知识库列表数据结构")
+    result: ListAllKnowledgeBaseMsg = Field(
+        default=ListAllKnowledgeBaseMsg(), description="团队知识库列表数据结构")
 
 
 class ListKnowledgeBaseMsg(BaseModel):
     total: int = Field(default=0, description="总数")
-    kb_list: list[Knowledgebase] = Field(default=[], description="知识库列表数据结构", alias="kbList")
+    kb_list: list[Knowledgebase] = Field(
+        default=[], description="知识库列表数据结构", alias="kbList")
 
 
 class ListKnowledgeBaseResponse(ResponseData):
@@ -196,7 +243,8 @@ class Task(BaseModel):
     task_status: TaskStatus = Field(description="任务状态", alias="taskStatus")
     task_type: TaskType = Field(description="任务类型", alias="taskType")
     task_completed: float = Field(description="任务完成度", alias="taskCompleted")
-    finished_time: Optional[str] = Field(default=None, description="任务完成时间", alias="finishedTime")
+    finished_time: Optional[str] = Field(
+        default=None, description="任务完成时间", alias="finishedTime")
     created_time: str = Field(description="任务创建时间", alias="createdTime")
 
 
@@ -232,8 +280,10 @@ class Document(BaseModel):
     doc_type: DocumentType = Field(description="文档类型", alias="docType")
     chunk_size: int = Field(description="文档分片大小", alias="chunkSize")
     created_time: str = Field(description="文档创建时间", alias="createdTime")
-    parse_task: Optional[Task] = Field(default=None, description="文档任务", alias="docTask")
-    parse_method: ParseMethod = Field(description="文档解析方法", alias="parseMethod")
+    parse_task: Optional[Task] = Field(
+        default=None, description="文档任务", alias="docTask")
+    parse_method: ParseMethod = Field(
+        description="文档解析方法", alias="parseMethod")
     enabled: bool = Field(description="文档是否启用", alias="enabled")
     author_name: str = Field(description="文档创建者的用户名", alias="authorName")
     status: DocumentStatus = Field(description="文档状态", alias="status")
@@ -242,12 +292,14 @@ class Document(BaseModel):
 class ListDocumentMsg(BaseModel):
     """GET /doc 数据结构"""
     total: int = Field(default=0, description="总数")
-    documents: list[Document] = Field(default=[], description="文档列表", alias="documents")
+    documents: list[Document] = Field(
+        default=[], description="文档列表", alias="documents")
 
 
 class ListDocumentResponse(ResponseData):
     """GET /doc 响应"""
-    result: ListDocumentMsg = Field(default=ListDocumentMsg(), description="文档列表数据结构")
+    result: ListDocumentMsg = Field(
+        default=ListDocumentMsg(), description="文档列表数据结构")
 
 
 class GetDocumentReportResponse(ResponseData):
@@ -266,7 +318,8 @@ class DOC_STATUS(BaseModel):
 
 
 class GetTemporaryDocumentStatusResponse(ResponseData):
-    result: list[DOC_STATUS] = Field(default=[], description="临时文档状态列表", alias="result")
+    result: list[DOC_STATUS] = Field(
+        default=[], description="临时文档状态列表", alias="result")
 
 
 class UploadTemporaryDocumentResponse(ResponseData):
@@ -291,7 +344,8 @@ class ParseDocumentResponse(ResponseData):
 
 class ParseDocumentRealTimeResponse(ResponseData):
     """POST /doc/parse/realtime 响应"""
-    result: list[Union[ParseResult, None]] = Field(default=[], description="文档内容列表")
+    result: list[Union[ParseResult, None]] = Field(
+        default=[], description="文档内容列表")
 
 
 class UpdateDocumentResponse(ResponseData):
@@ -310,6 +364,8 @@ class Chunk(BaseModel):
     chunk_type: ChunkType = Field(description="分片类型", alias="chunkType")
     text: str = Field(description="分片文本")
     enabled: bool = Field(description="分片是否启用", alias="enabled")
+    score: Optional[float] = Field(
+        default=None, description="分片得分", alias="score")
 
 
 class ListChunkMsg(BaseModel):
@@ -320,7 +376,8 @@ class ListChunkMsg(BaseModel):
 
 class ListChunkResponse(ResponseData):
     """GET /chunk 响应"""
-    result: ListChunkMsg = Field(default=ListChunkMsg(), description="分片列表数据结构")
+    result: ListChunkMsg = Field(
+        default=ListChunkMsg(), description="分片列表数据结构")
 
 
 class UpdateChunkResponse(ResponseData):
@@ -338,21 +395,34 @@ class DocChunk(BaseModel):
     doc_id: uuid.UUID = Field(description="文档ID", alias="docId")
     doc_name: str = Field(default="", description="文档名称", alias="docName")
     doc_author: str = Field(default="", description="文档作者", alias="docAuthor")
-    doc_abstract: str = Field(default="", description="文档摘要", alias="docAbstract")
-    doc_extension: str = Field(default="", description="文档扩展名", alias="docExtension")
+    doc_abstract: str = Field(
+        default="", description="文档摘要", alias="docAbstract")
+    doc_extension: str = Field(
+        default="", description="文档扩展名", alias="docExtension")
     doc_size: int = Field(default=0, description="文档大小，单位是KB", alias="docSize")
-    doc_created_at: str = Field(default="", description="文档创建时间", alias="docCreatedAt")
+    doc_created_at: str = Field(
+        default="", description="文档创建时间", alias="docCreatedAt")
     chunks: list[Chunk] = Field(default=[], description="分片列表", alias="chunks")
 
 
 class SearchChunkMsg(BaseModel):
     """Post /chunk/search 数据结构"""
-    doc_chunks: list[DocChunk] = Field(default=[], description="文档分片列表", alias="docChunks")
+    doc_chunks: list[DocChunk] = Field(
+        default=[], description="文档分片列表", alias="docChunks")
+    t_used_in_search: Optional[float] = Field(
+        default=None, description="搜索中使用的时间", alias="tUsedInSearch")
+    t_used_in_rerank: Optional[float] = Field(
+        default=None, description="重排序中使用的时间", alias="tUsedInRerank")
+    t_used_in_surrounding_text_relation: Optional[float] = Field(
+        default=None, description="上下文关系中使用的时间", alias="tUsedInSurroundingTextRelation")
+    t_used_in_text_compression: Optional[float] = Field(
+        default=None, description="文本压缩中使用的时间", alias="tUsedInTextCompression")
 
 
 class SearchChunkResponse(ResponseData):
     """POST /chunk/search 响应"""
-    result: SearchChunkMsg = Field(default=SearchChunkMsg(), description="文档分片列表数据结构")
+    result: SearchChunkMsg = Field(
+        default=SearchChunkMsg(), description="文档分片列表数据结构")
 
 
 class LLM(BaseModel):
@@ -364,15 +434,22 @@ class LLM(BaseModel):
 class Dataset(BaseModel):
     """数据集信息"""
     dataset_id: uuid.UUID = Field(description="数据集ID", alias="datasetId")
-    dataset_name: str = Field(description="数据集名称", min=1, max=20, alias="datasetName")
+    dataset_name: str = Field(
+        description="数据集名称", min=1, max=20, alias="datasetName")
     description: str = Field(description="数据集描述", max=150)
     data_cnt: int = Field(description="数据集条目限制", alias="dataCnt")
-    data_cnt_existed: int = Field(default=0, description="数据集实际条目", alias="dataCntExisted")
-    is_data_cleared: bool = Field(default=False, description="数据集是否进行清洗", alias="isDataCleared")
-    is_chunk_related: bool = Field(default=False, description="数据集进行上下文关联", alias="isChunkRelated")
-    is_imported: bool = Field(default=False, description="数据集是否导入", alias="isImported")
-    llm: Optional[LLM] = Field(default=None, description="生成数据集使用的大模型信息", alias="llm")
-    generate_task: Optional[Task] = Field(default=None, description="数据集生成任务", alias="generateTask")
+    data_cnt_existed: int = Field(
+        default=0, description="数据集实际条目", alias="dataCntExisted")
+    is_data_cleared: bool = Field(
+        default=False, description="数据集是否进行清洗", alias="isDataCleared")
+    is_chunk_related: bool = Field(
+        default=False, description="数据集进行上下文关联", alias="isChunkRelated")
+    is_imported: bool = Field(
+        default=False, description="数据集是否导入", alias="isImported")
+    llm: Optional[LLM] = Field(
+        default=None, description="生成数据集使用的大模型信息", alias="llm")
+    generate_task: Optional[Task] = Field(
+        default=None, description="数据集生成任务", alias="generateTask")
     score: Optional[float] = Field(description="数据集评分", default=None)
     author_name: str = Field(description="数据集创建者的用户名", alias="authorName")
     status: DataSetStatus = Field(description="数据集状态", alias="status")
@@ -381,12 +458,14 @@ class Dataset(BaseModel):
 class ListDatasetMsg(BaseModel):
     """GET /dataset 数据结构"""
     total: int = Field(default=0, description="总数")
-    datasets: list[Dataset] = Field(default=[], description="数据集列表", alias="datasets")
+    datasets: list[Dataset] = Field(
+        default=[], description="数据集列表", alias="datasets")
 
 
 class ListDatasetResponse(ResponseData):
     """GET /dataset 响应"""
-    result: ListDatasetMsg = Field(default=ListDatasetMsg(), description="数据集列表数据结构")
+    result: ListDatasetMsg = Field(
+        default=ListDatasetMsg(), description="数据集列表数据结构")
 
 
 class Data(BaseModel):
@@ -406,7 +485,8 @@ class ListDataInDatasetMsg(BaseModel):
 
 class ListDataInDatasetResponse(ResponseData):
     """GET /dataset/data 响应"""
-    result: ListDataInDatasetMsg = Field(default=ListDataInDatasetMsg(), description="数据列表数据结构")
+    result: ListDataInDatasetMsg = Field(
+        default=ListDataInDatasetMsg(), description="数据列表数据结构")
 
 
 class IsDatasetHaveTestingResponse(ResponseData):
@@ -462,19 +542,30 @@ class DeleteDataResponse(ResponseData):
 class Testing(BaseModel):
     """测试信息"""
     testing_id: uuid.UUID = Field(description="测试ID", alias="testingId")
-    testing_name: str = Field(description="测试名称", min=1, max=20, alias="testingName")
+    testing_name: str = Field(
+        description="测试名称", min=1, max=20, alias="testingName")
     description: str = Field(description="测试描述", max=150)
-    llm: Optional[LLM] = Field(default=None, description="测试使用的大模型信息", alias="llm")
-    search_method: SearchMethod = Field(description="搜索方法", alias="searchMethod")
-    testing_task: Optional[Task] = Field(default=None, description="测试任务", alias="testingTask")
+    llm: Optional[LLM] = Field(
+        default=None, description="测试使用的大模型信息", alias="llm")
+    search_method: SearchMethod = Field(
+        description="搜索方法", alias="searchMethod")
+    testing_task: Optional[Task] = Field(
+        default=None, description="测试任务", alias="testingTask")
     ave_score: float = Field(default=-1, description="综合得分", alias="aveScore")
-    ave_pre: float = Field(default=-1, description="精确率", alias="avePre")   # 精确度
-    ave_rec: float = Field(default=-1, description="召回率", alias="aveRec")  # 召回率
-    ave_fai: float = Field(default=-1, description="忠实值", alias="aveFai")  # 忠实值
-    ave_rel: float = Field(default=-1, description="可解释性", alias="aveRel")  # 可解释性
-    ave_lcs: float = Field(default=-1, description="最长公共子串得分", alias="aveLcs")  # 最长公共子序列得分
-    ave_leve: float = Field(default=-1, description="编辑距离得分", alias="aveLeve")  # 编辑距离得分
-    ave_jac: float = Field(default=-1, description="杰卡德相似系数", alias="aveJac")  # 杰卡德相似系数
+    ave_pre: float = Field(default=-1, description="精确率",
+                           alias="avePre")   # 精确度
+    ave_rec: float = Field(default=-1, description="召回率",
+                           alias="aveRec")  # 召回率
+    ave_fai: float = Field(default=-1, description="忠实值",
+                           alias="aveFai")  # 忠实值
+    ave_rel: float = Field(
+        default=-1, description="可解释性", alias="aveRel")  # 可解释性
+    ave_lcs: float = Field(
+        default=-1, description="最长公共子串得分", alias="aveLcs")  # 最长公共子序列得分
+    ave_leve: float = Field(
+        default=-1, description="编辑距离得分", alias="aveLeve")  # 编辑距离得分
+    ave_jac: float = Field(
+        default=-1, description="杰卡德相似系数", alias="aveJac")  # 杰卡德相似系数
     author_name: str = Field(description="测试创建者的用户名", alias="authorName")
     topk: int = Field(description="检索到的片段数量", alias="topk")
     status: TestingStatus = Field(description="测试状态", alias="status")
@@ -484,18 +575,21 @@ class DatasetTesting(BaseModel):
     """数据集测试信息"""
     dataset_id: uuid.UUID = Field(description="数据集ID", alias="datasetId")
     dataset_name: str = Field(description="数据集名称", alias="datasetName")
-    testings: list[Testing] = Field(default=[], description="测试列表", alias="testings")
+    testings: list[Testing] = Field(
+        default=[], description="测试列表", alias="testings")
 
 
 class ListTestingMsg(BaseModel):
     """GET /testing 数据结构"""
     total: int = Field(default=0, description="总数")
-    dataset_testings: list[DatasetTesting] = Field(default=[], description="数据集测试列表", alias="datasetTestings")
+    dataset_testings: list[DatasetTesting] = Field(
+        default=[], description="数据集测试列表", alias="datasetTestings")
 
 
 class ListTestingResponse(ResponseData):
     """GET /testing 响应"""
-    result: ListTestingMsg = Field(default=ListTestingMsg(), description="测试列表数据结构")
+    result: ListTestingMsg = Field(
+        default=ListTestingMsg(), description="测试列表数据结构")
 
 
 class TestCase(BaseModel):
@@ -518,21 +612,26 @@ class TestCase(BaseModel):
 
 class TestingTestCase(BaseModel):
     """GET /testing/testcase 数据结构"""
-    ave_score: float = Field(default=-1, description="平均综合得分", alias="aveScore")
+    ave_score: float = Field(
+        default=-1, description="平均综合得分", alias="aveScore")
     ave_pre: float = Field(default=-1, description="平均精确率", alias="avePre")
     ave_rec: float = Field(default=-1, description="平均召回率", alias="aveRec")
     ave_fai: float = Field(default=-1, description="平均忠实值", alias="aveFai")
     ave_rel: float = Field(default=-1, description="平均可解释性", alias="aveRel")
-    ave_lcs: float = Field(default=-1, description="平均最长公共子串得分", alias="aveLcs")
-    ave_leve: float = Field(default=-1, description="平均编辑距离得分", alias="aveLeve")
+    ave_lcs: float = Field(
+        default=-1, description="平均最长公共子串得分", alias="aveLcs")
+    ave_leve: float = Field(
+        default=-1, description="平均编辑距离得分", alias="aveLeve")
     ave_jac: float = Field(default=-1, description="平均杰卡德相似系数", alias="aveJac")
     total: int = Field(default=0, description="总数")
-    test_cases: list[TestCase] = Field(default=[], description="测试用例列表", alias="testCases")
+    test_cases: list[TestCase] = Field(
+        default=[], description="测试用例列表", alias="testCases")
 
 
 class ListTestCaseResponse(ResponseData):
     """GET /testing/testcase 响应"""
-    result: TestingTestCase = Field(default=TestingTestCase(), description="测试用例列表数据结构")
+    result: TestingTestCase = Field(
+        default=TestingTestCase(), description="测试用例列表数据结构")
 
 
 class CreateTestingResponsing(ResponseData):
@@ -555,38 +654,57 @@ class DeleteTestingResponse(ResponseData):
     result: list[uuid.UUID] = Field(default=[], description="测试ID列表")
 
 
-class action(BaseModel):
+class Action(BaseModel):
     """操作信息"""
-    action_name: str = Field(description="操作名称", min=1, max=20, alias="actionName")
-    action: str = Field(description="操作", min=1, max=20)
-    is_used: bool = Field(description="是否启用", alias="isUsed")
+    action: str = Field(description="操作")
+    action_name: str = Field(description="操作名称", alias="actionName")
+    is_used: bool = Field(default=False, description="是否启用", alias="isUsed")
 
 
 class TypeAction(BaseModel):
     """不同类别的类别操作"""
     action_type: ActionType = Field(description="操作类型", alias="actionType")
-    actions: list[action] = Field(default=[], description="操作列表", alias="actions")
+    actions: list[Action] = Field(
+        default=[], description="操作列表", alias="actions")
 
 
 class ListActionMsg(BaseModel):
     """GET /role/action 数据结构"""
-    type_actions: list[TypeAction] = Field(default=[], description="操作类型列表", alias="actionTypes")
+    type_actions: list[TypeAction] = Field(
+        default=[], description="操作类型列表", alias="TypeActions")
 
 
 class ListActionResponse(ResponseData):
-    result: ListActionMsg = Field(default=ListActionMsg(), description="操作列表数据结构")
+    result: ListActionMsg = Field(
+        default=ListActionMsg(), description="操作列表数据结构")
 
 
-class role(BaseModel):
+class GetUserRoleMsg(BaseModel):
+    """GET /role 数据结构"""
+    user_sub: str = Field(description="用户ID", alias="userSub")
+    role_id: uuid.UUID = Field(description="角色ID", alias="roleId")
+    role_name: str = Field(description="角色名称", min=1, max=20, alias="roleName")
+    is_owner: bool = Field(description="是否为团队所有者", alias="isOwner")
+
+
+class GetUserRoleResponse(ResponseData):
+    """GET /role 响应"""
+    result: GetUserRoleMsg = Field(description="用户角色数据结构")
+
+
+class Role(BaseModel):
     """角色信息"""
     role_id: uuid.UUID = Field(description="角色ID", alias="roleId")
     role_name: str = Field(description="角色名称", min=1, max=20, alias="roleName")
-    type_actions: list[TypeAction] = Field(default=[], description="操作类型列表", alias="typeActions")
+    is_editable: bool = Field(
+        description="角色是否可编辑", alias="isEditable")
+    type_actions: list[TypeAction] = Field(
+        default=[], description="操作类型列表", alias="typeActions")
 
 
 class ListRoleMsg(BaseModel):
     """GET /role 数据结构"""
-    roles: list[role] = Field(default=[], description="角色列表", alias="roles")
+    roles: list[Role] = Field(default=[], description="角色列表", alias="roles")
 
 
 class ListRoleResponse(ResponseData):
@@ -606,30 +724,43 @@ class UpdateRoleResponse(ResponseData):
 
 class DeleteRoleResponse(ResponseData):
     """DELETE /role 响应"""
-    result: list[uuid.UUID] = Field(default=[], description="角色ID列表")
+    result: Optional[uuid.UUID] = Field(default=[], description="角色ID列表")
 
 
 class UserMsg(BaseModel):
     """用户消息"""
     team_id: uuid.UUID = Field(description="团队ID", alias="teamId")
+    team_name: str = Field(description="团队名称", alias="teamName")
     msg_id: uuid.UUID = Field(description="消息ID", alias="msgId")
-    sender_id: uuid.UUID = Field(description="发送者ID", alias="senderId")
-    sender_name: str = Field(description="发送者名称", alias="senderName")
-    receiver_id: uuid.UUID = Field(description="接收者ID", alias="receiverId")
-    receiver_name: str = Field(description="接收者名称", alias="receiverName")
+    sender_id: Optional[str] = Field(description="发送者ID", alias="senderId")
+    sender_name: Optional[str] = Field(description="发送者名称", alias="senderName")
+    msg_status_to_sender: UserMessageStatus = Field(
+        description="发送者消息状态", alias="msgStatusToSender")
+    receiver_id: Optional[str] = Field(description="接收者ID", alias="receiverId")
+    receiver_name: Optional[str] = Field(
+        description="接收者名称", alias="receiverName")
+    msg_status_to_receiver: UserMessageStatus = Field(
+        description="接收者消息状态", alias="msgStatusToReceiver")
     msg_type: UserMessageType = Field(description="消息类型", alias="msgType")
-    msg_status: UserMessageStatus = Field(description="消息状态", alias="msgStatus")
+    is_editable: bool = Field(description="消息是否可编辑", alias="isEditable")
     created_time: str = Field(description="创建时间", alias="createdTime")
 
 
 class ListUserMessageMsg(BaseModel):
     """GET /usr_msg 数据结构"""
     total: int = Field(default=0, description="总数")
-    user_messages: list[UserMsg] = Field(default=[], description="用户消息列表", alias="userMessages")
+    user_messages: list[UserMsg] = Field(
+        default=[], description="用户消息列表", alias="userMessages")
+
+
+class IsUserMessageExistResponse(ResponseData):
+    """GET /usr_msg/exist 响应"""
+    result: bool = Field(default=False, description="用户消息是否存在")
 
 
 class ListUserMessageResponse(ResponseData):
-    result: ListUserMessageMsg = Field(default=ListUserMessageMsg(), description="用户消息列表数据结构")
+    result: ListUserMessageMsg = Field(
+        default=ListUserMessageMsg(), description="用户消息列表数据结构")
 
 
 class UpdateUserMessageResponse(ResponseData):
@@ -639,13 +770,13 @@ class UpdateUserMessageResponse(ResponseData):
 
 class DeleteUserMessageResponse(ResponseData):
     """DELETE /usr_msg 响应"""
-    result: list[uuid.UUID] = Field(default=[], description="消息ID列表")
+    result: Optional[uuid.UUID] = Field(default=[], description="消息ID列表")
 
 
 class User(BaseModel):
     """用户数据结构"""
-    user_sub: str = Field(description="用户id")
-    user_name: str = Field(description="用户名称")
+    user_sub: str = Field(description="用户id", alias="userSub")
+    user_name: str = Field(description="用户名称", alias="userName")
 
 
 class ListUserMsg(BaseModel):
@@ -675,6 +806,17 @@ class Entity(BaseModel):
 class ListEmbeddingResponse(ResponseData):
     """GET /other/embedding 数据结构"""
     result: list[str] = Field(default=[], description="向量化模型的列表数据结构")
+
+
+class RerankMethod(BaseModel):
+    rerank_method: RerankType = Field(
+        description="重排序模型类型", alias="rerankMethod")
+    reranker_name: str = Field(description="重排序模型描述", alias="rerankerName")
+
+
+class ListRerankResponse(ResponseData):
+    """GET /other/rerank 数据结构"""
+    result: list[RerankMethod] = Field(default=[], description="重排序模型的列表数据结构")
 
 
 class ListTokenizerResponse(ResponseData):

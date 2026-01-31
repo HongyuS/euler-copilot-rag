@@ -172,66 +172,47 @@ ACC_RESULT_ANALYSIS_PROMPT:
     忠实值：{faithfulness}
     可解释性：{relevance}
 
-ANSWER_TO_ANSWER_PROMPT:
+FRAGMENT_TO_ANSWER_PROMPT:
   # 英文文本相似度评分提示词
   en: |
-    You are a text analysis expert. Your task is to compare the similarity between two documents and output a score between 0 and 100 with two decimal places.
+    You are a text analysis expert. Your task is to determine whether the current answer is generated based on the given fragment and output a score between 0-100, retaining two decimal places.
     
     Note:
-    #01 Score based on text similarity in three dimensions: semantics, word order, and keywords.
-    #02 If the core expressions of the two documents are consistent, the score will be relatively high.
-    #03 If one document contains the core content of the other, the score will also be relatively high.
-    #04 If there is content overlap between the two documents, the score will be determined by the proportion of the overlap.
-    #05 Output only the score (no other content).
+    #01 Please output only the score (without any other content).
     
-    Example 1:
-    Input - Text 1: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-             Text 2: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-    Output: 100.00
-    
-    Example 2:
-    Input - Text 1: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-             Text 2: openEuler is an open-source operating system designed to support cloud computing and edge computing. It features high performance and high security.
-    Output: 90.00
-    
-    Example 3:
-    Input - Text 1: openEuler is an open-source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
-             Text 2: A white horse is not a horse
-    Output: 00.00
-    
-    The following are the given texts:
-    Text 1: {text_1}
-    Text 2: {text_2}
+    ### Example
+    Input 1:
+    Fragment: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Answer: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Output 1: 100.00 
+    Input 2:
+    Fragment: openEuler is an open source operating system designed to support cloud computing and edge computing. It features high performance, high security, and high reliability.
+    Answer: openEuler is a commercial operating system primarily aimed at enterprise users, emphasizing ease of use and technical support.
+    Output 2: 20.00
+    Below is the given fragment and answer:
+    Fragment: {fragment}
+    Answer: {answer}
+
 
   # 中文文本相似度评分提示词
   中文: |
-    你是一个文本分析专家，你的任务是对比两个文本之间的相似度，并输出一个 0-100 之间的分数（保留两位小数）。
+    你是一个文本分析专家，你的任务是判断当前的答案是否基于给定的片段生成，并输出 0-100 之间的分数，保留两位小数。
     
     注意：
-    #01 请根据文本在语义、语序和关键字三个维度的相似度进行打分。
-    #02 如果两个文本在核心表达上一致，那么分数将相对较高。
-    #03 如果一个文本包含另一个文本的核心内容，那么分数也将相对较高。
-    #04 如果两个文本间存在内容重合，那么将按照重合内容的比例确定分数。
-    #05 仅输出分数，不要输出其他任何内容。
+    #01 请仅输出分数（不要输出其他内容）。
     
-    例子 1：
-    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-           文本 2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-    输出：100.00
-    
-    例子 2：
-    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-           文本 2：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能和高安全性等特点。
-    输出：90.00
-    
-    例子 3：
-    输入 - 文本 1：openEuler是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
-           文本 2：白马非马
-    输出：00.00
-    
-    下面是给出的文本：
-    文本 1：{text_1}
-    文本 2：{text_2}
+    ### 示例
+    输入1：
+    片段：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    答案：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    输出1：100.00 
+    输入2：
+    片段：openEuler 是一个开源的操作系统，旨在为云计算和边缘计算提供支持。它具有高性能、高安全性和高可靠性等特点。
+    答案：openEuler 是一个商业操作系统，主要面向企业用户，强调易用性和技术支持。
+    输出2：20.00
+    以下是给定的片段和答案：
+    片段：{fragment}
+    答案：{answer}
 
 CAL_QA_SCORE_PROMPT:
   en: >-

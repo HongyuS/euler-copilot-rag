@@ -115,6 +115,8 @@ class ExportKnowledgeBaseWorker(BaseWorker):
             "tokenizer": knowledge_base_entity.tokenizer,
             "description": knowledge_base_entity.description,
             "embedding_model": knowledge_base_entity.embedding_model,
+            "rerank_method": knowledge_base_entity.rerank_method,
+            "rerank_name": knowledge_base_entity.rerank_name,
             "upload_count_limit": knowledge_base_entity.upload_count_limit,
             "upload_size_limit": knowledge_base_entity.upload_size_limit,
             "default_parse_method": knowledge_base_entity.default_parse_method,
@@ -123,7 +125,8 @@ class ExportKnowledgeBaseWorker(BaseWorker):
         }
         doc_type_entities = await KnowledgeBaseManager.list_doc_types_by_kb_id(kb_id)
         for doc_type_entity in doc_type_entities:
-            kb_dict["doc_types"].append({"id": str(doc_type_entity.id), "name": doc_type_entity.name})
+            kb_dict["doc_types"].append(
+                {"id": str(doc_type_entity.id), "name": doc_type_entity.name})
         yaml_path = os.path.join(source_path, "kb_config.yaml")
         with open(yaml_path, "w", encoding="utf-8", errors='ignore') as f:
             yaml.dump(kb_dict, f, allow_unicode=True)
@@ -152,7 +155,8 @@ class ExportKnowledgeBaseWorker(BaseWorker):
         '''从minio下载文档'''
         doc_entities = await DocumentManager.list_all_document_by_kb_id(kb_id)
         for doc_entity in doc_entities:
-            local_path = os.path.join(doc_config_path, f"{doc_entity.id}.{doc_entity.extension}")
+            local_path = os.path.join(
+                doc_config_path, f"{doc_entity.id}.{doc_entity.extension}")
             await MinIO.download_object(DOC_PATH_IN_MINIO, str(doc_entity.id), local_path)
 
     @staticmethod
@@ -226,6 +230,6 @@ class ExportKnowledgeBaseWorker(BaseWorker):
             err = f"[ExportKnowledgeBaseWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
             return None
-        if task_entity.status == TaskStatus.CANCLED or TaskStatus.FAILED.value:
+        if task_entity.status == TaskStatus.CANCLED or task_entity.status == TaskStatus.FAILED.value:
             await MinIO.delete_object(EXPORT_KB_PATH_IN_MINIO, str(task_id))
         return task_id

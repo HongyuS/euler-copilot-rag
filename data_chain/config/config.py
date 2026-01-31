@@ -4,6 +4,7 @@ import uuid
 from dotenv import dotenv_values
 from pydantic import BaseModel, Field
 from typing import List
+from data_chain.entities.enum import EmbeddingType, RerankType
 
 
 class DictBaseModel(BaseModel):
@@ -52,10 +53,17 @@ class ConfigModel(DictBaseModel):
     MAX_TOKENS: int = Field(None, description="最大token数")
     TEMPERATURE: float = Field(default=0.7, description="温度系数")
     # Embedding
-    EMBEDDING_TYPE: str = Field(default="openai", description="embedding 服务的类型")
+    EMBEDDING_TYPE: EmbeddingType = Field(
+        default=EmbeddingType.OPENAI, description="embedding 服务的类型")
     EMBEDDING_API_KEY: str = Field(None, description="embedding服务api key")
     EMBEDDING_ENDPOINT: str = Field(None, description="embedding服务url地址")
     EMBEDDING_MODEL_NAME: str = Field(None, description="embedding模型名称")
+    # Rerank
+    RERANK_TYPE: RerankType = Field(
+        default=RerankType.EMPTY, description="rerank 服务的类型")
+    RERANK_API_KEY: str = Field(None, description="rerank服务api key")
+    RERANK_ENDPOINT: str = Field(None, description="rerank服务url地址")
+    RERANK_MODEL_NAME: str = Field(None, description="rerank模型名称")
     # Token
     SESSION_TTL: int = Field(None, description="用户session过期时间")
     CSRF_KEY: str = Field(None, description="csrf的密钥")
@@ -64,16 +72,22 @@ class ConfigModel(DictBaseModel):
     HALF_KEY2: str = Field(None, description="两层密钥管理组件2")
     HALF_KEY3: str = Field(None, description="两层密钥管理组件3")
     # Prompt file
-    PROMPT_PATH: str = Field(default="./data_chain/common/prompt.yaml", description="prompt路径")
+    PROMPT_PATH: str = Field(
+        default="./data_chain/common/prompt.yaml", description="prompt路径")
     # Stop Words PATH
-    STOP_WORDS_PATH: str = Field(default="./data_chain/common/stopwords.txt", description="停用词表存放位置")
+    STOP_WORDS_PATH: str = Field(
+        default="./data_chain/common/stopwords.txt", description="停用词表存放位置")
     # CPU Limit
     USE_CPU_LIMIT: int = Field(default=64, description="文档解析器使用CPU核数")
     # Task Retry Time limit
     TASK_RETRY_TIME_LIMIT: int = Field(default=3, description="任务重试次数限制")
     # Ocr Method
-    OCR_METHOD: str = Field(default="offline", description="ocr识别方式，online or offline")
-    OCR_API_URL: str = Field(default="", description="ocr在线识别接口地址", pattern=r'^https?://.+')
+    OCR_METHOD: str = Field(
+        default="offline", description="ocr识别方式，online or offline")
+    OCR_API_URL: str = Field(
+        default="", description="ocr在线识别接口地址", pattern=r'^https?://.+')
+    # default user sub
+    DEBUG_USER: str = Field(default="openEuler", description="默认用户标识")
 
 
 class Config:

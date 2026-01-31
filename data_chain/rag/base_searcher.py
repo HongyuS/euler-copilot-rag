@@ -2,12 +2,15 @@
 import uuid
 from pydantic import BaseModel, Field
 import random
+from typing import Union
 from data_chain.logger.logger import logger as logging
 from data_chain.apps.base.convertor import Convertor
 from data_chain.stores.database.database import ChunkEntity
 from data_chain.parser.tools.token_tool import TokenTool
 from data_chain.manager.chunk_manager import ChunkManager
+from data_chain.entities.enum import RerankType
 from data_chain.entities.response_data import Chunk, DocChunk
+from data_chain.rerank.rerank import Rerank
 
 
 class BaseSearcher:
@@ -41,19 +44,32 @@ class BaseSearcher:
             raise Exception(err)
 
     @staticmethod
-    async def rerank(chunk_entities: list[ChunkEntity], query: str) -> list[ChunkEntity]:
+    async def rerank(chunk_entities: list[ChunkEntity], rerank_method: str, query: str) -> list[ChunkEntity]:
         """
         重新排序
         :param list: 检索结果
         :param query: 查询
         :return: 重新排序后的结果
         """
-        score_chunk_entities = []
-        for chunk_entity in chunk_entities:
-            score = TokenTool.cal_jac(chunk_entity.text, query)
-            score_chunk_entities.append((score, chunk_entity))
-        score_chunk_entities.sort(key=lambda x: x[0], reverse=True)
-        sorted_chunk_entities = [chunk_entity for _, chunk_entity in score_chunk_entities]
+        if rerank_method == RerankType.ALGORITHM.value:
+            score_chunk_entities = []
+            for chunk_entity in chunk_entities:
+                score = TokenTool.cal_jac(chunk_entity.text, query)
+                score_chunk_entities.append((score, chunk_entity))
+            score_chunk_entities.sort(key=lambda x: x[0], reverse=True)
+            sorted_chunk_entities = [chunk_entity for _,
+                                        chunk_entity in score_chunk_entities]
+        else:
+            text = []
+            for chunk_entity in chunk_entities:
+                text.append(chunk_entity.text)
+            try:
+                rerank_index = await Rerank.rerank(query, text, top_k=len(text))
+            except Exception as e:
+                err = f"[BaseSearch] 重新排序失败，error: {e}"
+                logging.exception(err)
+                return chunk_entities
+            sorted_chunk_entities = [chunk_entities[i] for i in rerank_index]
         return sorted_chunk_entities
 
     @staticmethod

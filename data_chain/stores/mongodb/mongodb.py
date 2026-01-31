@@ -21,6 +21,7 @@ class Session(BaseModel):
     id: str = Field(alias="_id")
     ip: str
     user_sub: Optional[str] = Field(default=None)
+    user_name: Optional[str] = Field(default=None)
     nonce: Optional[str] = Field(default=None)
     expired_at: datetime
 

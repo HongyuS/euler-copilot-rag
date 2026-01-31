@@ -29,7 +29,8 @@ class MdParser(BaseParser):
             cells = row.find_all(['th', 'td'])
 
             # 提取单元格中的文本，并去除多余的空白字符
-            row_data = [cell.get_text(strip=True, separator=' ') for cell in cells]
+            row_data = [cell.get_text(strip=True, separator=' ')
+                        for cell in cells]
 
             if row_data:  # 如果该行有数据
                 table_data.append(row_data)
@@ -79,7 +80,7 @@ class MdParser(BaseParser):
                     logging.error(f"[MdParser] 处理非标签节点失败: {e}")
 
                 continue
-            if element.name == 'p' or element.name == 'ol' or element.name == 'hr':
+            if element.name == 'p' or element.name == 'ol' or element.name == 'hr' or element.name == 'ul' or element.name == 'div' or element.name == 'pre' or element.name == 'strong':
                 inner_html = ''.join(str(child) for child in element.children)
                 child_subtree = await MdParser.build_subtree(inner_html, current_level+1)
                 parse_topology_type = ChunkParseTopology.TREENORMAL if len(
@@ -99,7 +100,7 @@ class MdParser(BaseParser):
                     node = ParseNode(
                         id=uuid.uuid4(),
                         lv=current_level,
-                        parse_topology_type=ChunkParseTopology.TREELEAF,
+                        parse_topology_type=parse_topology_type,
                         content=text,
                         type=ChunkType.TEXT,
                         link_nodes=[]
@@ -110,7 +111,7 @@ class MdParser(BaseParser):
                     level = int(element.name[1:])
                 except Exception:
                     level = current_level
-                title = element.get_text()
+                title = element.get_text().strip()
 
                 content_elements = []
                 while current_level_elements:
@@ -127,19 +128,26 @@ class MdParser(BaseParser):
                     content_html = ''.join(str(el) for el in content_elements)
                     child_subtree = await MdParser.build_subtree(content_html, level)
                     parse_topology_type = ChunkParseTopology.TREENORMAL
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        title=title,
+                        lv=level,
+                        parse_topology_type=parse_topology_type,
+                        content="",
+                        type=ChunkType.TEXT,
+                        link_nodes=child_subtree
+                    )
                 else:
-                    child_subtree = []
                     parse_topology_type = ChunkParseTopology.TREELEAF
-
-                node = ParseNode(
-                    id=uuid.uuid4(),
-                    title=title,
-                    lv=level,
-                    parse_topology_type=parse_topology_type,
-                    content="",
-                    type=ChunkType.TEXT,
-                    link_nodes=child_subtree
-                )
+                    text = title
+                    node = ParseNode(
+                        id=uuid.uuid4(),
+                        lv=current_level,
+                        parse_topology_type=parse_topology_type,
+                        content=text,
+                        type=ChunkType.TEXT,
+                        link_nodes=[]
+                    )
                 subtree.append(node)
             elif element.name == 'code':
                 code_text = element.get_text().strip()

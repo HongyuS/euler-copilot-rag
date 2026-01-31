@@ -35,3 +35,18 @@ class SessionManager:
             raise e
 
         return user_sub
+
+    @staticmethod
+    async def get_user_info(session_id: str) -> Session:
+        """从Session中获取用户信息"""
+        try:
+            collection = MongoDB().get_collection("session")
+            data = await collection.find_one({"_id": session_id})
+            if not data:
+                return None
+            session = Session(**data)
+            return session
+        except Exception as e:
+            err = "从Session中获取用户信息失败"
+            logging.error("[SessionManager] %s", err)
+            raise e

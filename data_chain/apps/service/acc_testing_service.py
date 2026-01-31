@@ -17,7 +17,7 @@ from data_chain.entities.response_data import (
 )
 from data_chain.apps.base.convertor import Convertor
 from data_chain.apps.service.task_queue_service import TaskQueueService
-from data_chain.manager.knowledge_manager import KnowledgeBaseManager
+from data_chain.manager.user_manager import UserManager
 from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.task_report_manager import TaskReportManager
 from data_chain.manager.dataset_manager import DatasetManager
@@ -26,6 +26,7 @@ from data_chain.manager.testing_manager import TestingManager
 from data_chain.manager.testcase_manager import TestCaseManager
 from data_chain.manager.team_manager import TeamManager
 from data_chain.manager.role_manager import RoleManager
+from data_chain.manager.team_message_manager import TeamMessageManager
 from data_chain.stores.minio.minio import MinIO
 from data_chain.entities.enum import TestingStatus, TaskType, TaskStatus
 from data_chain.entities.common import TESTING_REPORT_PATH_IN_MINIO
@@ -56,9 +57,11 @@ class TestingService:
         try:
             total, dataset_entities = await TestingManager.list_testing_unique_datasets(req)
             dataset_entities.sort(key=lambda x: x.created_at, reverse=True)
-            dataset_ids = [dataset_entity.id for dataset_entity in dataset_entities]
+            dataset_ids = [
+                dataset_entity.id for dataset_entity in dataset_entities]
             dataset_entities = await DatasetManager.list_datasets_by_dataset_ids(dataset_ids)
-            dataset_dict = {dataset_entity.id: dataset_entity for dataset_entity in dataset_entities}
+            dataset_dict = {
+                dataset_entity.id: dataset_entity for dataset_entity in dataset_entities}
             dataset_testings = []
             llm = await Convertor.convert_llm_config_to_llm()
             testing_ids = []
@@ -67,7 +70,8 @@ class TestingService:
             for testing_entity in testing_entities:
                 if testing_entity.dataset_id not in dataset_testing_dict:
                     dataset_testing_dict[testing_entity.dataset_id] = []
-                dataset_testing_dict[testing_entity.dataset_id].append(testing_entity)
+                dataset_testing_dict[testing_entity.dataset_id].append(
+                    testing_entity)
             for dataset_id in dataset_ids:
                 dataset_entity = dataset_dict.get(dataset_id)
                 testing_entities = await TestingManager.list_testing_by_dataset_id(dataset_id)
@@ -87,12 +91,14 @@ class TestingService:
             task_report_entities = await TaskReportManager.list_current_task_report_by_task_ids(
                 [task.id for task in task_entities]
             )
-            task_report_dict = {task_report.task_id: task_report for task_report in task_report_entities}
+            task_report_dict = {
+                task_report.task_id: task_report for task_report in task_report_entities}
             for dataset_testing in dataset_testings:
                 for testing in dataset_testing.testings:
                     task_entity = task_dict.get(testing.testing_id, None)
                     if task_entity:
-                        task_report_entity = task_report_dict.get(task_entity.id, None)
+                        task_report_entity = task_report_dict.get(
+                            task_entity.id, None)
                         task = await Convertor.convert_task_entity_to_task(task_entity, task_report_entity)
                         testing.testing_task = task
 
@@ -152,10 +158,11 @@ class TestingService:
         """创建测试"""
         try:
             dataset_entity = await DatasetManager.get_dataset_by_dataset_id(req.dataset_id)
-            testing_entity = await Convertor.convert_create_testing_request_to_testing_entity(user_sub, dataset_entity.team_id, dataset_entity.kb_id, req)
+            user_entity = await UserManager.get_user_by_id(user_sub)
+            testing_entity = await Convertor.convert_create_testing_request_to_testing_entity(user_sub, user_entity.name, dataset_entity.team_id, dataset_entity.kb_id, req)
             testing_entity = await TestingManager.add_testing(testing_entity)
             task_id = await TaskQueueService.init_task(TaskType.TESTING_RUN.value, testing_entity.id)
-            return task_id
+            return testing_entity.id, task_id
         except Exception as e:
             err = "创建测试失败"
             logging.exception("[TestingService] %s", err)
@@ -204,7 +211,8 @@ class TestingService:
             for task_entity in task_entities:
                 await TaskQueueService.stop_task(task_entity.id)
             testing_entities = await TestingManager.update_testing_by_testing_ids(testing_ids, {"status": TestingStatus.DELETED.value})
-            testing_ids = [testing_entity.id for testing_entity in testing_entities]
+            testing_ids = [
+                testing_entity.id for testing_entity in testing_entities]
             return testing_ids
         except Exception as e:
             err = "删除测试失败"

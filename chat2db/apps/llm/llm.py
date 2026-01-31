@@ -32,7 +32,8 @@ class LLM:
             temperature=self.temperature,
             stream=True,
             stream_options={"include_usage": True},
-            timeout=300
+            timeout=300,
+            extra_body={"enable_thinking": False}
         )  # type: ignore[]
 
     async def data_producer(self, q: asyncio.Queue, history, system_call, user_call):

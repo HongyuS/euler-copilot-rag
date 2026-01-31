@@ -116,7 +116,8 @@ class ExportDataSetWorker(BaseWorker):
             cleaned_value = invalid_chars.sub('', value)
 
             # 额外处理常见问题字符（如替换冒号、斜杠等）
-            problematic_chars = {'\\': '', '/': '', '*': '', '?': '', '"': "'", '<': '', '>': '', ':': ''}
+            problematic_chars = {'\\': '', '/': '', '*': '',
+                                 '?': '', '"': "'", '<': '', '>': '', ':': ''}
             for char, replacement in problematic_chars.items():
                 cleaned_value = cleaned_value.replace(char, replacement)
 
@@ -219,7 +220,7 @@ class ExportDataSetWorker(BaseWorker):
             err = f"[ImportDataSetWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
             return None
-        if task_entity.status == TaskStatus.CANCLED or TaskStatus.FAILED.value:
+        if task_entity.status == TaskStatus.CANCLED or task_entity.status == TaskStatus.FAILED.value:
             await MinIO.delete_object(
                 EXPORT_DATASET_PATH_IN_MINIO,
                 str(task_entity.id)

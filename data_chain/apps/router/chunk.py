@@ -16,7 +16,13 @@ from data_chain.entities.response_data import (
     UpdateChunkResponse,
     UpdateChunkEnabledResponse
 )
+from data_chain.entities.enum import IdType, MessageLevel
 from data_chain.apps.service.router_service import get_route_info
+from data_chain.apps.exceptions import (
+    ChunkPermissionDeniedException,
+    DocumentPermissionDeniedException
+)
+from data_chain.apps.service.team_service import TeamService
 from data_chain.apps.service.document_service import DocumentService
 from data_chain.apps.service.chunk_service import ChunkService
 router = APIRouter(prefix='/chunk', tags=['Chunk'])
@@ -29,8 +35,9 @@ async def list_chunks_by_document_id(
         req: Annotated[ListChunkRequest, Body()],
 ):
     if not (await DocumentService.validate_user_action_to_document(user_sub, req.doc_id, action)):
-        raise Exception("用户没有权限访问该文档的分片")
+        raise ChunkPermissionDeniedException("访问该文档的分片", str(req.doc_id))
     list_chunk_msg = await ChunkService.list_chunks_by_document_id(req)
+    await TeamService.add_team_msg(user_sub, req.doc_id, IdType.DOCUMENT, MessageLevel.INFO, '查看了知识库{kbName}的文档《{documentName}》的分片列表', 'knowledge base {kbName} Document {documentName} chunk list viewed')
     return ListChunkResponse(result=list_chunk_msg)
 
 
@@ -50,8 +57,9 @@ async def update_chunk_by_id(user_sub: Annotated[str, Depends(get_user_sub)],
                              chunk_id: Annotated[UUID, Query(alias="chunkId")],
                              req: Annotated[UpdateChunkRequest, Body()]):
     if not (await ChunkService.validate_user_action_to_chunk(user_sub, chunk_id, action)):
-        raise Exception("用户没有权限访问该文档的分片")
+        raise ChunkPermissionDeniedException("更新分片", str(chunk_id))
     chunk_id = await ChunkService.update_chunk_by_id(chunk_id, req)
+    await TeamService.add_team_msg(user_sub, chunk_id, IdType.CHUNK, MessageLevel.INFO, '更新了知识库{kbName}的文档《{documentName}》的分片', 'knowledge base {kbName} Document {documentName} chunk updated')
     return UpdateChunkResponse(result=chunk_id)
 
 
@@ -62,6 +70,8 @@ async def update_chunk_enabled_by_id(user_sub: Annotated[str, Depends(get_user_s
                                      enabled: Annotated[bool, Query()]):
     for chunk_id in chunk_ids:
         if not (await ChunkService.validate_user_action_to_chunk(user_sub, chunk_id, action)):
-            raise Exception("用户没有权限访问该文档的分片")
+            raise ChunkPermissionDeniedException("访问分片", str(chunk_id))
     chunk_ids = await ChunkService.update_chunks_enabled_by_id(chunk_ids, enabled)
+    for chunk_id in chunk_ids:
+        await TeamService.add_team_msg(user_sub, chunk_id, IdType.CHUNK, MessageLevel.INFO, '更新了知识库{kbName}的文档《{documentName}》的分片启用状态', 'knowledge base {kbName} Document {documentName} chunk enabled status updated')
     return UpdateChunkEnabledResponse(result=chunk_ids)

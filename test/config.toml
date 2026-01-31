@@ -1,6 +1,6 @@
 [embedding]
 embedding_type = "openai"
-embedding_endpoint = "https://api.siliconflow.cn/v1"
+embedding_endpoint = "https://api.siliconflow.cn/v1/embeddings"
 embedding_api_key = "sk-123456"
 embedding_model_name = "BAAI/bge-m3"
 
