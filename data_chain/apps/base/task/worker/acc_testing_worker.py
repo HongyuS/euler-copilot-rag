@@ -139,7 +139,9 @@ class TestingWorker(BaseWorker):
         testcase_entities = []
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-        prompt_template = prompt_dict.get('LLM_PROMPT_TEMPLATE', '')
+        prompt_template = prompt_dict.get('LLM_PROMPT_TEMPLATE', {})
+        prompt_template = prompt_template.get(
+            language, '')
         for qa_entity in qa_entities:
             question = qa_entity.question
             answer = qa_entity.answer
@@ -147,7 +149,8 @@ class TestingWorker(BaseWorker):
             chunk_entities = await BaseSearcher.search(testing_entity.search_method, testing_entity.kb_id, question, top_k=testing_entity.top_k, doc_ids=None, banned_ids=[])
             related_chunk_entities = []
             banned_ids = [chunk_entity.id for chunk_entity in chunk_entities]
-            divide_tokens = llm.max_tokens // len(chunk_entities) if chunk_entities else llm.max_tokens
+            divide_tokens = llm.max_tokens // len(
+                chunk_entities) if chunk_entities else llm.max_tokens
             leave_tokens = 0
             token_sum = 0
             for chunk_entity in chunk_entities:
@@ -177,22 +180,22 @@ class TestingWorker(BaseWorker):
                 for chunk_entity in chunk_entities:
                     sub_bac_info += chunk_entity.text
                 bac_info += sub_bac_info+'\n'
-            bac_info = TokenTool.get_k_tokens_words_from_content(bac_info, llm.max_tokens//8*7)
             prompt = prompt_template.format(
-                bac_info=bac_info
+                bac_info=(TokenTool.get_k_tokens_words_from_content(
+                    bac_info[:], llm.max_tokens//8*7))
             )
             llm_answer = await llm.nostream([], prompt, question)
             sub_scores = []
-            pre = await TokenTool.cal_precision(question, llm_answer, llm, language)
+            pre = await TokenTool.cal_precision(question[:], llm_answer[:], llm, language)
             if pre != -1:
                 sub_scores.append(pre)
-            rec = await TokenTool.cal_recall(answer, bac_info, llm, language)
+            rec = await TokenTool.cal_recall(answer[:], bac_info[:], llm, language)
             if rec != -1:
                 sub_scores.append(rec)
-            fai = await TokenTool.cal_faithfulness(question, llm_answer, bac_info, llm, language)
+            fai = await TokenTool.cal_faithfulness(question[:], llm_answer[:], bac_info[:], llm, language)
             if fai != -1:
                 sub_scores.append(fai)
-            rel = await TokenTool.cal_relevance(question, llm_answer, llm, language)
+            rel = await TokenTool.cal_relevance(question[:], llm_answer[:], llm, language)
             if rel != -1:
                 sub_scores.append(rel)
             lcs = TokenTool.cal_lcs(answer, llm_answer)
@@ -327,7 +330,8 @@ class TestingWorker(BaseWorker):
             cleaned_value = invalid_chars.sub('', value)
 
             # 额外处理常见问题字符（如替换冒号、斜杠等）
-            problematic_chars = {'\\': '', '/': '', '*': '', '?': '', '"': "'", '<': '', '>': '', ':': ''}
+            problematic_chars = {'\\': '', '/': '', '*': '',
+                                 '?': '', '"': "'", '<': '', '>': '', ':': ''}
             for char, replacement in problematic_chars.items():
                 cleaned_value = cleaned_value.replace(char, replacement)
 
@@ -371,12 +375,16 @@ class TestingWorker(BaseWorker):
             'jac(杰卡德相似度)': []
         }
         for test_case_entity in testcase_entities:
-            test_case_dict['question'].append(clean_value(test_case_entity.question))
-            test_case_dict['answer'].append(clean_value(test_case_entity.answer))
+            test_case_dict['question'].append(
+                clean_value(test_case_entity.question))
+            test_case_dict['answer'].append(
+                clean_value(test_case_entity.answer))
             test_case_dict['chunk'].append(clean_value(test_case_entity.chunk))
-            test_case_dict['doc_name'].append(clean_value(test_case_entity.doc_name))
+            test_case_dict['doc_name'].append(
+                clean_value(test_case_entity.doc_name))
             test_case_dict['llm_answer'].append(test_case_entity.llm_answer)
-            test_case_dict['related_chunk'].append(test_case_entity.related_chunk)
+            test_case_dict['related_chunk'].append(
+                test_case_entity.related_chunk)
             test_case_dict['score(综合得分)'].append(test_case_entity.score)
             test_case_dict['pre(准确率)'].append(test_case_entity.pre)
             test_case_dict['rec(召回率)'].append(test_case_entity.rec)
@@ -387,9 +395,12 @@ class TestingWorker(BaseWorker):
             test_case_dict['jac(杰卡德相似度)'].append(test_case_entity.jac)
         test_case_df = pd.DataFrame(test_case_dict)
         with pd.ExcelWriter(xlsx_path, engine='xlsxwriter') as writer:
-            model_config_df.to_excel(writer, sheet_name='config(配置)', index=False)
-            ave_result_df.to_excel(writer, sheet_name='ave_result(平均结果)', index=False)
-            test_case_df.to_excel(writer, sheet_name='test_case(测试结果)', index=False)
+            model_config_df.to_excel(
+                writer, sheet_name='config(配置)', index=False)
+            ave_result_df.to_excel(
+                writer, sheet_name='ave_result(平均结果)', index=False)
+            test_case_df.to_excel(
+                writer, sheet_name='test_case(测试结果)', index=False)
         await MinIO.put_object(
             TESTING_REPORT_PATH_IN_MINIO,
             str(testing_entity.id),

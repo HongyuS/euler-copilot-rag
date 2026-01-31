@@ -18,6 +18,10 @@ from data_chain.entities.request_data import (
 from data_chain.entities.response_data import (
     User,
     Team,
+    Role,
+    TeamUser,
+    TeamMsg,
+    UserMsg,
     Knowledgebase,
     DocumentType as DocumentTypeResponse,
     Document,
@@ -33,19 +37,27 @@ from data_chain.entities.response_data import (
 from data_chain.entities.enum import (
     UserStatus,
     TeamStatus,
+    UserMessageStatus,
+    UserMessageType,
     TaskType,
     TaskStatus,
     KnowledgeBaseStatus,
     DocumentStatus,
     ChunkType,
+    MessageLevel,
     SearchMethod,
     TestingStatus,
-    TestCaseStatus
+    TestCaseStatus,
+    LanguageType
 )
 from data_chain.entities.common import default_roles
 from data_chain.stores.database.database import (
     UserEntity,
     TeamEntity,
+    TeamUserEntity,
+    TeamMessageEntity,
+    UserMessageEntity,
+    RoleEntity,
     KnowledgeBaseEntity,
     DocumentTypeEntity,
     DocumentEntity,
@@ -81,10 +93,14 @@ class Convertor:
             raise e
 
     @staticmethod
-    async def convert_user_sub_to_user_entity(user_sub: str) -> UserEntity:
-        """将用户ID转换为用户实体"""
+    async def convert_user_sub_and_user_name_to_user_entity(user_sub: str, user_name: str = None) -> UserEntity:
+        """将用户ID转换为用户实体（带用户名）"""
         try:
-            user_entity = UserEntity(id=user_sub, name=user_sub, status=UserStatus.ACTIVE)
+            # 如果用户不存在，创建新用户
+            # 使用传入的用户名，如果没有则回退到user_sub
+            final_user_name = user_name if user_name else user_sub
+            user_entity = UserEntity(
+                id=user_sub, name=final_user_name, status=UserStatus.ACTIVE)
             return user_entity
         except Exception as e:
             err = "用户ID转换为用户实体失败"
@@ -95,7 +111,7 @@ class Convertor:
     async def convert_user_entity_to_user(user_entity: UserEntity) -> User:
         """将用户实体转换为用户"""
         try:
-            user = User(id=user_entity.id, name=user_entity.name)
+            user = User(userSub=user_entity.id, userName=user_entity.name)
             return user
         except Exception as e:
             err = "用户实体转换为用户失败"
@@ -104,12 +120,12 @@ class Convertor:
 
     @staticmethod
     async def convert_create_team_request_to_team_entity(
-            user_sub: str, req: CreateTeamRequest) -> TeamEntity:
+            user_sub: str, user_name: str, req: CreateTeamRequest) -> TeamEntity:
         """将创建团队请求转换为团队实体"""
         try:
             team_entity = TeamEntity(
                 author_id=user_sub,
-                author_name=user_sub,
+                author_name=user_name,
                 name=req.team_name,
                 description=req.description,
                 member_cnt=1,
@@ -147,6 +163,7 @@ class Convertor:
                 teamId=team_entity.id,
                 teamName=team_entity.name,
                 description=team_entity.description,
+                authorId=team_entity.author_id,
                 authorName=team_entity.author_name,
                 memberCount=team_entity.member_cnt,
                 isPublic=team_entity.is_public,
@@ -170,6 +187,106 @@ class Convertor:
             return team_user_entity
         except Exception as e:
             err = "用户ID和团队ID转换为团队用户实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_user_entity_and_role_entity_to_team_user(
+            user_entity: UserEntity, role_entity: RoleEntity) -> TeamUser:
+        """将团队用户实体转换为团队用户"""
+        try:
+            team_user = TeamUser(
+                userId=user_entity.id,
+                userName=user_entity.name,
+                roleId=role_entity.id,
+                roleName=role_entity.name
+            )
+            return team_user
+        except Exception as e:
+            err = "团队用户实体转换为团队用户失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_user_sub_team_id_and_message_to_team_message_entity(
+            user_sub: str, team_id: uuid.UUID, message_level: MessageLevel, zh_message: str, en_message: str) -> TeamMessageEntity:
+        """将用户ID、团队ID和消息转换为团队消息实体"""
+        try:
+            team_message_entity = TeamMessageEntity(
+                team_id=team_id,
+                author_id=user_sub,
+                author_name=user_sub,
+                message_level=message_level.value,
+                zh_message=zh_message,
+                en_message=en_message,
+                status=TeamStatus.EXISTED.value
+            )
+            return team_message_entity
+        except Exception as e:
+            err = "用户ID、团队ID和消息转换为团队消息实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_team_message_entity_to_team_message(language: LanguageType,
+                                                          team_message_entity: TeamMessageEntity) -> TeamMsg:
+        """将团队消息实体转换为团队消息"""
+        try:
+            message = ''
+            if language == LanguageType.CHINESE:
+                message = team_message_entity.zh_message
+            else:
+                message = team_message_entity.en_message
+            team_msg = TeamMsg(
+                msgId=team_message_entity.id,
+                authorName=team_message_entity.author_name,
+                messageLevel=MessageLevel(team_message_entity.message_level),
+                msg=message,
+                createdTime=team_message_entity.created_time.strftime(
+                    '%Y-%m-%d %H:%M')
+            )
+            return team_msg
+        except Exception as e:
+            err = "团队消息实体转换为团队消息失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
+    async def convert_user_sub_and_user_message_entity_to_user_message(
+            user_sub: str, user_message_entity: UserMessageEntity) -> UserMsg:
+        """将用户消息实体转换为用户消息"""
+        try:
+            is_editable = False
+            if user_message_entity.status_to_receiver == UserMessageStatus.UNREAD.value:
+                if user_sub == user_message_entity.receiver_id:
+                    is_editable = True
+                elif user_sub != user_message_entity.sender_id and user_message_entity.is_to_all:
+                    is_editable = True
+            recviver_id = user_message_entity.receiver_id
+            recviver_name = user_message_entity.receiver_name
+            if user_message_entity.is_to_all:
+                recviver_id = ""
+                recviver_name = "all"
+            user_msg = UserMsg(
+                teamId=user_message_entity.team_id,
+                teamName=user_message_entity.team_name,
+                msgId=user_message_entity.id,
+                senderId=user_message_entity.sender_id,
+                senderName=user_message_entity.sender_name,
+                msgStatusToSender=UserMessageStatus(
+                    user_message_entity.status_to_sender),
+                receiverId=recviver_id,
+                receiverName=recviver_name,
+                msgStatusToReceiver=UserMessageStatus(
+                    user_message_entity.status_to_receiver),
+                msgType=UserMessageType(user_message_entity.type),
+                isEditable=is_editable,
+                createdTime=user_message_entity.created_time.strftime(
+                    '%Y-%m-%d %H:%M')
+            )
+            return user_msg
+        except Exception as e:
+            err = "用户消息实体转换为用户消息失败"
             logging.exception("[Convertor] %s", err)
             raise e
 
@@ -210,6 +327,23 @@ class Convertor:
             raise e
 
     @staticmethod
+    async def convert_role_entity_to_role(
+            role_entity: RoleEntity) -> Role:
+        """将角色实体转换为角色"""
+        try:
+            role = Role(
+                roleId=role_entity.id,
+                roleName=role_entity.name,
+                isEditable=role_entity.editable,
+                typeActions=[]
+            )
+            return role
+        except Exception as e:
+            err = "角色实体转换为角色失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
     async def convert_user_sub_role_id_and_team_id_to_user_role_entity(
             user_sub: str, role_id: uuid.UUID, team_id: uuid.UUID) -> UserRoleEntity:
         """将用户ID、角色ID和团队ID转换为用户角色实体"""
@@ -226,6 +360,29 @@ class Convertor:
             raise e
 
     @staticmethod
+    async def convert_user_sub_team_id_role_id_and_receiver_sub_to_user_message_entity(
+            user_sub: str, team_id: uuid.UUID, team_name: str, role_id: uuid.UUID, receiver_sub: str, is_to_all: bool, message: str, type: str) -> UserMessageEntity:
+        """将用户ID、团队ID和接收者ID转换为用户消息实体"""
+        try:
+            user_message_entity = UserMessageEntity(
+                team_id=team_id,
+                team_name=team_name,
+                role_id=role_id,
+                sender_id=user_sub,
+                sender_name=user_sub,
+                receiver_id=receiver_sub,
+                receiver_name=receiver_sub,
+                is_to_all=is_to_all,
+                message=message,
+                type=type,
+            )
+            return user_message_entity
+        except Exception as e:
+            err = "用户ID、团队ID和接收者ID转换为用户消息实体失败"
+            logging.exception("[Convertor] %s", err)
+            raise e
+
+    @staticmethod
     async def convert_update_knowledge_base_request_to_dict(
             req: UpdateKnowledgeBaseRequest) -> dict:
         """将更新知识库请求转换为字典"""
@@ -234,6 +391,9 @@ class Convertor:
                 'name': req.kb_name,
                 'description': req.description,
                 'tokenizer': req.tokenizer.value,
+                'rerank_method': req.rerank_methond.value,
+                'rerank_name': req.rerank_name,
+                'separating_characters': req.separating_characters,
                 'upload_count_limit': req.upload_count_limit,
                 'upload_size_limit': req.upload_size_limit,
                 'default_parse_method': req.default_parse_method.value,
@@ -256,6 +416,9 @@ class Convertor:
                 authorName=knowledge_base_entity.author_name,
                 tokenizer=knowledge_base_entity.tokenizer,
                 embeddingModel=knowledge_base_entity.embedding_model,
+                rerankMethod=knowledge_base_entity.rerank_method,
+                rerankName=knowledge_base_entity.rerank_name,
+                separatingCharacters=knowledge_base_entity.separating_characters,
                 description=knowledge_base_entity.description,
                 docCnt=knowledge_base_entity.doc_cnt,
                 docSize=knowledge_base_entity.doc_size,
@@ -263,7 +426,8 @@ class Convertor:
                 uploadSizeLimit=knowledge_base_entity.upload_size_limit,
                 defaultParseMethod=knowledge_base_entity.default_parse_method,
                 defaultChunkSize=knowledge_base_entity.default_chunk_size,
-                createdTime=knowledge_base_entity.created_time.strftime('%Y-%m-%d %H:%M'),
+                createdTime=knowledge_base_entity.created_time.strftime(
+                    '%Y-%m-%d %H:%M'),
                 docTypes=[],
             )
             return knowledge_base
@@ -289,17 +453,20 @@ class Convertor:
 
     @staticmethod
     async def convert_create_knowledge_base_request_to_knowledge_base_entity(
-            user_sub: str, team_id: uuid.UUID, req: CreateKnowledgeBaseRequest) -> KnowledgeBaseEntity:
+            user_sub: str, user_name: str, team_id: uuid.UUID, req: CreateKnowledgeBaseRequest) -> KnowledgeBaseEntity:
         """将创建知识库请求转换为知识库实体"""
         try:
             knowledge_base_entity = KnowledgeBaseEntity(
                 team_id=team_id,
                 author_id=user_sub,
-                author_name=user_sub,
+                author_name=user_name,
                 name=req.kb_name,
                 tokenizer=req.tokenizer.value,
                 description=req.description,
                 embedding_model=req.embedding_model,
+                rerank_method=req.rerank_methond.value,
+                rerank_name=req.rerank_name,
+                separating_characters=req.separating_characters,
                 upload_count_limit=req.upload_count_limit,
                 upload_size_limit=req.upload_size_limit,
                 default_parse_method=req.default_parse_method.value,
@@ -340,7 +507,8 @@ class Convertor:
                 docName=document_entity.name,
                 docType=document_type_response,
                 chunkSize=document_entity.chunk_size,
-                createdTime=document_entity.created_time.strftime('%Y-%m-%d %H:%M'),
+                createdTime=document_entity.created_time.strftime(
+                    '%Y-%m-%d %H:%M'),
                 parseMethod=document_entity.parse_method,
                 enabled=document_entity.enabled,
                 authorName=document_entity.author_name,
@@ -362,7 +530,8 @@ class Convertor:
             if task_report is not None:
                 task_completed = task_report.current_stage/task_report.stage_cnt*100
                 if task_entity.status == TaskStatus.SUCCESS.value:
-                    finished_time = task_report.created_time.strftime('%Y-%m-%d %H:%M')
+                    finished_time = task_report.created_time.strftime(
+                        '%Y-%m-%d %H:%M')
             task = Task(
                 opId=task_entity.op_id,
                 opName=task_entity.op_name,
@@ -470,7 +639,8 @@ class Convertor:
                 'MAX_TOKENS': config['MAX_TOKENS'],
                 'TEMPERATURE': config['TEMPERATURE']
             }
-            config_json = json.dumps(config_params, sort_keys=True, ensure_ascii=False).encode('utf-8')
+            config_json = json.dumps(
+                config_params, sort_keys=True, ensure_ascii=False).encode('utf-8')
             hash_object = hashlib.sha256(config_json)
             hash_hex = hash_object.hexdigest()
             llm = LLM(
@@ -505,13 +675,13 @@ class Convertor:
 
     @staticmethod
     async def convert_create_dataset_request_to_dataset_entity(
-            user_sub: str, team_id: str, req: CreateDatasetRequest) -> DataSetEntity:
+            user_sub: str, user_name: str, team_id: str, req: CreateDatasetRequest) -> DataSetEntity:
         """将创建数据集请求转换为数据集实体"""
         try:
             dataset_entity = DataSetEntity(
                 team_id=team_id,
                 author_id=user_sub,
-                author_name=user_sub,
+                author_name=user_name,
                 kb_id=req.kb_id,
                 llm_id=req.llm_id,
                 name=req.dataset_name,
@@ -597,14 +767,14 @@ class Convertor:
 
     @staticmethod
     async def convert_create_testing_request_to_testing_entity(
-            user_sub: str, team_id: uuid.UUID, kb_id: uuid.UUID, req: CreateTestingRequest) -> TestingEntity:
+            user_sub: str, user_name: str, team_id: uuid.UUID, kb_id: uuid.UUID, req: CreateTestingRequest) -> TestingEntity:
         """将创建测试请求转换为测试实体"""
         try:
             testing_entity = TestingEntity(
                 team_id=team_id,
                 kb_id=kb_id,
                 author_id=user_sub,
-                author_name=user_sub,
+                author_name=user_name,
                 dataset_id=req.dataset_id,
                 name=req.testing_name,
                 description=req.description,

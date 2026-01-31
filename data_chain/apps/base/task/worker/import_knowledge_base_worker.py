@@ -118,13 +118,16 @@ class ImportKnowledgeBaseWorker(BaseWorker):
             )
             doc_type_entity = await DocumentTypeManager.add_document_type(doc_type_entity)
             if doc_type_entity:
-                doc_types_old_id_map_to_new_id[doc_type_dict['id']] = doc_type_entity.id
+                doc_types_old_id_map_to_new_id[doc_type_dict['id']
+                                               ] = doc_type_entity.id
         return doc_types_old_id_map_to_new_id
 
     @staticmethod
     async def add_docs_to_kb(kb_id: uuid.UUID, doc_config_path: str, doc_download_path: str,
                              doc_types_old_id_map_to_new_id: dict[uuid.UUID, uuid.UUID]) -> dict[uuid.UUID, uuid.UUID]:
         '''添加文档到知识库'''
+        if (not os.path.exists(doc_config_path)) or (not os.path.exists(doc_download_path)):
+            return {}
         kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
         doc_old_id_map_to_new_id = {}
         doc_config_names = os.listdir(doc_config_path)
@@ -139,7 +142,8 @@ class ImportKnowledgeBaseWorker(BaseWorker):
                 doc_path = os.path.join(doc_download_path, doc_name)
                 if not os.path.exists(doc_path):
                     continue
-                doc_type_id = doc_types_old_id_map_to_new_id.get(doc_config.get("type_id"), DEFAULT_DOC_TYPE_ID)
+                doc_type_id = doc_types_old_id_map_to_new_id.get(
+                    doc_config.get("type_id"), DEFAULT_DOC_TYPE_ID)
                 document_entity = DocumentEntity(
                     team_id=kb_entity.team_id,
                     kb_id=kb_entity.id,
@@ -148,15 +152,18 @@ class ImportKnowledgeBaseWorker(BaseWorker):
                     name=doc_config.get("name", ''),
                     extension=doc_config.get("extension", ''),
                     size=doc_config.get("size", ''),
-                    parse_method=doc_config.get("parse_method", kb_entity.default_parse_method),
-                    chunk_size=doc_config.get("chunk_size", kb_entity.default_chunk_size),
+                    parse_method=doc_config.get(
+                        "parse_method", kb_entity.default_parse_method),
+                    chunk_size=doc_config.get(
+                        "chunk_size", kb_entity.default_chunk_size),
                     type_id=doc_type_id,
                     enabled=doc_config.get("enabled", True),
                     status=DocumentStatus.IDLE.value,
                 )
                 document_entity = await DocumentManager.add_document(document_entity)
                 if document_entity:
-                    doc_old_id_map_to_new_id[doc_config.get('id', '')] = document_entity.id
+                    doc_old_id_map_to_new_id[doc_config.get(
+                        'id', '')] = document_entity.id
             except Exception as e:
                 err = f"[ImportKnowledgeBaseWorker] 添加文档失败，文档配置文件: {doc_config_path}，错误信息: {e}"
                 logging.exception(err)
@@ -168,6 +175,8 @@ class ImportKnowledgeBaseWorker(BaseWorker):
     async def upload_document_to_minio(
             doc_download_path: str, doc_old_id_map_to_new_id: dict[uuid.UUID, uuid.UUID]) -> None:
         '''上传文档到minio'''
+        if not os.path.exists(doc_download_path):
+            return
         doc_names = os.listdir(doc_download_path)
         for doc_name in doc_names:
             try:

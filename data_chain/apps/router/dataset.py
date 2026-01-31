@@ -26,11 +26,18 @@ from data_chain.entities.response_data import (
     DeleteDatasetResponse,
     DeleteDataResponse
 )
+from data_chain.entities.enum import IdType, MessageLevel
+from data_chain.apps.service.team_service import TeamService
 from data_chain.apps.service.knwoledge_base_service import KnowledgeBaseService
 from data_chain.apps.service.dataset_service import DataSetService
 from data_chain.apps.service.task_service import TaskService
 from data_chain.apps.service.session_service import get_user_sub, verify_user
 from data_chain.apps.service.router_service import get_route_info
+from data_chain.apps.exceptions import (
+    DatasetPermissionDeniedException,
+    KnowledgeBasePermissionDeniedException,
+    TaskPermissionDeniedException
+)
 router = APIRouter(prefix='/dataset', tags=['Dataset'])
 
 
@@ -41,8 +48,9 @@ async def list_dataset_by_kb_id(
     req: Annotated[ListDatasetRequest, Body()],
 ):
     if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, req.kb_id, action)):
-        raise Exception("用户没有权限访问该知识库的数据集")
+        raise KnowledgeBasePermissionDeniedException("访问该知识库的数据集", str(req.kb_id))
     list_dataset_msg = await DataSetService.list_dataset_by_kb_id(req)
+    await TeamService.add_team_msg(user_sub, req.kb_id, IdType.KNOWLEDGE_BASE, MessageLevel.INFO, '查看了知识库{kbName}的数据集列表', 'knowledge base {kbName} Dataset list viewed')
     return ListDatasetResponse(result=list_dataset_msg)
 
 
@@ -52,8 +60,9 @@ async def list_data_in_dataset(
         action: Annotated[str, Depends(get_route_info)],
         req: Annotated[ListDataInDatasetRequest, Body()]):
     if not (await DataSetService.validate_user_action_to_dataset(user_sub, req.dataset_id, action)):
-        raise Exception("用户没有权限访问该数据集的数据")
+        raise DatasetPermissionDeniedException("访问该数据集的数据", str(req.dataset_id))
     list_data_in_dataset_msg = await DataSetService.list_data_in_dataset(req)
+    await TeamService.add_team_msg(user_sub, req.dataset_id, IdType.DATASET, MessageLevel.INFO, '查看了知识库{kbName}的数据集{datasetName}的数据列表', 'knowledge base {kbName} Dataset {datasetName} data list viewed')
     return ListDataInDatasetResponse(result=list_data_in_dataset_msg)
 
 
@@ -63,7 +72,7 @@ async def is_dataset_have_testing(
         action: Annotated[str, Depends(get_route_info)],
         dataset_id: Annotated[UUID, Query(alias="datasetId")]):
     if not (await DataSetService.validate_user_action_to_dataset(user_sub, dataset_id, action)):
-        raise Exception("用户没有权限访问该数据集的数据")
+        raise DatasetPermissionDeniedException("访问该数据集的数据", str(dataset_id))
     is_dataset_have_testing_response = await DataSetService.is_dataset_have_testing(dataset_id)
     return IsDatasetHaveTestingResponse(result=is_dataset_have_testing_response)
 
@@ -75,7 +84,7 @@ async def download_dataset_by_task_id(
         task_id: Annotated[UUID, Query(alias="taskId")]):
 
     if not (await TaskService.validate_user_action_to_task(user_sub, task_id, action)):
-        raise Exception("用户没有权限访问该任务的数据集")
+        raise TaskPermissionDeniedException("访问该任务的数据集", str(task_id))
     dataset_link_url = await DataSetService.generate_dataset_download_url(task_id)
     document_name, extension = str(task_id)+".zip", "zip"
     async with AsyncClient() as async_client:
@@ -86,6 +95,8 @@ async def download_dataset_by_task_id(
             async def stream_generator():
                 async for chunk in response.aiter_bytes(chunk_size=8192):
                     yield chunk
+
+            await TeamService.add_team_msg(user_sub, task_id, IdType.TASK, MessageLevel.INFO, '下载了知识库{kbName}的数据集{datasetName}', 'knowledge base {kbName} Dataset {datasetName} downloaded')
 
             return StreamingResponse(stream_generator(), headers={
                 "Content-Disposition": content_disposition,
@@ -102,8 +113,9 @@ async def create_dataset(
     req: Annotated[CreateDatasetRequest, Body()]
 ):
     if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, req.kb_id, action)):
-        raise Exception("用户没有权限访问该知识库的数据集")
+        raise KnowledgeBasePermissionDeniedException("访问该知识库的数据集", str(req.kb_id))
     task_id = await DataSetService.create_dataset(user_sub, req)
+    await TeamService.add_team_msg(user_sub, req.kb_id, IdType.KNOWLEDGE_BASE, MessageLevel.INFO, '创建了知识库{kbName}的数据集', 'knowledge base {kbName} Dataset created')
     return CreateDatasetResponse(result=task_id)
 
 
@@ -113,8 +125,9 @@ async def import_dataset(user_sub: Annotated[str, Depends(get_user_sub)],
                          kb_id: Annotated[UUID, Query(alias="kbId")],
                          dataset_packages: list[UploadFile] = File(...)):
     if not (await KnowledgeBaseService.validate_user_action_to_knowledge_base(user_sub, kb_id, action)):
-        raise Exception("用户没有权限在该知识库导入数据集")
+        raise KnowledgeBasePermissionDeniedException("在该知识库导入数据集", str(kb_id))
     dataset_import_task_ids = await DataSetService.import_dataset(user_sub, kb_id, dataset_packages)
+    await TeamService.add_team_msg(user_sub, kb_id, IdType.KNOWLEDGE_BASE, MessageLevel.INFO, '导入了知识库{kbName}的数据集', 'knowledge base {kbName} Dataset imported')
     return ImportDatasetResponse(result=dataset_import_task_ids)
 
 
@@ -125,8 +138,10 @@ async def export_dataset_by_dataset_ids(
         dataset_ids: Annotated[list[UUID], Query(alias="datasetIds")]):
     for dataset_id in dataset_ids:
         if not (await DataSetService.validate_user_action_to_dataset(user_sub, dataset_id, action)):
-            raise Exception("用户没有权限访问该数据集的数据")
+            raise DatasetPermissionDeniedException("访问该数据集的数据", str(dataset_id))
     dataset_export_task_ids = await DataSetService.export_dataset(dataset_ids)
+    for dataset_id in dataset_ids:
+        await TeamService.add_team_msg(user_sub, dataset_id, IdType.DATASET, MessageLevel.INFO, '导出了知识库{kbName}的数据集{datasetName}', 'knowledge base {kbName} Dataset {datasetName} exported')
     return ExportDatasetResponse(result=dataset_export_task_ids)
 
 
@@ -137,8 +152,9 @@ async def generate_dataset_by_id(
         dataset_id: Annotated[UUID, Query(alias="datasetId")],
         generate: Annotated[bool, Query()]):
     if not (await DataSetService.validate_user_action_to_dataset(user_sub, dataset_id, action)):
-        raise Exception("用户没有权限访问该数据集")
+        raise DatasetPermissionDeniedException("访问该数据集", str(dataset_id))
     dataset_id = await DataSetService.generate_dataset_by_id(dataset_id, generate)
+    await TeamService.add_team_msg(user_sub, dataset_id, IdType.DATASET, MessageLevel.INFO, '生成了知识库{kbName}的数据集{datasetName}', 'knowledge base {kbName} Dataset {datasetName} generated')
     return GenerateDatasetResponse(result=dataset_id)
 
 
@@ -149,8 +165,9 @@ async def update_dataset_by_dataset_id(
         database_id: Annotated[UUID, Query(alias="databaseId")],
         req: Annotated[UpdateDatasetRequest, Body(...)]):
     if not (await DataSetService.validate_user_action_to_dataset(user_sub, database_id, action)):
-        raise Exception("用户没有权限访问该数据集")
+        raise DatasetPermissionDeniedException("访问该数据集", str(database_id))
     database_id = await DataSetService.update_dataset_by_dataset_id(database_id, req)
+    await TeamService.add_team_msg(user_sub, database_id, IdType.DATASET, MessageLevel.INFO, '更新了知识库{kbName}的数据集{datasetName}', 'knowledge base {kbName} Dataset {datasetName} updated')
     return UpdateDatasetResponse(result=database_id)
 
 
@@ -161,8 +178,9 @@ async def update_data_by_dataset_id(
         data_id: Annotated[UUID, Query(alias="dataId")],
         req: Annotated[UpdateDataRequest, Body(...)]):
     if not (await DataSetService.validate_user_action_to_data(user_sub, data_id, action)):
-        raise Exception("用户没有权限访问该数据集的数据")
+        raise DatasetPermissionDeniedException("访问该数据集的数据", str(req.dataset_id))
     data_id = await DataSetService.update_data(data_id, req)
+    await TeamService.add_team_msg(user_sub, data_id, IdType.DATASET_DATA, MessageLevel.INFO, '更新了知识库{kbName}的数据集{datasetName}的数据', 'knowledge base {kbName} Dataset {datasetName} data updated')
     return UpdateDataResponse()
 
 
@@ -173,8 +191,10 @@ async def delete_dataset_by_dataset_ids(
         database_ids: Annotated[list[UUID], Body(alias="databaseId")]):
     for database_id in database_ids:
         if not (await DataSetService.validate_user_action_to_dataset(user_sub, database_id, action)):
-            raise Exception("用户没有权限访问该数据集")
+            raise DatasetPermissionDeniedException("访问该数据集", str(database_id))
     dataset_ids = await DataSetService.delete_dataset_by_dataset_ids(database_ids)
+    for dataset_id in dataset_ids:
+        await TeamService.add_team_msg(user_sub, dataset_id, IdType.DATASET, MessageLevel.WARNING, '删除了知识库{kbName}的数据集{datasetName}', 'knowledge base {kbName} Dataset {datasetName} deleted')
     return DeleteDatasetResponse(result=dataset_ids)
 
 
@@ -185,6 +205,8 @@ async def delete_data_by_data_ids(
         data_ids: Annotated[list[UUID], Body(alias="dataIds")]):
     for data_id in data_ids:
         if not (await DataSetService.validate_user_action_to_data(user_sub, data_id, action)):
-            raise Exception("用户没有权限访问该数据集的数据")
+            raise DatasetPermissionDeniedException("访问该数据集的数据", str(data_id))
+    for data_id in data_ids:
+        await TeamService.add_team_msg(user_sub, data_id, IdType.DATASET_DATA, MessageLevel.WARNING, '删除了知识库{kbName}的数据集{datasetName}的数据', 'knowledge base {kbName} Dataset {datasetName} data deleted')
     await DataSetService.delete_data_by_data_ids(data_ids)
     return DeleteDataResponse()

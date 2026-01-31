@@ -19,6 +19,7 @@ from data_chain.entities.response_data import (
 )
 from data_chain.apps.base.convertor import Convertor
 from data_chain.apps.service.task_queue_service import TaskQueueService
+from data_chain.manager.user_manager import UserManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.task_manager import TaskManager
 from data_chain.manager.task_report_manager import TaskReportManager
@@ -80,10 +81,12 @@ class DataSetService:
         """根据知识库ID列出数据集"""
         try:
             total, dataset_entities = await DatasetManager.list_dataset(req)
-            data_ids = [dataset_entity.id for dataset_entity in dataset_entities]
+            data_ids = [
+                dataset_entity.id for dataset_entity in dataset_entities]
             llm = await Convertor.convert_llm_config_to_llm()
             task_entities = await TaskManager.list_current_tasks_by_op_ids(data_ids, [TaskType.DATASET_GENERATE.value, TaskType.DATASET_IMPORT.value])
-            task_dict = {task_entity.op_id: task_entity for task_entity in task_entities}
+            task_dict = {
+                task_entity.op_id: task_entity for task_entity in task_entities}
             task_ids = [task_entity.id for task_entity in task_entities]
             task_report_entities = await TaskReportManager.list_current_task_report_by_task_ids(task_ids)
             task_report_dict = {task_report_entity.task_id: task_report_entity
@@ -158,7 +161,8 @@ class DataSetService:
                 err = "知识库不存在"
                 logging.exception("[DataSetService] %s", err)
                 raise Exception(err)
-            dataset_entity = await Convertor.convert_create_dataset_request_to_dataset_entity(user_sub, kb_entity.team_id, req)
+            user_entity = await UserManager.get_user_by_id(user_sub)
+            dataset_entity = await Convertor.convert_create_dataset_request_to_dataset_entity(user_sub, user_entity.name, kb_entity.team_id, req)
             await DatasetManager.add_dataset(dataset_entity)
             dataset_doc_entities = []
             for doc_id in req.document_ids:
@@ -331,7 +335,8 @@ class DataSetService:
                     await TaskQueueService.stop_task(task_entity.id)
             dataset_entities = await DatasetManager.update_dataset_by_dataset_ids(
                 dataset_ids, {"status": DataSetStatus.DELETED.value})
-            dataset_ids = [dataset_entity.id for dataset_entity in dataset_entities]
+            dataset_ids = [
+                dataset_entity.id for dataset_entity in dataset_entities]
             return dataset_ids
         except Exception as e:
             err = "删除数据集失败"

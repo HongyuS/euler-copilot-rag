@@ -23,7 +23,8 @@ class OcrTool:
             rec_model_dir=rec_model_dir,
             cls_model_dir=cls_model_dir,
             use_angle_cls=True,
-            lang="ch"
+            lang="ch",
+            show_log=False
         )
     else:
         model = None

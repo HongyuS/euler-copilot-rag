@@ -41,6 +41,24 @@ class TestCaseManager():
             logging.exception("[TestCaseManager] %s", err)
 
     @staticmethod
+    async def get_test_case_by_id(test_case_id: uuid.UUID) -> Optional[TestCaseEntity]:
+        """根据测试用例ID获取测试用例"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    select(TestCaseEntity)
+                    .where(TestCaseEntity.id == test_case_id,
+                           TestCaseEntity.status != TestCaseStatus.DELETED.value)
+                )
+                result = await session.execute(stmt)
+                test_case_entity = result.scalars().first()
+                return test_case_entity
+        except Exception as e:
+            err = "根据测试用例ID获取测试用例失败"
+            logging.exception("[TestCaseManager] %s", err)
+            raise e
+
+    @staticmethod
     async def list_test_case(req: ListTestCaseRequest) -> Tuple[int, List[TestCaseEntity]]:
         """根据测试ID查询测试用例"""
         try:
@@ -54,7 +72,8 @@ class TestCaseManager():
                 total = (await session.execute(count_stmt)).scalar()
                 stmt = stmt.order_by(TestCaseEntity.created_at.desc())
                 stmt = stmt.order_by(TestCaseEntity.id.asc())
-                stmt = stmt.offset((req.page - 1) * req.page_size).limit(req.page_size)
+                stmt = stmt.offset(
+                    (req.page - 1) * req.page_size).limit(req.page_size)
                 result = await session.execute(stmt)
                 testcase_entities = result.scalars().all()
                 return (total, testcase_entities)

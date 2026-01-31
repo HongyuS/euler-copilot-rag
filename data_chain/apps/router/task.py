@@ -15,6 +15,10 @@ from data_chain.entities.response_data import (
 )
 from data_chain.entities.enum import TaskType
 from data_chain.apps.service.router_service import get_route_info
+from data_chain.apps.exceptions import (
+    TaskPermissionDeniedException,
+    TeamPermissionDeniedException
+)
 from data_chain.apps.service.team_service import TeamService
 from data_chain.apps.service.task_service import TaskService
 router = APIRouter(prefix='/task', tags=['Task'])
@@ -27,7 +31,7 @@ async def list_task(
     req: Annotated[ListTaskRequest, Body()]
 ):
     if not (await TeamService.validate_user_action_in_team(user_sub, req.team_id, action)):
-        raise Exception("用户没有权限访问该团队的任务")
+        raise TaskPermissionDeniedException("访问该团队的任务", str(req.team_id))
     list_task_msg = await TaskService.list_task(user_sub, req)
     return ListTaskResponse(result=list_task_msg)
 
@@ -39,9 +43,9 @@ async def delete_task_by_task_id(
     task_id: Annotated[UUID, Query(alias="taskId")],
 ):
     if not (await TaskService.validate_user_action_to_task(user_sub, task_id, action)):
-        raise Exception("用户没有权限访问该团队的任务")
-    task_ids = await TaskService.delete_task_by_task_id(task_id)
-    return DeleteTaskByIdResponse()
+        raise TaskPermissionDeniedException("删除该任务", str(task_id))
+    task_id = await TaskService.delete_task_by_task_id(task_id)
+    return DeleteTaskByIdResponse(message='任务删除成功', result=task_id)
 
 
 @router.delete('/all', response_model=DeleteTaskByTypeResponse, dependencies=[Depends(verify_user)])
@@ -52,6 +56,6 @@ async def delete_task_by_task_type(
     task_type: Annotated[TaskType, Query(alias="taskType")],
 ):
     if not (await TeamService.validate_user_action_in_team(user_sub, team_id, action)):
-        raise Exception("用户没有权限访问该团队的任务")
+        raise TaskPermissionDeniedException("删除该团队的任务", str(team_id))
     task_ids = await TaskService.delete_task_by_type(user_sub, team_id, task_type)
-    return DeleteTaskByTypeResponse()
+    return DeleteTaskByTypeResponse(message='任务删除成功', result=task_ids)

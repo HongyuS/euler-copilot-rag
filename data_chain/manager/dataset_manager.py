@@ -73,6 +73,23 @@ class DatasetManager:
             raise e
 
     @staticmethod
+    async def get_dataset_by_data_id(data_id: uuid.UUID) -> DataSetEntity:
+        """根据数据ID查询数据集"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    select(DataSetEntity)
+                    .join(QAEntity, QAEntity.dataset_id == DataSetEntity.id)
+                    .where(and_(QAEntity.id == data_id, DataSetEntity.status != DataSetStatus.DELETED.value))
+                )
+                result = await session.execute(stmt)
+                return result.scalars().first()
+        except Exception as e:
+            err = "根据数据ID查询数据集失败"
+            logging.exception("[DatasetManager] %s", err)
+            raise e
+
+    @staticmethod
     async def list_dataset(req: ListDatasetRequest) -> tuple[int, List[DataSetEntity]]:
         """列出数据集"""
         try:
@@ -83,35 +100,43 @@ class DatasetManager:
                     select(DataSetEntity)
                     .outerjoin(subq, and_(DataSetEntity.id == subq.c.op_id, subq.c.rn == 1))
                 )
-                stmt = stmt.where(DataSetEntity.status != DataSetStatus.DELETED.value)
+                stmt = stmt.where(DataSetEntity.status !=
+                                  DataSetStatus.DELETED.value)
                 if req.kb_id is not None:
                     stmt = stmt.where(DataSetEntity.kb_id == req.kb_id)
                 if req.dataset_id is not None:
                     stmt = stmt.where(DataSetEntity.id == req.dataset_id)
                 if req.dataset_name is not None:
-                    stmt = stmt.where(DataSetEntity.name.ilike(f"%{req.dataset_name}%"))
+                    stmt = stmt.where(DataSetEntity.name.ilike(
+                        f"%{req.dataset_name}%"))
                 if req.llm_id is not None:
                     stmt = stmt.where(DataSetEntity.llm_id == req.llm_id)
                 if req.is_data_cleared is not None:
-                    stmt = stmt.where(DataSetEntity.is_data_cleared == req.is_data_cleared)
+                    stmt = stmt.where(
+                        DataSetEntity.is_data_cleared == req.is_data_cleared)
                 if req.is_chunk_related is not None:
-                    stmt = stmt.where(DataSetEntity.is_chunk_related == req.is_chunk_related)
+                    stmt = stmt.where(
+                        DataSetEntity.is_chunk_related == req.is_chunk_related)
                 if req.generate_status is not None:
-                    status_list = [status.value for status in req.generate_status]
+                    status_list = [
+                        status.value for status in req.generate_status]
                     if TaskStatus.SUCCESS in req.generate_status:
                         status_list += [TaskStatus.DELETED.value]
                     stmt = stmt.where(subq.c.status.in_(status_list))
-                stmt = stmt.order_by(DataSetEntity.created_at.desc(), DataSetEntity.id.desc())
+                stmt = stmt.order_by(
+                    DataSetEntity.created_at.desc(), DataSetEntity.id.desc())
                 if req.score_order:
                     if req.score_order == "asc":
                         stmt = stmt.order_by(asc(DataSetEntity.score))
                     else:
                         stmt = stmt.order_by(desc(DataSetEntity.score))
                 if req.author_name:
-                    stmt = stmt.where(DataSetEntity.author_name.ilike(f"%{req.author_name}%"))
+                    stmt = stmt.where(
+                        DataSetEntity.author_name.ilike(f"%{req.author_name}%"))
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()
-                stmt = stmt.offset((req.page - 1) * req.page_size).limit(req.page_size)
+                stmt = stmt.offset(
+                    (req.page - 1) * req.page_size).limit(req.page_size)
                 result = await session.execute(stmt)
                 dataset_entities = result.scalars().all()
                 return total, dataset_entities
@@ -129,7 +154,8 @@ class DatasetManager:
                     select(DataSetEntity)
                     .where(DataSetEntity.kb_id == kb_id)
                 )
-                stmt = stmt.where(DataSetEntity.status != DataSetStatus.DELETED.value)
+                stmt = stmt.where(DataSetEntity.status !=
+                                  DataSetStatus.DELETED.value)
                 stmt = stmt.order_by(DataSetEntity.id.desc())
                 result = await session.execute(stmt)
                 return result.scalars().all()
@@ -147,7 +173,8 @@ class DatasetManager:
                     select(DataSetEntity)
                     .where(DataSetEntity.id.in_(dataset_ids))
                 )
-                stmt = stmt.where(DataSetEntity.status != DataSetStatus.DELETED.value)
+                stmt = stmt.where(DataSetEntity.status !=
+                                  DataSetStatus.DELETED.value)
                 stmt = stmt.order_by(DataSetEntity.id.desc())
                 stmt = stmt.order_by(DataSetEntity.id)
                 result = await session.execute(stmt)

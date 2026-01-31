@@ -16,26 +16,69 @@ class TaskQueueService:
 
     @staticmethod
     async def init_task_queue():
-        task_entities = await TaskManager.list_task_by_task_status(TaskStatus.PENDING.value)
-        task_entities += await TaskManager.list_task_by_task_status(TaskStatus.RUNNING.value)
-        for task_entity in task_entities:
+        task_need_pending_ids = []
+        task_need_delete_ids = []
+        task_entities_need_add = []
+        import time
+        st = time.time()
+        pending_task_entities = await TaskManager.list_task_by_task_status(TaskStatus.PENDING.value)
+        en = time.time()
+        pending_task_ids = [
+            task_entity.id for task_entity in pending_task_entities]
+        pending_task_entities_in_db = []
+        batch_size = 1024
+        for i in range(0, len(pending_task_ids), batch_size):
+            st = time.time()
+            batch_entities = await TaskQueueManager.get_tasks_by_ids(
+                pending_task_ids[i:i+batch_size])
+            en = time.time()
+            pending_task_entities_in_db.extend(batch_entities)
+        pending_task_ids_in_db = [
+            task_entity.id for task_entity in pending_task_entities_in_db]
+        pending_task_ids_not_in_db = list(
+            set(pending_task_ids) - set(pending_task_ids_in_db))
+        for task_id in pending_task_ids_not_in_db:
+            task_entities_need_add.append(TaskQueueEntity(
+                id=task_id, status=TaskStatus.PENDING.value))
+
+        st = time.time()
+        running_task_entities = await TaskManager.list_task_by_task_status(TaskStatus.RUNNING.value)
+        en = time.time()
+        for task_entity in running_task_entities:
+            # 将所有任务取消
             try:
-                if task_entity.status == TaskStatus.RUNNING.value:
-                    flag = await BaseWorker.reinit(task_entity.id)
-                    if flag:
-                        task = TaskQueueEntity(id=task_entity.id, status=TaskStatus.PENDING.value)
-                        await TaskQueueManager.update_task_by_id(task_entity.id, task)
-                    else:
-                        await BaseWorker.stop(task_entity.id)
-                        await TaskQueueManager.delete_task_by_id(task_entity.id)
+                st = time.time()
+                flag = await BaseWorker.reinit(task_entity.id)
+                en = time.time()
+                if flag:
+                    st = time.time()
+                    task_need_pending_ids.append(task_entity.id)
+                    en = time.time()
                 else:
-                    task = await TaskQueueManager.get_task_by_id(task_entity.id)
-                    if task is None:
-                        task = TaskQueueEntity(id=task_entity.id, status=TaskStatus.PENDING.value)
-                        await TaskQueueManager.add_task(task)
+                    st = time.time()
+                    task_need_delete_ids.append(task_entity.id)
+                    en = time.time()
             except Exception as e:
                 warning = f"[TaskQueueService] 初始化任务失败 {e}"
                 logging.warning(warning)
+        if len(task_need_pending_ids) > 0:
+            st = time.time()
+            for i in range(0, len(task_need_pending_ids), batch_size):
+                await TaskQueueManager.update_task_by_ids(
+                    task_need_pending_ids[i:i+batch_size], TaskStatus.PENDING)
+            en = time.time()
+        if len(task_need_delete_ids) > 0:
+            st = time.time()
+            for i in range(0, len(task_need_delete_ids), batch_size):
+                await TaskQueueManager.delete_tasks_by_ids(
+                    task_need_delete_ids[i:i+batch_size])
+            en = time.time()
+        if len(task_entities_need_add) > 0:
+            st = time.time()
+            for i in range(0, len(task_entities_need_add), batch_size):
+                await TaskQueueManager.add_tasks(
+                    task_entities_need_add[i:i+batch_size])
+            en = time.time()
 
     @staticmethod
     async def init_task(task_type: str, op_id: uuid.UUID) -> uuid.UUID:
@@ -66,8 +109,10 @@ class TaskQueueService:
         """删除任务"""
         try:
             flag = await BaseWorker.stop(task_id)
-            task_id = await BaseWorker.delete(task_id)
-            return task_id
+            delete_flag = await BaseWorker.delete(task_id)
+            if delete_flag:
+                return task_id
+            return None
         except Exception as e:
             err = f"[TaskQueueService] 删除任务失败 {e}"
             logging.exception(err)
@@ -101,8 +146,7 @@ class TaskQueueService:
                 await TaskQueueManager.delete_task_by_id(task.id)
                 continue
             if flag:
-                task.status = TaskStatus.PENDING.value
-                await TaskQueueManager.update_task_by_id(task.id, task)
+                await TaskQueueManager.update_task_by_id(task.id, TaskStatus.PENDING)
             else:
                 await TaskQueueManager.delete_task_by_id(task.id)
 

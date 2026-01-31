@@ -24,9 +24,7 @@ async def verify_user(request: HTTPConnection):
     """验证用户是否在Session中"""
     import os
     if config["DEBUG"]:
-        user_sub = os.environ.get('USER') or os.environ.get('USERNAME')
-        if not user_sub:
-            user_sub = 'admin'
+        user_sub = config["DEBUG_USER"]
         return user_sub
 
     try:
@@ -50,11 +48,8 @@ async def verify_user(request: HTTPConnection):
 async def get_user_sub(request: HTTPConnection) -> uuid:
     """从Session中获取用户"""
     if config["DEBUG"]:
-        import os
-        user_sub = os.environ.get('USER') or os.environ.get('USERNAME')
-        if not user_sub:
-            user_sub = 'admin'
-        await UserManager.add_user((await Convertor.convert_user_sub_to_user_entity(user_sub)))
+        user_sub = config["DEBUG_USER"]
+        await UserManager.add_user((await Convertor.convert_user_sub_and_user_name_to_user_entity(user_sub)))
         return user_sub
     else:
         try:
@@ -67,9 +62,17 @@ async def get_user_sub(request: HTTPConnection) -> uuid:
         except:
             raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                     retcode=401, rtmsg="Authentication Error.", data="")
-        user_sub = await SessionManager.get_user_sub(session_id)
-        if not user_sub:
+
+        # 获取用户信息（包括用户名）
+        session = await SessionManager.get_user_info(session_id)
+        if not session:
             raise UserHTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                                     retcode=401, rtmsg="Authentication Error.", data="")
-        await UserManager.add_user((await Convertor.convert_user_sub_to_user_entity(user_sub)))
+        user_sub = session.user_sub
+        user_name = session.user_name
+        if not user_name:
+            user_name = user_sub  # 如果用户名不存在，则使用user_sub作为用户名
+        # 创建用户实体时传递用户名
+        user_entity = await Convertor.convert_user_sub_and_user_name_to_user_entity(user_sub, user_name)
+        await UserManager.add_user(user_entity)
     return user_sub

@@ -11,7 +11,7 @@ from data_chain.embedding.embedding import Embedding
 from data_chain.entities.enum import SearchMethod
 
 
-class KeywordVectorSearcher(BaseSearcher):
+class DynamicKeywordVectorSearcher(BaseSearcher):
     """
     关键词向量检索
     """
@@ -29,31 +29,41 @@ class KeywordVectorSearcher(BaseSearcher):
         :return: 检索结果
         """
         vector = await Embedding.vectorize_embedding(query)
+        logging.error(f"[DynamicKeywordVectorSearcher] vector {vector}")
         try:
             chunk_entities_get_by_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_keyword(
                 kb_id, query, max(top_k//3, 1), doc_ids, banned_ids)
             banned_ids += [chunk_entity.id for chunk_entity in chunk_entities_get_by_keyword]
-            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
-            logging.error(f"[KeywordVectorSearcher] keywords: {keywords}, weights: {weights}")
-            chunk_entities_get_by_dynamic_weighted_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(kb_id, keywords, weights, top_k//2, doc_ids, banned_ids)
+            import time
+            start_time = time.time()
+            chunk_entities_get_by_dynamic_weighted_keyword = await ChunkManager.get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(kb_id, query, top_k//2, doc_ids, banned_ids)
+            end_time = time.time()
+            logging.info(
+                f"[DynamicKeywordVectorSearcher] 动态关键字检索成功完成，耗时: {end_time - start_time:.2f}秒")
             banned_ids += [chunk_entity.id for chunk_entity in chunk_entities_get_by_dynamic_weighted_keyword]
             chunk_entities_get_by_vector = []
             for _ in range(3):
                 try:
                     import time
                     start_time = time.time()
-                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=20)
+                    logging.info(
+                        f"[DynamicKeywordVectorSearcher] 开始进行向量检索，top_k: {top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword)}")
+                    chunk_entities_get_by_vector = await asyncio.wait_for(ChunkManager.get_top_k_chunk_by_kb_id_vector(kb_id, vector, top_k-len(chunk_entities_get_by_keyword)-len(chunk_entities_get_by_dynamic_weighted_keyword), doc_ids, banned_ids), timeout=300)
                     end_time = time.time()
-                    logging.info(f"[KeywordVectorSearcher] 向量检索成功完成，耗时: {end_time - start_time:.2f}秒")
+                    logging.info(
+                        f"[DynamicKeywordVectorSearcher] 向量检索成功完成，耗时: {end_time - start_time:.2f}秒")
                     break
                 except Exception as e:
                     import traceback
-                    err = f"[KeywordVectorSearcher] 向量检索失败，error: {e}, traceback: {traceback.format_exc()}"
+                    err = f"[DynamicKeywordVectorSearcher] 向量检索失败，error: {e}, traceback: {traceback.format_exc()}"
                     logging.error(err)
                     continue
-            chunk_entities = chunk_entities_get_by_keyword + chunk_entities_get_by_dynamic_weighted_keyword + chunk_entities_get_by_vector
+            logging.info(
+                f"[DynamicKeywordVectorSearcher] chunk_entities_get_by_keyword: {len(chunk_entities_get_by_keyword)}, chunk_entities_get_by_dynamic_weighted_keyword: {len(chunk_entities_get_by_dynamic_weighted_keyword)}, chunk_entities_get_by_vector: {len(chunk_entities_get_by_vector)}")
+            chunk_entities = chunk_entities_get_by_keyword + \
+                chunk_entities_get_by_dynamic_weighted_keyword + chunk_entities_get_by_vector
         except Exception as e:
-            err = f"[KeywordVectorSearcher] 关键词向量检索失败，error: {e}"
+            err = f"[DynamicKeywordVectorSearcher] 关键词向量检索失败，error: {e}"
             logging.exception(err)
             return []
         return chunk_entities

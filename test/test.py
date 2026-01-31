@@ -11,6 +11,7 @@ class TestEntity(BaseModel):
     question: str = Field(default="", description="问题")
     answer: str = Field(default="", description="答案")
     chunk: str = Field(default="", description="上下文片段")
+    doc_name: str = Field(default="", description="文档名称")
     llm_answer: str = Field(default="", description="大模型答案")
     related_chunk: str = Field(default="", description="相关上下文片段")
     pre: float = Field(default=0.0, description="准确率")
@@ -31,6 +32,7 @@ async def read_data_from_file(input_xlsx_file: str) -> list[TestEntity]:
             question=row.get('question', ''),
             answer=row.get('answer', ''),
             chunk=row.get('chunk', ''),
+            doc_name=row.get('doc_name', ''),
             llm_answer=row.get('llm_answer', ''),
             related_chunk=row.get('related_chunk', '')
         )
@@ -63,20 +65,28 @@ async def evaluate_metrics(data: list[TestEntity], language: str) -> None:
     """评估测试数据的各项指标"""
     token_tool = TokenTool()
     for item in data:
+        # 确保所有异步方法都用await调用，避免遗漏异步操作
         item.pre = await token_tool.cal_precision(item.question, item.llm_answer, language)
         item.rec = await token_tool.cal_recall(item.question, item.related_chunk, language)
         item.fai = await token_tool.cal_faithfulness(item.question, item.llm_answer, item.related_chunk, language)
         item.rel = await token_tool.cal_relevance(item.question, item.llm_answer, language)
+        # 同步方法直接调用，无需await
         item.lcs = token_tool.cal_lcs(item.answer, item.llm_answer)
         item.leve = token_tool.cal_leve(item.answer, item.llm_answer)
         item.jac = token_tool.cal_jac(item.answer, item.llm_answer)
         print(f"评估完成: 问题: {item.question}, 准确率: {item.pre}, 召回率: {item.rec}, 可信度: {item.fai}, 相关性: {item.rel}, 最长公共子串: {item.lcs}, 编辑距离: {item.leve}, Jaccard相似度: {item.jac}")
 
 
+# 新增顶层异步函数，合并所有异步操作
+async def main(input_xlsx_file: str, output_xlsx_file: str, language: str) -> None:
+    data = await read_data_from_file(input_xlsx_file)
+    await evaluate_metrics(data, language)
+    await write_data_to_file(output_xlsx_file, data)
+
+
 def work(input_xlsx_file: str, output_xlsx_file: str, language: str) -> None:
-    data = asyncio.run(read_data_from_file(input_xlsx_file))
-    asyncio.run(evaluate_metrics(data, language))
-    asyncio.run(write_data_to_file(output_xlsx_file, data))
+    # 仅调用一次asyncio.run()，运行顶层异步函数
+    asyncio.run(main(input_xlsx_file, output_xlsx_file, language))
 
 
 if __name__ == '__main__':

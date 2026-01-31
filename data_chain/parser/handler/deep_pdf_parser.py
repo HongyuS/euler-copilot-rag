@@ -144,7 +144,8 @@ class DeepPdfParser(BaseParser):
                     break
             if not overlaps:
                 new_text_nodes_with_bbox.append(text_node_with_bbox)
-        new_text_nodes_with_bbox = sorted(new_text_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
+        new_text_nodes_with_bbox = sorted(
+            new_text_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
         return new_text_nodes_with_bbox
 
     @staticmethod
@@ -170,8 +171,10 @@ class DeepPdfParser(BaseParser):
         vertical = binary.copy()
 
         scale = 30  # 控制提取结构元素大小，值越小越敏感
-        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (horizontal.shape[1] // scale, 1))
-        v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, vertical.shape[0] // scale))
+        h_kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (horizontal.shape[1] // scale, 1))
+        v_kernel = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (1, vertical.shape[0] // scale))
 
         horizontal = cv2.erode(horizontal, h_kernel)
         horizontal = cv2.dilate(horizontal, h_kernel)
@@ -183,7 +186,8 @@ class DeepPdfParser(BaseParser):
         mask = cv2.add(horizontal, vertical)
 
         # 轮廓检测
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         table_bboxes = []
         for contour in contours:
@@ -276,7 +280,8 @@ class DeepPdfParser(BaseParser):
                 # 提取表格区域图像
                 table_image = image[int(merged_bboxes[index].y0): int(merged_bboxes[index].y1),
                                     int(merged_bboxes[index].x0): int(merged_bboxes[index].x1)]
-                table_image_path = os.path.join(tmp_path, f"table_{uuid.uuid4()}.png")
+                table_image_path = os.path.join(
+                    tmp_path, f"table_{uuid.uuid4()}.png")
                 cv2.imwrite(table_image_path, table_image)
                 result = await OcrTool.ocr_from_image_path(table_image_path)
 
@@ -303,7 +308,8 @@ class DeepPdfParser(BaseParser):
                 if not cells:
                     continue
                 # 使用DBSCAN聚类合并相近的单元格
-                coords = np.array([[cell['x_center'], cell['y_center']] for cell in cells])
+                coords = np.array(
+                    [[cell['x_center'], cell['y_center']] for cell in cells])
                 clustering = DBSCAN(eps=20, min_samples=1).fit(coords)
                 labels = clustering.labels_
                 # 合并单元格
@@ -327,8 +333,10 @@ class DeepPdfParser(BaseParser):
                         'box': [cell['box'] for cell in group]
                     })
                 cell = merged_cells_list
-                all_x_coords = [cell['bbox'][0] for cell in cells] + [cell['bbox'][2] for cell in cells]
-                all_y_coords = [cell['bbox'][1] for cell in cells] + [cell['bbox'][3] for cell in cells]
+                all_x_coords = [cell['bbox'][0]
+                                for cell in cells] + [cell['bbox'][2] for cell in cells]
+                all_y_coords = [cell['bbox'][1]
+                                for cell in cells] + [cell['bbox'][3] for cell in cells]
                 all_x_coords = sorted(set(all_x_coords))
                 all_y_coords = sorted(set(all_y_coords))
                 # 合并差异太小的x和y坐标
@@ -455,19 +463,24 @@ class DeepPdfParser(BaseParser):
 
                 # 检查提取的图片是否有效
                 if not base_image or "image" not in base_image:
-                    logging.warning("[DeepPdfParser] 标准方法提取失败，尝试替代方法 xref=%s", xref)
+                    logging.warning(
+                        "[DeepPdfParser] 标准方法提取失败，尝试替代方法 xref=%s", xref)
                     continue
 
                 # 检查位置信息
                 rects = page.get_image_rects(xref)
                 if not rects:
-                    logging.warning("[DeepPdfParser] 找不到图片位置，尝试基于布局估算 xref=%s", xref)
-                    width, height = base_image.get("width", 0), base_image.get("height", 0)
+                    logging.warning(
+                        "[DeepPdfParser] 找不到图片位置，尝试基于布局估算 xref=%s", xref)
+                    width, height = base_image.get(
+                        "width", 0), base_image.get("height", 0)
                     if width <= 0 or height <= 0:
-                        logging.warning("[DeepPdfParser] 图片尺寸无效，跳过 xref=%s", xref)
+                        logging.warning(
+                            "[DeepPdfParser] 图片尺寸无效，跳过 xref=%s", xref)
                         continue
                     # 获取页面尺寸
-                    page_width, page_height = page.rect.width * matrix.a, page.rect.height * matrix.d
+                    page_width, page_height = page.rect.width * \
+                        matrix.a, page.rect.height * matrix.d
 
                     # 方法1: 默认居中布局
                     x0 = (page_width - width) / 2
@@ -534,12 +547,15 @@ class DeepPdfParser(BaseParser):
             text_x0, text_y0, text_x1, text_y1 = text_node_with_bbox.bbox.x0, text_node_with_bbox.bbox.y0, \
                 text_node_with_bbox.bbox.x1, text_node_with_bbox.bbox.y1
             # 检查文本是否水平相邻
-            horizontally_adjacent = (text_x1 >= image_x0 - threshold and text_x0 <= image_x1 + threshold)
+            horizontally_adjacent = (
+                text_x1 >= image_x0 - threshold and text_x0 <= image_x1 + threshold)
             # 检查文本是否垂直相邻
-            vertically_adjacent = (text_y1 >= image_y0 - threshold and text_y0 <= image_y1 + threshold)
+            vertically_adjacent = (
+                text_y1 >= image_y0 - threshold and text_y0 <= image_y1 + threshold)
             # 检查文本是否相交或相邻
             if horizontally_adjacent and vertically_adjacent:
-                image_node_with_bbox.node.link_nodes.append(text_node_with_bbox.node)
+                image_node_with_bbox.node.link_nodes.append(
+                    text_node_with_bbox.node)
 
     @staticmethod
     async def merge_nodes_with_bbox(
@@ -617,19 +633,24 @@ class DeepPdfParser(BaseParser):
                 text_nodes_with_bbox, table_nodes_with_bbox)
             sub_nodes_with_bbox = await DeepPdfParser.merge_nodes_with_bbox(
                 sub_nodes_with_bbox, image_nodes_with_bbox)
-            sub_nodes_with_bbox = sorted(sub_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
-            sub_nodes_with_bbox[-1].node.is_need_space = True  # 最后一个节点后面需要空格
+            sub_nodes_with_bbox = sorted(
+                sub_nodes_with_bbox, key=lambda x: (x.bbox.y0, x.bbox.x0))
+            if sub_nodes_with_bbox:
+                # 最后一个节点后面需要空格
+                sub_nodes_with_bbox[-1].node.is_need_space = True
             nodes_with_bbox.extend(sub_nodes_with_bbox)
             page_number += 1
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行换行'''
-            vertical_distance = nodes_with_bbox[i].bbox.y0 - nodes_with_bbox[i-1].bbox.y1
+            vertical_distance = nodes_with_bbox[i].bbox.y0 - \
+                nodes_with_bbox[i-1].bbox.y1
             height = nodes_with_bbox[i].bbox.y1 - nodes_with_bbox[i].bbox.y0
             if vertical_distance > 0 and (vertical_distance > height*0.3 or vertical_distance > 2):
                 nodes_with_bbox[i-1].node.is_need_newline = True
         for i in range(1, len(nodes_with_bbox)):
             '''根据bbox判断是否要进行空格'''
-            horizontal_distance = nodes_with_bbox[i].bbox.x0 - nodes_with_bbox[i-1].bbox.x1
+            horizontal_distance = nodes_with_bbox[i].bbox.x0 - \
+                nodes_with_bbox[i-1].bbox.x1
             width = nodes_with_bbox[i].bbox.x1 - nodes_with_bbox[i].bbox.x0
             if horizontal_distance > 0 and (horizontal_distance > width*0.3 or horizontal_distance > 2):
                 nodes_with_bbox[i-1].node.is_need_space = True

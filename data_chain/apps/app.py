@@ -1,6 +1,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import warnings
+# 过滤 APScheduler 中 pkg_resources 弃用警告
+warnings.filterwarnings('ignore', message='pkg_resources is deprecated', category=UserWarning)
+
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query, Body
+from fastapi import APIRouter, Depends, Query, Body, HTTPException
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import uvicorn
 import fastapi
@@ -20,7 +26,8 @@ from data_chain.apps.router import (
     other,
     role,
     usr_message,
-    task
+    task,
+    user
 )
 from data_chain.apps.base.task.worker import (
     base_worker,
@@ -70,7 +77,7 @@ from data_chain.stores.database.database import (
 from data_chain.manager.role_manager import RoleManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
-from data_chain.entities.enum import ParseMethod
+from data_chain.entities.enum import ParseMethod, LanguageType
 from data_chain.entities.common import (
     DOC_PATH_IN_OS,
     EXPORT_KB_PATH_IN_OS,
@@ -83,33 +90,75 @@ from data_chain.entities.common import (
 # logging.getLogger('apscheduler').setLevel(logging.ERROR)
 from data_chain.apps.service.router_service import get_route_info
 from data_chain.apps.service.task_queue_service import TaskQueueService
+from data_chain.apps.exceptions import (
+    PermissionDeniedException,
+    permission_exception_handler,
+    general_exception_handler,
+    http_exception_handler,
+    starlette_http_exception_handler
+)
+
 app = fastapi.FastAPI(docs_url=None, redoc_url=None)
 scheduler = AsyncIOScheduler()
 
+# 注册全局异常处理器
+app.add_exception_handler(PermissionDeniedException, permission_exception_handler)
+app.add_exception_handler(HTTPException, http_exception_handler)
+app.add_exception_handler(StarletteHTTPException, starlette_http_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
+import time
 @app.on_event("startup")
 async def startup_event():
+    st= time.time()
     await configure()
+    en = time.time()
+    logging.info(f"[App] configure completed, time used: {en - st:.2f} seconds")
+    st= time.time()
     await add_acitons()
+    en = time.time()
+    logging.info(f"[App] add_actions completed, time used: {en - st:.2f} seconds")
+    st= time.time()
     await TaskQueueService.init_task_queue()
+    en = time.time()
+    logging.info(f"[App] init_task_queue completed, time used: {en - st:.2f} seconds")
+    st= time.time()
     await add_knowledge_base()
+    en = time.time()
+    logging.info(f"[App] add_knowledge_base completed, time used: {en - st:.2f} seconds")
+    st= time.time()
     await add_document_type()
+    en = time.time()
+    logging.info(f"[App] add_document_type completed, time used: {en - st:.2f} seconds")
+    st= time.time()
     await init_path()
+    en = time.time()
+    logging.info(f"[App] init_path completed, time used: {en - st:.2f} seconds")
     scheduler.add_job(TaskQueueService.handle_tasks, 'interval', seconds=5)
     scheduler.start()
 
 
 async def add_acitons():
     for action in actions:
+        # 先检查action是否已存在,避免重复插入
+        existing_action = await RoleManager.get_action_by_action(action['action'])
+        if existing_action:
+            continue
+
         action_entity = ActionEntity(
             action=action['action'],
-            name=action['name'],
-            type=action['type'],
+            name=action['name'][LanguageType.CHINESE],
+            type=action['type'][LanguageType.CHINESE]
         )
         await RoleManager.add_action(action_entity)
 
 
 async def add_knowledge_base():
+    # 先检查知识库是否已存在,避免重复插入
+    existing_kb = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(DEFAULT_DOC_TYPE_ID)
+    if existing_kb:
+        return
+
     knowledge_base_entity = KnowledgeBaseEntity(
         id=DEFAULT_DOC_TYPE_ID,
         default_parse_method=ParseMethod.OCR.value
@@ -118,6 +167,11 @@ async def add_knowledge_base():
 
 
 async def add_document_type():
+    # 先检查文档类型是否已存在,避免重复插入
+    existing_doc_type = await DocumentTypeManager.get_document_type_by_id(DEFAULT_DOC_TYPE_ID)
+    if existing_doc_type:
+        return
+
     document_type_entity = DocumentTypeEntity(
         id=DEFAULT_DOC_TYPE_ID,
         name="default",
@@ -153,6 +207,7 @@ async def configure():
     app.include_router(role.router)
     app.include_router(usr_message.router)
     app.include_router(task.router)
+    app.include_router(user.router)
 # 定义一个路由来获取所有路由信息
 
 

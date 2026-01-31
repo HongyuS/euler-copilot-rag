@@ -23,15 +23,41 @@ class TaskQueueManager():
             raise e
 
     @staticmethod
+    async def add_tasks(tasks: List[TaskQueueEntity]):
+        try:
+            async with await DataBase.get_session() as session:
+                session.add_all(tasks)
+                await session.commit()
+        except Exception as e:
+            err = "批量添加任务到队列失败"
+            logging.exception("[TaskQueueManager] %s", err)
+            raise e
+
+    @staticmethod
     async def delete_task_by_id(task_id: uuid.UUID):
         """根据任务ID删除任务"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = delete(TaskQueueEntity).where(TaskQueueEntity.id == task_id)
+                stmt = delete(TaskQueueEntity).where(
+                    TaskQueueEntity.id == task_id)
                 await session.execute(stmt)
                 await session.commit()
         except Exception as e:
             err = "删除任务失败"
+            logging.exception("[TaskQueueManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def delete_tasks_by_ids(task_ids: List[uuid.UUID]):
+        """根据任务ID列表批量删除任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = delete(TaskQueueEntity).where(
+                    TaskQueueEntity.id.in_(task_ids))
+                await session.execute(stmt)
+                await session.commit()
+        except Exception as e:
+            err = "批量删除任务失败"
             logging.exception("[TaskQueueManager] %s", err)
             raise e
 
@@ -58,7 +84,8 @@ class TaskQueueManager():
         """根据任务ID获取任务"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = select(TaskQueueEntity).where(TaskQueueEntity.id == task_id)
+                stmt = select(TaskQueueEntity).where(
+                    TaskQueueEntity.id == task_id)
                 result = await session.execute(stmt)
                 return result.scalars().first()
         except Exception as e:
@@ -67,18 +94,49 @@ class TaskQueueManager():
             raise e
 
     @staticmethod
-    async def update_task_by_id(task_id: uuid.UUID, task: TaskQueueEntity):
+    async def get_tasks_by_ids(task_ids: List[uuid.UUID]) -> List[TaskQueueEntity]:
+        """根据任务ID列表批量获取任务"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = select(TaskQueueEntity).where(
+                    TaskQueueEntity.id.in_(task_ids))
+                result = await session.execute(stmt)
+                return result.scalars().all()
+        except Exception as e:
+            err = "批量获取任务失败"
+            logging.exception("[TaskQueueManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def update_task_by_id(task_id: uuid.UUID, status: TaskStatus):
         """根据任务ID更新任务"""
         try:
             async with await DataBase.get_session() as session:
                 stmt = (
                     update(TaskQueueEntity)
                     .where(TaskQueueEntity.id == task_id)
-                    .values(status=task.status)
+                    .values(status=status.value)
                 )
                 await session.execute(stmt)
                 await session.commit()
         except Exception as e:
             err = "更新任务失败"
+            logging.exception("[TaskQueueManager] %s", err)
+            raise e
+
+    @staticmethod
+    async def update_task_by_ids(task_ids: List[uuid.UUID], status: TaskStatus):
+        """根据任务ID列表批量更新任务状态"""
+        try:
+            async with await DataBase.get_session() as session:
+                stmt = (
+                    update(TaskQueueEntity)
+                    .where(TaskQueueEntity.id.in_(task_ids))
+                    .values(status=status.value)
+                )
+                await session.execute(stmt)
+                await session.commit()
+        except Exception as e:
+            err = "批量更新任务状态失败"
             logging.exception("[TaskQueueManager] %s", err)
             raise e

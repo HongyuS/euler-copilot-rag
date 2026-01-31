@@ -193,16 +193,21 @@ class ImportDataSetWorker(BaseWorker):
         databse_score = 0
         with open(config['PROMPT_PATH'], 'r', encoding='utf-8') as f:
             prompt_dict = yaml.load(f, Loader=yaml.SafeLoader)
-        cal_qa_score_prompt_template = prompt_dict.get('CAL_QA_SCORE_PROMPT', {})
-        cal_qa_score_prompt_template = cal_qa_score_prompt_template.get(language, '')
+        cal_qa_score_prompt_template = prompt_dict.get(
+            'CAL_QA_SCORE_PROMPT', {})
+        cal_qa_score_prompt_template = cal_qa_score_prompt_template.get(
+            language, '')
         for qa_entity in qa_entities:
             chunk = qa_entity.chunk
             question = qa_entity.question
             answer = qa_entity.answer
             sys_call = cal_qa_score_prompt_template.format(
-                fragment=TokenTool.get_k_tokens_words_from_content(chunk, llm.max_tokens//9*4),
-                question=TokenTool.get_k_tokens_words_from_content(question, llm.max_tokens//9),
-                answer=TokenTool.get_k_tokens_words_from_content(answer, llm.max_tokens//9*4)
+                fragment=TokenTool.get_k_tokens_words_from_content(
+                    chunk, llm.max_tokens//9*4),
+                question=TokenTool.get_k_tokens_words_from_content(
+                    question, llm.max_tokens//9),
+                answer=TokenTool.get_k_tokens_words_from_content(
+                    answer, llm.max_tokens//9*4)
             )
             usr_call = '请输出分数'
             score = await llm.nostream([], sys_call, usr_call)
@@ -278,7 +283,7 @@ class ImportDataSetWorker(BaseWorker):
             err = f"[ImportDataSetWorker] 任务不存在，task_id: {task_id}"
             logging.exception(err)
             return None
-        if task_entity.status == TaskStatus.CANCLED or TaskStatus.FAILED.value:
+        if task_entity.status == TaskStatus.CANCLED or task_entity.status == TaskStatus.FAILED.value:
             await DatasetManager.update_dataset_by_dataset_id(task_entity.op_id, {"status": DataSetStatus.DELETED.value})
             await MinIO.delete_object(
                 IMPORT_DATASET_PATH_IN_MINIO,

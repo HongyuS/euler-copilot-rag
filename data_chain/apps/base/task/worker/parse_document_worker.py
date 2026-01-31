@@ -115,7 +115,8 @@ class ParseDocumentWorker(BaseWorker):
             err = f"[ParseDocumentWorker] 文档不存在，doc_id: {doc_id}"
             logging.exception(err)
             raise Exception(err)
-        file_path = os.path.join(tmp_path, str(doc_id)+'.'+doc_entity.extension)
+        file_path = os.path.join(tmp_path, str(
+            doc_id)+'.'+doc_entity.extension)
         await MinIO.download_object(
             DOC_PATH_IN_MINIO,
             str(doc_entity.id),
@@ -126,32 +127,13 @@ class ParseDocumentWorker(BaseWorker):
     @staticmethod
     async def parse_doc(doc_entity: DocumentEntity, file_path: str) -> ParseResult:
         '''解析文档'''
-        extension = doc_entity.extension
-        if doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
-            extension += '.' + doc_entity.parse_method
+        extension: str = doc_entity.extension
+        extension = extension.lower()
+        if extension == "pdf":
+            if doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
+                extension += '.' + doc_entity.parse_method
         parse_result = await BaseParser.parser(extension, file_path)
         return parse_result
-
-    @staticmethod
-    async def get_content_from_json(js: Any) -> str:
-        '''获取json内容'''
-        if isinstance(js, dict):
-            content = ''
-            for key, value in js.items():
-                content += str(key) + ': '
-                if isinstance(value, (dict, list)):
-                    content += await ParseDocumentWorker.get_content_from_json(value)
-                else:
-                    content += str(value) + '\n'
-            return content
-        elif isinstance(js, list):
-            for item in js:
-                content += await ParseDocumentWorker.get_content_from_json(item)
-                content += ' '
-            content += '\n'
-            return content
-        else:
-            return str(js)
 
     @staticmethod
     async def handle_parse_result(
@@ -163,8 +145,16 @@ class ParseDocumentWorker(BaseWorker):
                 if node.type != ChunkType.IMAGE:
                     nodes.append(node)
             parse_result.nodes = nodes
+        if doc_entity.parse_method != ParseMethod.TREE.value and parse_result.parse_topology_type == DocParseRelutTopology.TREE:
+            parse_result.parse_topology_type = DocParseRelutTopology.LIST
+            for node in parse_result.nodes:
+                node.parse_topology_type = ChunkParseTopology.GERNERAL
+                if node.title is not None:
+                    node.content = node.title
+        extension: str = doc_entity.extension
+        extension = extension.lower()
         if doc_entity.parse_method == ParseMethod.QA:
-            if doc_entity.extension == 'xlsx' or doc_entity.extension == 'csv':
+            if extension == 'xlsx' or extension == 'csv':
                 for node in parse_result.nodes:
                     node.type = ChunkType.QA
                     try:
@@ -181,14 +171,14 @@ class ParseDocumentWorker(BaseWorker):
                         logging.warning(warning)
                     node.text_feature = question
                     node.content = 'question: ' + question + '\n' + 'answer: ' + answer
-            elif doc_entity.extension == 'json' or doc_entity.extension == 'yaml':
+            elif extension == 'json' or extension == 'yaml':
                 qa_list = parse_result.nodes[0].content
                 parse_result.nodes = []
                 for qa in qa_list:
                     question = qa.get('question')
                     answer = qa.get('answer')
                     if question is None or answer is None:
-                        warning = f"[ParseDocumentWorker] 解析问题和答案失败，doc_id: {doc_entity.id}, error: {e}"
+                        warning = f"[ParseDocumentWorker] 解析问题和答案失败，doc_id: {doc_entity.id}, qa: {qa}"
                         logging.warning(warning)
                         continue
                     node = ParseNode(
@@ -204,7 +194,7 @@ class ParseDocumentWorker(BaseWorker):
             else:
                 parse_result.nodes = []
         else:
-            if doc_entity.extension == 'xlsx' or doc_entity.extension == 'xls' or doc_entity.extension == 'csv':
+            if extension == 'xlsx' or extension == 'xls' or extension == 'csv':
                 for node in parse_result.nodes:
                     content = node.content[:]
                     for i in range(len(content)):
@@ -212,9 +202,11 @@ class ParseDocumentWorker(BaseWorker):
                             content[i] = str(content[i])
                     node.content = '|'.join(content)
                     node.text_feature = node.content
-            elif doc_entity.extension == 'json' or doc_entity.extension == 'yaml':
-                parse_result.nodes[0].content = await ParseDocumentWorker.get_content_from_json(parse_result.nodes[0].content)
+            elif extension == 'json' or extension == 'yaml':
+                parse_result.nodes[0].content = str(
+                    parse_result.nodes[0].content)
                 parse_result.nodes[0].text_feature = parse_result.nodes[0].content
+                parse_result.nodes[0].type = ChunkType.TEXT
             else:
                 for node in parse_result.nodes:
                     if node.type == ChunkType.TEXT or node.type == ChunkType.LINK:
@@ -223,7 +215,8 @@ class ParseDocumentWorker(BaseWorker):
                         if llm is not None:
                             node.text_feature = await TokenTool.get_abstract_by_llm(node.content, llm, language)
                         if node.text_feature is None:
-                            node.text_feature = TokenTool.get_top_k_keywords(node.content)
+                            node.text_feature = TokenTool.get_top_k_keywords(
+                                node.content)
                     elif node.type == ChunkType.TABLE:
                         content = node.content[:]
                         for i in range(len(content)):
@@ -250,7 +243,8 @@ class ParseDocumentWorker(BaseWorker):
                     )
                     image_entities.append(image_entity)
                     image_blob = node.content
-                    image_file_path = os.path.join(image_path, str(node.id) + '.' + extension)
+                    image_file_path = os.path.join(
+                        image_path, str(node.id) + '.' + extension)
                     with open(image_file_path, 'wb') as f:
                         f.write(image_blob)
                     await MinIO.put_object(
@@ -283,7 +277,8 @@ class ParseDocumentWorker(BaseWorker):
                     if related_node.type != ChunkType.IMAGE:
                         image_related_text += related_node.content + '\n'
                 extension = ImageTool.get_image_type(node.content)
-                image_file_path = os.path.join(image_path, str(node.id) + '.' + extension)
+                image_file_path = os.path.join(
+                    image_path, str(node.id) + '.' + extension)
                 ocr_result = (await OcrTool.image_to_text(image_file_path, image_related_text, llm, language))
                 node.text_feature = ocr_result
                 node.content = ocr_result
@@ -309,10 +304,8 @@ class ParseDocumentWorker(BaseWorker):
             index += group_size
 
     @staticmethod
-    async def merge_and_split_text(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
-        '''合并和拆分内容'''
-        if doc_entity.parse_method == ParseMethod.QA or parse_result.parse_topology_type == DocParseRelutTopology.TREE:
-            return
+    async def merge_and_split_text_list(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
+        '''线性列表合并和拆分内容'''
         nodes = []
         for node in parse_result.nodes:
             if node.type == ChunkType.TEXT:
@@ -338,7 +331,8 @@ class ParseDocumentWorker(BaseWorker):
                     if TokenTool.get_tokens(sentence) > doc_entity.chunk_size:
                         tmp = sentence[:]
                         while len(tmp) > 0:
-                            sub_sentence = TokenTool.get_k_tokens_words_from_content(tmp, doc_entity.chunk_size)
+                            sub_sentence = TokenTool.get_k_tokens_words_from_content(
+                                tmp, doc_entity.chunk_size)
                             new_sentences.append(sub_sentence)
                             tmp = tmp[len(sub_sentence):]
                     else:
@@ -387,6 +381,123 @@ class ParseDocumentWorker(BaseWorker):
         parse_result.nodes = nodes
 
     @staticmethod
+    async def merge_and_split_text_tree(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
+        '''树形结构合并和拆分内容'''
+        async def dfs(node: ParseNode, doc_entity: DocumentEntity) -> None:
+            for cnode in node.link_nodes:
+                if cnode.parse_topology_type != ChunkParseTopology.TREELEAF:
+                    await dfs(cnode, doc_entity)
+            new_nodes = []
+            index = 0
+            while index < len(node.link_nodes):
+                cnode = node.link_nodes[index]
+                if cnode.parse_topology_type != ChunkParseTopology.TREELEAF or cnode.type != ChunkType.TEXT:
+                    new_nodes.append(cnode)
+                    index += 1
+                else:
+                    content = ''
+                    tmp_nodes = []
+                    while index < len(node.link_nodes) and node.link_nodes[index].parse_topology_type == ChunkParseTopology.TREELEAF and node.link_nodes[index].type == ChunkType.TEXT:
+                        if node.link_nodes[index].is_need_newline:
+                            content += '\n'
+                        elif node.link_nodes[index].is_need_space:
+                            content += ' '
+                        content += node.link_nodes[index].content
+                        index += 1
+                    sentences = TokenTool.content_to_sentences(content)
+                    new_sentences = []
+                    for sentence in sentences:
+                        if TokenTool.get_tokens(sentence) > doc_entity.chunk_size:
+                            tmp = sentence[:]
+                            while len(tmp) > 0:
+                                sub_sentence = TokenTool.get_k_tokens_words_from_content(
+                                    tmp, doc_entity.chunk_size)
+                                new_sentences.append(sub_sentence)
+                                tmp = tmp[len(sub_sentence):]
+                        else:
+                            new_sentences.append(sentence)
+                    sentences = new_sentences
+                    tmp = ''
+                    for sentence in sentences:
+                        if TokenTool.get_tokens(tmp+sentence) > doc_entity.chunk_size:
+                            tmp_node = ParseNode(
+                                id=uuid.uuid4(),
+                                pre_id=cnode.pre_id,
+                                lv=cnode.lv,
+                                parse_topology_type=ChunkParseTopology.TREELEAF,
+                                text_feature=tmp,
+                                content=tmp,
+                                type=ChunkType.TEXT,
+                                link_nodes=[]
+                            )
+                            tmp_nodes.append(tmp_node)
+                            tmp = sentence
+                        else:
+                            tmp += sentence
+                    if len(tmp) > 0:
+                        tmp_node = ParseNode(
+                            id=uuid.uuid4(),
+                            pre_id=cnode.pre_id,
+                            lv=cnode.lv,
+                            parse_topology_type=ChunkParseTopology.TREELEAF,
+                            text_feature=tmp,
+                            content=tmp,
+                            type=ChunkType.TEXT,
+                            link_nodes=[]
+                        )
+                        tmp_nodes.append(tmp_node)
+                    new_nodes.extend(tmp_nodes)
+            node.link_nodes = new_nodes
+
+        async def flatten(node: ParseNode, nodes: list) -> None:
+            nodes.append(node)
+            for cnode in node.link_nodes:
+                await flatten(cnode, nodes)
+        await dfs(parse_result.nodes[0], doc_entity)
+        nodes = []
+        await flatten(parse_result.nodes[0], nodes)
+        parse_result.nodes = nodes
+
+    @staticmethod
+    async def merge_and_split_text_by_separating_characters(parse_result: ParseResult, characters: str) -> None:
+        '''通过分隔符合并并拆分内容'''
+        content = ''
+        for node in parse_result.nodes:
+            content += node.content
+        parts = content.split(characters)
+        nodes = []
+        for part in parts:
+            tmp_node = ParseNode(
+                id=uuid.uuid4(),
+                lv=0,
+                parse_topology_type=ChunkParseTopology.GERNERAL,
+                text_feature=part,
+                content=part,
+                type=ChunkType.TEXT,
+                link_nodes=[]
+            )
+            nodes.append(tmp_node)
+        parse_result.parse_topology_type = DocParseRelutTopology.LIST
+        parse_result.nodes = nodes
+
+    async def merge_and_split_text(parse_result: ParseResult, doc_entity: DocumentEntity) -> None:
+        '''合并和拆分内容'''
+        kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(doc_entity.kb_id)
+        if kb_entity.separating_characters is not None:
+            await ParseDocumentWorker.merge_and_split_text_by_separating_characters(parse_result, kb_entity.separating_characters)
+            return
+        if doc_entity.parse_method == ParseMethod.QA:
+            return
+        logging.warning(
+            f"parse_result_parse_topology_type: {parse_result.parse_topology_type}")
+        if parse_result.parse_topology_type == DocParseRelutTopology.TREE:
+            await ParseDocumentWorker.merge_and_split_text_tree(
+                parse_result, doc_entity)
+        elif parse_result.parse_topology_type == DocParseRelutTopology.LIST or parse_result.parse_topology_type == DocParseRelutTopology.GRAPH:
+            await ParseDocumentWorker.merge_and_split_text_list(
+                parse_result, doc_entity)
+
+    @staticmethod
     async def push_up_words_feature(parse_result: ParseResult, llm: LLM = None, language: str = '中文') -> None:
         '''推送上层词特征'''
         async def dfs(node: ParseNode, parent_node: ParseNode, llm: LLM = None, language: str = '中文') -> None:
@@ -402,7 +513,8 @@ class ParseDocumentWorker(BaseWorker):
                             if cnode.title:
                                 content += cnode.title + '\n'
                             else:
-                                sentences = TokenTool.get_top_k_keysentence(cnode.content, 1)
+                                sentences = TokenTool.get_top_k_keysentence(
+                                    cnode.content, 1)
                                 if sentences:
                                     content += sentences[0] + '\n'
                         if content:
@@ -412,7 +524,8 @@ class ParseDocumentWorker(BaseWorker):
                         else:
                             title = ''
                         if not title:
-                            sentences = TokenTool.get_top_k_keysentence(content, 1)
+                            sentences = TokenTool.get_top_k_keysentence(
+                                content, 1)
                             if sentences:
                                 title = sentences[0]
                         node.text_feature = title
@@ -446,6 +559,7 @@ class ParseDocumentWorker(BaseWorker):
                 "abstract_vector": abstract_vector
             }
         )
+        await DocumentManager.update_document_abstract_ts_vector_by_doc_ids([doc_id])
         return abstract
 
     @staticmethod
@@ -507,6 +621,9 @@ class ParseDocumentWorker(BaseWorker):
         while index < len(chunk_entities):
             try:
                 await ChunkManager.add_chunks(chunk_entities[index:index+1024])
+                sub_chunk_ids = [
+                    chunk.id for chunk in chunk_entities[index:index+1024]]
+                await ChunkManager.update_chunk_text_ts_vector_by_chunk_ids(sub_chunk_ids)
             except Exception as e:
                 err = f"[ParseDocumentWorker] 添加解析结果到数据库失败，doc_id: {doc_entity.id}, error: {e}"
                 logging.exception(err)
@@ -527,7 +644,10 @@ class ParseDocumentWorker(BaseWorker):
             raise Exception(err)
         await DocumentManager.update_document_by_doc_id(task_entity.op_id, {"status": DocumentStatus.RUNNING.value})
         try:
-            if doc_entity.parse_method == ParseMethod.EHANCED.value or doc_entity.parse_method == ParseMethod.DEEP.value or doc_entity.parse_method == ParseMethod.FINE.value:
+            if doc_entity.parse_method == ParseMethod.EHANCED.value or \
+                    doc_entity.parse_method == ParseMethod.TREE.value or \
+                    doc_entity.parse_method == ParseMethod.DEEP.value or \
+                    doc_entity.parse_method == ParseMethod.FINE.value:
                 llm = LLM(
                     openai_api_key=config['OPENAI_API_KEY'],
                     openai_api_base=config['OPENAI_API_BASE'],
@@ -543,7 +663,8 @@ class ParseDocumentWorker(BaseWorker):
             await ParseDocumentWorker.download_doc_from_minio(task_entity.op_id, tmp_path)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '下载文档', current_stage, stage_cnt)
-            file_path = os.path.join(tmp_path, str(task_entity.op_id)+'.'+doc_entity.extension)
+            file_path = os.path.join(tmp_path, str(
+                task_entity.op_id)+'.'+doc_entity.extension)
             parse_result = await ParseDocumentWorker.parse_doc(doc_entity, file_path)
             current_stage += 1
             await ParseDocumentWorker.report(task_id, '解析文档', current_stage, stage_cnt)

@@ -1,4 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+import time
 import aiofiles
 from fastapi import APIRouter, Depends, Query, Body, File, UploadFile
 import uuid
@@ -43,6 +44,8 @@ class DocumentService:
         """验证用户对文档的操作权限"""
         try:
             doc_entity = await DocumentManager.get_document_by_doc_id(doc_id)
+            if doc_entity is None:
+                return False
             if doc_entity.kb_id == DEFAULT_KNOWLEDGE_BASE_ID:
                 return True
             if doc_entity is None:
@@ -67,7 +70,8 @@ class DocumentService:
             doc_ids = [doc_entity.id for doc_entity in doc_entities]
             task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
             task_ids = [task_entity.id for task_entity in task_entities]
-            task_dict = {task_entity.op_id: task_entity for task_entity in task_entities}
+            task_dict = {
+                task_entity.op_id: task_entity for task_entity in task_entities}
             task_report_entities = await TaskReportManager.list_current_task_report_by_task_ids(task_ids)
             task_report_dict = {task_report_entity.task_id: task_report_entity for task_report_entity in
                                 task_report_entities}
@@ -82,7 +86,8 @@ class DocumentService:
                     task = await Convertor.convert_task_entity_to_task(task_entity, task_report)
                     document.parse_task = task
                 documents.append(document)
-            list_document_msg = ListDocumentMsg(total=total, documents=documents)
+            list_document_msg = ListDocumentMsg(
+                total=total, documents=documents)
             return list_document_msg
         except Exception as e:
             err = "列出文档失败"
@@ -166,7 +171,8 @@ class DocumentService:
                 continue
             doc_ids.append(doc_entity.id)
         task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
-        task_dict = {task_entity.op_id: task_entity for task_entity in task_entities}
+        task_dict = {
+            task_entity.op_id: task_entity for task_entity in task_entities}
         doc_status_list = []
         for doc_id in doc_ids:
             task_entity = task_dict.get(doc_id, None)
@@ -313,6 +319,7 @@ class DocumentService:
             err = f"上传文档数量或大小超过限制, 知识库ID: {kb_id}, 上传文档数量: {doc_cnt}, 上传文档大小: {doc_sz}"
             logging.error("[DocumentService] %s", err)
             raise ValueError(err)
+        st = time.time()
         doc_entities = []
         for doc in docs:
             try:
@@ -322,16 +329,28 @@ class DocumentService:
                     shutil.rmtree(tmp_path)
                 os.makedirs(tmp_path)
                 document_file_path = os.path.join(tmp_path, doc.filename)
+                st = time.time()
                 async with aiofiles.open(document_file_path, "wb") as f:
                     content = await doc.read()
                     await f.write(content)
+                end_time = time.time()
+                logging.error(
+                    "[DocumentService] 写入文档到本地耗时: %.2f 秒", end_time - st)
+                st = time.time()
                 await MinIO.put_object(
                     bucket_name=DOC_PATH_IN_MINIO,
                     file_index=str(id),
                     file_path=document_file_path
                 )
+                en = time.time()
+                logging.error(
+                    "[DocumentService] 上传文档到MinIO耗时: %.2f 秒", en - st)
                 if os.path.exists(tmp_path):
+                    st = time.time()
                     shutil.rmtree(tmp_path)
+                    en = time.time()
+                    logging.error(
+                        "[DocumentService] 删除临时文件夹耗时: %.2f 秒", en - st)
                 doc_entity = DocumentEntity(
                     id=id,
                     team_id=kb_entity.team_id,
@@ -356,7 +375,9 @@ class DocumentService:
                 err = f"上传文档失败, 文档名: {doc.filename}, 错误信息: {e}"
                 logging.error("[DocumentService] %s", err)
                 continue
+        logging.error("[DocumentService] 上传文档总耗时: %.2f 秒", time.time() - st)
         index = 0
+        st = time.time()
         while index < len(doc_entities):
             try:
                 await DocumentManager.add_documents(doc_entities[index:index+1024])
@@ -365,10 +386,16 @@ class DocumentService:
                 err = f"上传文档失败, 文档名: {doc_entity.name}, 错误信息: {e}"
                 logging.error("[DocumentService] %s", err)
                 continue
+        logging.error("[DocumentService] 入库文档总耗时: %.2f 秒", time.time() - st)
+        st = time.time()
         for doc_entity in doc_entities:
             await TaskQueueService.init_task(TaskType.DOC_PARSE.value, doc_entity.id)
+        logging.error("[DocumentService] 初始化任务总耗时: %.2f 秒", time.time() - st)
         doc_ids = [doc_entity.id for doc_entity in doc_entities]
+        st = time.time()
         await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id=kb_entity.id)
+        logging.error(
+            "[DocumentService] 更新知识库文档数量和大小总耗时: %.2f 秒", time.time() - st)
         return doc_ids
 
     @staticmethod
@@ -449,13 +476,19 @@ class DocumentService:
     async def delete_docs_by_ids(doc_ids: list[uuid.UUID]) -> list[uuid.UUID]:
         """删除文档"""
         try:
-            task_entities = await TaskManager.list_current_tasks_by_op_ids(doc_ids)
+            batch_size = 1024
+            task_entities = []
+            for i in range(0, len(doc_ids), batch_size):
+                batch_doc_ids = doc_ids[i:i+batch_size]
+                batch_task_entities = await TaskManager.list_current_tasks_by_op_ids(batch_doc_ids)
+                task_entities.extend(batch_task_entities)
             for task_entity in task_entities:
                 await TaskQueueService.stop_task(task_entity.id)
             doc_entities = await DocumentManager.update_document_by_doc_ids(
                 doc_ids, {"status": DocumentStatus.DELETED.value})
             doc_ids = [doc_entity.id for doc_entity in doc_entities]
-            kb_ids = [doc_entity.kb_id for doc_entity in doc_entities if doc_entity.kb_id is not None]
+            kb_ids = [
+                doc_entity.kb_id for doc_entity in doc_entities if doc_entity.kb_id is not None]
             kb_ids = list(set(kb_ids))
             for kb_id in kb_ids:
                 await KnowledgeBaseManager.update_doc_cnt_and_doc_size(kb_id=kb_id)

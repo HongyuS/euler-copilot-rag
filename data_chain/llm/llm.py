@@ -26,15 +26,28 @@ class LLM:
 
     async def create_stream(
             self, message):
-        return await self._client.chat.completions.create(
-            model=self.model_name,
-            messages=message,  # type: ignore[]
-            max_completion_tokens=self.max_tokens,
-            temperature=self.temperature,
-            stream=True,
-            stream_options={"include_usage": True},
-            timeout=300
-        )  # type: ignore[]
+        try:
+            return await self._client.chat.completions.create(
+                model=self.model_name,
+                messages=message,  # type: ignore[]
+                max_completion_tokens=self.max_tokens,
+                temperature=self.temperature,
+                stream=True,
+                stream_options={"include_usage": True},
+                timeout=300,
+                extra_body={"enable_thinking": False}
+            )  # type: ignore[]
+        except Exception as e:
+            warning = f"[LLM] create_stream 出现异常: {e}"
+            logger.warning(warning)
+            return await self._client.chat.completions.create(
+                model=self.model_name,
+                messages=message,  # type: ignore[]
+                max_completion_tokens=self.max_tokens,
+                temperature=self.temperature,
+                stream=True,
+                timeout=300
+            )  # type: ignore[]
 
     async def data_producer(self, q: asyncio.Queue, history, system_call, user_call):
         message = self.assemble_chat(history, system_call, user_call)
@@ -59,7 +72,8 @@ class LLM:
         q = asyncio.Queue(maxsize=10)
 
         # 启动生产者任务
-        asyncio.create_task(self.data_producer(q, chat, system_call, user_call))
+        asyncio.create_task(self.data_producer(
+            q, chat, system_call, user_call))
         while True:
             data = await q.get()
             if data is None:
@@ -80,7 +94,7 @@ class LLM:
                 index = content[::-1].find(en_str[::-1])
                 if index != -1:
                     content = content[:len(content)-index]
-            logger.error(f"LLM nostream content: {content}")
+            logger.info(f"LLM nostream content: {content}")
         except Exception as e:
             err = f"[LLM] 非流式输出异常: {e}"
             logger.error("[LLM] %s", err)

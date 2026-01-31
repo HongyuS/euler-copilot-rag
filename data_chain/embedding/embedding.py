@@ -4,7 +4,7 @@ import json
 import urllib3
 from data_chain.config.config import config
 from data_chain.logger.logger import logger as logging
-
+from data_chain.entities.enum import EmbeddingType
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -12,7 +12,7 @@ class Embedding():
     @staticmethod
     async def vectorize_embedding(text):
         vector = None
-        if config['EMBEDDING_TYPE'] == 'openai':
+        if config['EMBEDDING_TYPE'] == EmbeddingType.OPENAI:
             headers = {
                 "Authorization": f"Bearer {config['EMBEDDING_API_KEY']}"
             }
@@ -22,7 +22,8 @@ class Embedding():
                 "encoding_format": "float"
             }
             try:
-                res = requests.post(url=config["EMBEDDING_ENDPOINT"], headers=headers, json=data, verify=False)
+                res = requests.post(
+                    url=config["EMBEDDING_ENDPOINT"], headers=headers, json=data, verify=False)
                 if res.status_code != 200:
                     return None
                 vector = res.json()['data'][0]['embedding']
@@ -30,12 +31,13 @@ class Embedding():
                 err = f"[Embedding] 向量化失败 ，error: {e}"
                 logging.exception(err)
                 return None
-        elif config['EMBEDDING_TYPE'] == 'mindie':
+        elif config['EMBEDDING_TYPE'] == EmbeddingType.MINDIE:
             try:
                 data = {
                     "inputs": text,
                 }
-                res = requests.post(url=config["EMBEDDING_ENDPOINT"], json=data, verify=False)
+                res = requests.post(
+                    url=config["EMBEDDING_ENDPOINT"], json=data, verify=False)
                 if res.status_code != 200:
                     return None
                 vector = json.loads(res.text)[0]

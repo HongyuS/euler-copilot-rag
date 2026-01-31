@@ -20,14 +20,16 @@ from data_chain.entities.response_data import (
     DocumentType as DocumentTypeResponse,
     ListKnowledgeBaseMsg,
     ListDocumentTypesResponse)
+from data_chain.config.config import config
 from data_chain.apps.base.zip_handler import ZipHandler
 from data_chain.apps.service.task_queue_service import TaskQueueService
-from data_chain.entities.enum import Tokenizer, ParseMethod, TeamType, TeamStatus, KnowledgeBaseStatus, TaskType
+from data_chain.entities.enum import Tokenizer, ParseMethod, TeamType, TeamStatus, KnowledgeBaseStatus, TaskType, RerankType
 from data_chain.entities.common import DEFAULT_KNOWLEDGE_BASE_ID, DEFAULT_DOC_TYPE_ID, default_roles, IMPORT_KB_PATH_IN_OS, EXPORT_KB_PATH_IN_MINIO, IMPORT_KB_PATH_IN_MINIO
 from data_chain.stores.database.database import TeamEntity, KnowledgeBaseEntity, DocumentTypeEntity
 from data_chain.stores.minio.minio import MinIO
 from data_chain.apps.base.convertor import Convertor
 from data_chain.manager.team_manager import TeamManager
+from data_chain.manager.user_manager import UserManager
 from data_chain.manager.knowledge_manager import KnowledgeBaseManager
 from data_chain.manager.document_type_manager import DocumentTypeManager
 from data_chain.manager.document_manager import DocumentManager
@@ -78,10 +80,12 @@ class KnowledgeBaseService:
                 team_id = knowledge_base_entity.team_id
                 if team_id not in team_knowledge_bases_dict:
                     team_knowledge_bases_dict[team_id] = []
-                team_knowledge_bases_dict[team_id].append(knowledge_base_entity)
+                team_knowledge_bases_dict[team_id].append(
+                    knowledge_base_entity)
             team_knowledge_bases = []
             for team_entity in team_entities:
-                knowledge_base_entities = team_knowledge_bases_dict.get(team_entity.id, [])
+                knowledge_base_entities = team_knowledge_bases_dict.get(
+                    team_entity.id, [])
                 team_knowledge_base = TeamKnowledgebase(
                     teamId=team_entity.id,
                     teamName=team_entity.name,
@@ -168,13 +172,14 @@ class KnowledgeBaseService:
             user_sub: str, team_id: uuid.UUID, req: CreateKnowledgeBaseRequest) -> uuid.UUID:
         """创建知识库"""
         try:
+            user_entity = await UserManager.get_user_by_id(user_sub)
             knowledge_base_entity = await Convertor.convert_create_knowledge_base_request_to_knowledge_base_entity(
-                user_sub, team_id, req)
+                user_sub, user_entity.name, team_id, req)
             knowledge_base_entity = await KnowledgeBaseManager.add_knowledge_base(knowledge_base_entity)
             if knowledge_base_entity is None:
                 err = "创建知识库失败"
                 logging.exception("[KnowledgeBaseService] %s", err)
-                raise e
+                raise Exception(err)
             doc_types = req.doc_types
             doc_type_entities = []
             for doc_type in doc_types:
@@ -193,6 +198,12 @@ class KnowledgeBaseService:
         try:
             with open(yaml_path, "r", encoding="utf-8") as f:
                 kb_config = yaml.load(f, Loader=yaml.SafeLoader)
+            rerank_method = kb_config.get("rerank_method", None)
+            if rerank_method == RerankType.ALGORITHM.value:
+                rerank_name = "jaccard dis reranker"
+            else:
+                rerank_method = config["RERANK_TYPE"]
+                rerank_name = config["RERANK_MODEL_NAME"]
             kb_entity = KnowledgeBaseEntity(
                 team_id=team_id,
                 author_id=user_sub,
@@ -200,12 +211,15 @@ class KnowledgeBaseService:
                 name=kb_config.get("name", ""),
                 tokenizer=kb_config.get("tokenizer", Tokenizer.ZH.value),
                 description=kb_config.get("description", ""),
-                embedding_model=kb_config.get("embedding_model", ""),
+                embedding_model=config["EMBEDDING_MODEL_NAME"],
+                rerank_method=rerank_method,
+                rerank_name=rerank_name,
                 doc_cnt=0,
                 doc_size=0,
                 upload_count_limit=kb_config.get("upload_count_limit", 128),
                 upload_size_limit=kb_config.get("upload_size_limit", 512),
-                default_parse_method=kb_config.get("default_parse_method", ParseMethod.GENERAL.value),
+                default_parse_method=kb_config.get(
+                    "default_parse_method", ParseMethod.GENERAL.value),
                 default_chunk_size=kb_config.get("default_chunk_size", 1024),
                 status=kb_config.get("status", KnowledgeBaseStatus.IDLE.value),
             )
@@ -295,10 +309,12 @@ class KnowledgeBaseService:
 
     @staticmethod
     async def update_doc_types(kb_id: uuid.UUID, doc_types: list[DocumentTypeRequest]) -> None:
-        new_doc_type_map = {doc_type.doc_type_id: doc_type.doc_type_name for doc_type in doc_types}
+        new_doc_type_map = {
+            doc_type.doc_type_id: doc_type.doc_type_name for doc_type in doc_types}
         new_doc_type_ids = {doc_type.doc_type_id for doc_type in doc_types}
         old_doc_type_entities = await KnowledgeBaseManager.list_doc_types_by_kb_id(kb_id)
-        old_doc_type_ids = {doc_type_entity.id for doc_type_entity in old_doc_type_entities}
+        old_doc_type_ids = {
+            doc_type_entity.id for doc_type_entity in old_doc_type_entities}
         delete_doc_type_ids = old_doc_type_ids - new_doc_type_ids
         add_doc_type_ids = new_doc_type_ids - old_doc_type_ids
         update_doc_type_ids = old_doc_type_ids & new_doc_type_ids
@@ -329,7 +345,7 @@ class KnowledgeBaseService:
             if knowledge_base_entity is None:
                 err = "更新知识库失败"
                 logging.exception("[KnowledgeBaseService] %s", err)
-                raise e
+                raise Exception(err)
             await KnowledgeBaseService.update_doc_types(kb_id, req.doc_types)
             return knowledge_base_entity.id
         except Exception as e:
@@ -348,9 +364,11 @@ class KnowledgeBaseService:
                 testing_entities = await TestingManager.list_testing_by_kb_id(kb_id)
                 doc_ids = [doc_entity.id for doc_entity in document_entities]
                 await DocumentService.delete_docs_by_ids(doc_ids)
-                dataset_ids = [dataset_entity.id for dataset_entity in dataset_entities]
+                dataset_ids = [
+                    dataset_entity.id for dataset_entity in dataset_entities]
                 await DataSetService.delete_data_by_data_ids(dataset_ids)
-                testing_ids = [testing_entity.id for testing_entity in testing_entities]
+                testing_ids = [
+                    testing_entity.id for testing_entity in testing_entities]
                 await TestingService.delete_testing_by_testing_ids(testing_ids)
                 task_entity = await TaskManager.get_current_task_by_op_id(kb_id)
                 if task_entity is not None:
