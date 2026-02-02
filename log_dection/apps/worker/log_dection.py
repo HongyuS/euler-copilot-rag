@@ -70,13 +70,22 @@ class LogDectionService:
         pass
 
     @staticmethod
+    async def map_unnormal_logs_to_templates(
+        logs: list[LogModel],
+        unnormal_log_templates: list[LogTemplateModel]
+    ) -> list[LogModel]:
+        """将异常日志映射到异常日志模板"""
+        # 这里实现将异常日志映射到异常日志模板的具体逻辑
+        pass
+
+    @staticmethod
     async def save_unnormal_logs_and_surroundings(
         logs: list[LogModel],
         unnormal_logs: list[LogModel],
         context_window: int = 5
-    ) -> None:
-        """保存异常日志及其上下文日志"""
-        # 这里实现保存异常日志及其上下文日志的具体逻辑
+    ) -> list[LogModel]:
+        """保存异常日志及其上下文"""
+        # 这里实现保存异常日志及其上下文的具体逻辑
         pass
 
     @staticmethod

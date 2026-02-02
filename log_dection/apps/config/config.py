@@ -3,9 +3,7 @@
 
 import os
 from copy import deepcopy
-from pathlib import Path
 
-import toml
 from apps.schemas.config import ConfigModel
 
 
@@ -15,14 +13,13 @@ class Config():
     _config: ConfigModel
 
     def __init__(self) -> None:
-        """读取配置文件；当PROD环境变量设置时，配置文件将在读取后删除"""
-        config_file = os.getenv("CONFIG")
-        if config_file is None:
-            config_file = "common/config.toml"
-        self._config = ConfigModel.model_validate(toml.load(config_file))
-
-        if os.getenv("PROD"):
-            Path(config_file).unlink()
+        """从ConfigModel中获取所有键值，并从环境变量中覆盖它们（如果存在）"""
+        config_model_dict = ConfigModel().model_dump(exclude_none=True, by_alias=True)
+        for key in config_model_dict.keys():
+            env_value = os.getenv(key)
+            if env_value is not None:
+                config_model_dict[key] = env_value
+        self._config = ConfigModel.model_validate(config_model_dict)
 
     def get_config(self) -> ConfigModel:
         """获取配置文件内容"""
