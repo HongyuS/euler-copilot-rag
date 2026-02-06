@@ -10,3 +10,13 @@ class LogLevelEnum(str, Enum):
     TRACE = "TRACE"
     UNKNOWN = "UNKNOWN"
     FATAL = "FATAL"
+
+
+class LogTypeEnum(str, Enum):
+    BASE = "base"
+    DMESG = "dmesg"
+    KDUMP = "kdump"
+    FTRACE = "ftrace"
+    BASH = "bash"
+    CODE = "code"
+    OTHER = "other"
