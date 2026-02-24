@@ -1,50 +1,51 @@
 import re
 import asyncio
+# 以下为保持和参考代码一致的依赖声明（实际使用时需确保这些模块存在）
 from apps.parser.base_parser import BaseParser
 from apps.enum.log import LogTypeEnum
 from apps.schemas.log import LogModel
 
 
-class BashParser(BaseParser):
+class PythonParser(BaseParser):
     """
-    Bash日志解析器：识别并分割bash脚本相关日志，排除其他编程语言日志干扰
+    Python日志解析器：识别并分割Python脚本相关日志，排除其他编程语言日志干扰
     """
-    log_type: LogTypeEnum = LogTypeEnum.BASH
-    prio = 70  # 优先级低于DMESG但高于普通应用日志
+    log_type: LogTypeEnum = LogTypeEnum.PYTHON  # 需确保枚举中存在PYTHON类型
+    prio = 60
 
-    # 正向关键字：仅匹配bash自身特征，权重越高匹配优先级越高
+    # 正向关键字：仅匹配Python自身特征，权重越高匹配优先级越高
     postive_keywords = {
-        r'^\#!/bin/(ba|k)?sh': 20,          # bash脚本头（最高权重）
-        r'^set -[xeu]+': 18,                # bash调试/严格模式
-        # bash行错误
-        r'line \d+: (syntax error|command not found|unbound variable)': 18,
-        r'^\bbash: \w+: No such file or directory': 18,  # bash命令找不到
-        r'\bsh: \d+: \w+: not found': 17,   # sh执行错误
-        r'\bbash: .+: Permission denied': 17,  # bash权限错误
-        r'\/bin\/sh: .+ not found': 17,     # sh命令找不到
-        r'^\+ \w+': 16,                     # bash -x调试输出前缀
-        r'^> \w+': 16,                      # bash输出重定向
-        r'^\$\s+\w+': 15,                   # bash命令行提示符
-        r'^\[\w+\@\w+ \w+\]\$': 15,         # bash终端提示符
-        r'export \w+=': 14,                 # bash环境变量导出
-        r'echo \$\w+': 14,                  # bash变量打印
-        r'if \[ .+ \]; then': 13,           # bash条件判断
-        r'for \w+ in .+; do': 13,           # bash循环
-        r'while \[ .+ \]; do': 13,          # bash循环
-        r'function \w+ \{': 12,             # bash函数定义
-        r'\$\(\w+\)': 12,                   # bash命令替换
-        r'\$\{\w+\}': 12,                   # bash变量替换
-        r'&&|\|\|': 11,                     # bash逻辑运算符
-        r'\|\s*grep|\|\s*awk|\|\s*sed': 10,  # bash管道命令
+        r'^\#!/usr/bin/env python': 20,          # Python脚本头（最高权重）
+        r'^\#!/usr/bin/python': 20,              # Python脚本头
+        r'Traceback \(most recent call last\):': 19,  # Python异常回溯头
+        r'File ".*", line \d+, in .+': 19,       # Python文件行号信息
+        # Python异常类型
+        r'^(\w+Error|Exception|Warning|SyntaxError|IndentationError):': 18,
+        r'^>>> \w+': 17,                         # Python交互提示符
+        r'^\.\.\. \w+': 17,                      # Python多行输入提示符
+        r'Exception in thread': 16,              # Python线程异常
+        r'^import \w+|^from \w+ import': 15,     # Python导入语句
+        r'^def \w+\(.*\):': 14,                  # Python函数定义
+        r'^class \w+(\(.*\))?:': 14,             # Python类定义
+        r'^\s*@\w+': 13,                         # Python装饰器
+        r'^\s*if |^\s*elif |^\s*else:': 12,      # Python条件判断
+        r'^\s*for \w+ in .+:': 12,               # Python for循环
+        r'^\s*while .+:': 12,                    # Python while循环
+        r'^\s*try:|^\s*except|^\s*finally:': 11,  # Python异常处理
+        r'^\s*with .+ as .+:': 11,               # Python with语句
+        r'print\(.*\)': 10,                      # Python print函数
+        r'\bself\.\w+': 10,                      # Python类实例属性
+        r'^\s*return ': 9,                       # Python返回语句
+        r'^\s*yield ': 9,                        # Python生成器
+        r'^ValueError|^TypeError|^KeyError|^IndexError': 9,  # 常见Python异常
     }
 
     # 负向关键字：排除其他编程语言日志，权重越高排除优先级越高
     negative_keywords = {
-        # Python日志（高权重排除）
-        r'Traceback \(most recent call last\):': 5,
-        r'File ".*", line \d+, in .+': 5,
-        r'^(\w+Error|Exception|Warning):': 5,
-        r'Exception in thread': 5,
+        # Bash日志（高权重排除）
+        r'^\#!/bin/(ba|k)?sh': 5,
+        r'line \d+: (syntax error|command not found)': 5,
+        r'\bbash: \w+: No such file or directory': 5,
         # Java日志（高权重排除）
         r'Exception in thread ".*" java\.lang\.': 5,
         r'at \w+\.\w+\.\w+\(.*\.java:\d+\)': 5,
@@ -52,65 +53,61 @@ class BashParser(BaseParser):
         # C/C++日志（高权重排除）
         r'\#\d+ 0x[0-9a-fA-F]+ in \w+ at .+:\d+': 5,
         r'Segmentation fault \(core dumped\)': 5,
-        r'error: \w+: undeclared identifier': 5,
-        r'warning: .+ declared but never used': 5,
         # Go日志（高权重排除）
         r'goroutine \d+ \[(running|sleeping|waiting)\]': 5,
-        r'created by .+ in .+:\d+': 5,
         r'panic: .+': 5,
         # JavaScript/Node.js（中权重排除）
         r'Error: .+\n\s+at .+:\d+:\d+': 5,
         r'ReferenceError: \w+ is not defined': 5,
-        r'TypeError: .+ is not a function': 5,
         # PHP日志（中权重排除）
         r'PHP (Fatal|Warning|Notice) error:': 5,
-        r'in .+ on line \d+': 5,
         # 内核日志（中权重排除）
         r'localhost kernel:': 15,
         r'\[ *\d+\.\d+\] \w+:': 15,
-        r'Call Trace:': 15,
-        r'Oops: |panic:': 15,
         # 普通应用日志（低权重排除）
-        r'^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}': 10,
-        r'INFO|WARN|ERROR|DEBUG:': 10,
         r'nginx: \[error\]|mysqld: \[ERROR\]': 10,
     }
 
-    # 连续bash日志的开头标志及其后续行判断依据
+    # 连续Python日志的开头标志及其后续行判断依据
     mandatory = {
-        # bash语法错误头，后续是错误上下文
-        r'line \d+: syntax error': [
-            r'near unexpected token `.*\'',  # 错误类型和位置
-            r'^\s+',                          # 缩进的错误上下文
-            r'^\+ ',                          # 调试模式下的错误命令
+        # Python异常回溯头，后续是回溯详情
+        r'Traceback \(most recent call last\):': [
+            r'File ".*", line \d+, in .+',       # 回溯文件行号
+            r'^(\w+Error|Exception): .+',        # 异常类型和信息
+            r'^\s+',                              # 缩进的回溯上下文
         ],
-        # bash调试输出头，后续是执行的命令序列
-        r'^\+ \w+': [
-            r'^\+ \w+',                       # 连续的调试命令行
-            r'^\+ \$\(\w+\)',                 # 调试模式下的命令替换
-            r'^\+ \{\w+\}',                   # 调试模式下的变量替换
-            r'^> \w+',                       # 调试模式下的输出重定向
+        # Python函数定义头，后续是函数体
+        r'^def \w+\(.*\):': [
+            r'^\s+',                              # 函数体缩进
+            r'^\s*\w+',                           # 函数内代码
+            r'^\s*return |^\s*yield ',            # 返回/生成器语句
+            r'^\s*if |^\s*for |^\s*while',        # 函数内控制结构
         ],
-        # bash函数定义头，后续是函数体
-        r'function \w+ \{': [
-            r'^\s+',                          # 函数体缩进
-            r'^\s*\w+',                       # 函数内命令
-            r'^\s*if |^\s*for |^\s*while',     # 函数内控制结构
-            r'^\}',                           # 函数结束符
+        # Python类定义头，后续是类体
+        r'^class \w+(\(.*\))?:': [
+            r'^\s+',                              # 类体缩进
+            r'^\s*def \w+\(.*\):',                # 类内方法定义
+            r'^\s*self\.',                        # 类内属性引用
+            r'^\s*@\w+',                          # 类内装饰器
         ],
-        # bash循环结构头，后续是循环体
-        r'^for \w+ in .+; do|^while \[ .+ \]; do': [
-            r'^\s+',                          # 循环体缩进
-            r'^\s*\w+',                       # 循环内命令
-            r'^\s*done',                      # 循环结束符
-            r'^\s*if |^\s*else',              # 循环内条件判断
+        # Python交互模式输入头，后续是交互内容
+        r'^>>> \w+': [
+            r'^\.\.\. \w+',                       # 多行输入续行
+            r'^>>> \w+',                          # 连续交互命令
+            r'^[\w\[\]\{\}\(\)]+',                # 交互执行结果
+        ],
+        # Python异常类型头，后续是异常详情
+        r'^(\w+Error|Exception|Warning):': [
+            r'^\s+',                              # 异常详情缩进
+            r'File ".*", line \d+, in .+',       # 异常所在文件行号
+            r'^(\w+Error|Exception): .+',        # 嵌套异常
         ],
     }
 
     @staticmethod
     async def _check_negative_keywords(log_lines: list[str]) -> bool:
         """异步检查负向关键字，存在则返回True"""
-        for negative_pattern in BashParser.negative_keywords.keys():
+        for negative_pattern in PythonParser.negative_keywords.keys():
             if any(re.search(negative_pattern, line) for line in log_lines):
                 return True
         return False
@@ -118,7 +115,7 @@ class BashParser(BaseParser):
     @staticmethod
     async def _check_mandatory_patterns(log_lines: list[str]) -> bool:
         """异步检查mandatory核心头，匹配则返回True"""
-        for mandatory_pattern, continuation_patterns in BashParser.mandatory.items():
+        for mandatory_pattern, continuation_patterns in PythonParser.mandatory.items():
             for i, line in enumerate(log_lines):
                 if re.search(mandatory_pattern, line):
                     # 找到mandatory头，检查后续行是否匹配continuation_patterns
@@ -130,7 +127,7 @@ class BashParser(BaseParser):
     @staticmethod
     async def _check_positive_keywords(log_lines: list[str]) -> bool:
         """异步检查正向关键字，匹配则返回True"""
-        for positive_pattern in BashParser.positive_keywords.keys():
+        for positive_pattern in PythonParser.positive_keywords.keys():
             if any(re.search(positive_pattern, line) for line in log_lines):
                 return True
         return False
@@ -138,7 +135,7 @@ class BashParser(BaseParser):
     @staticmethod
     async def is_matched(log_lines: list[str]) -> bool:
         """
-        二次确认：精准匹配bash日志核心特征
+        二次确认：精准匹配Python日志核心特征
         规则：1. 不含负向关键字 2. 匹配至少1个mandatory头 或 正向关键字
         """
         batch_size = 100000
@@ -150,7 +147,7 @@ class BashParser(BaseParser):
             while j < len(batch):
                 sub_batch = batch[j:j+batch_size]
                 nagetive_tasks.append(
-                    BashParser._check_negative_keywords(sub_batch))
+                    PythonParser._check_negative_keywords(sub_batch))
                 j += batch_size
             nagetive_results = await asyncio.gather(*nagetive_tasks)
             for result in nagetive_results:
@@ -165,7 +162,7 @@ class BashParser(BaseParser):
             while j < len(batch):
                 sub_batch = batch[j:j+batch_size]
                 mandatory_tasks.append(
-                    BashParser._check_mandatory_patterns(sub_batch))
+                    PythonParser._check_mandatory_patterns(sub_batch))
                 j += batch_size
             mandatory_results = await asyncio.gather(*mandatory_tasks)
             for result in mandatory_results:
@@ -180,19 +177,19 @@ class BashParser(BaseParser):
             while j < len(batch):
                 sub_batch = batch[j:j+batch_size]
                 positive_tasks.append(
-                    BashParser._check_positive_keywords(sub_batch))
+                    PythonParser._check_positive_keywords(sub_batch))
                 j += batch_size
             positive_results = await asyncio.gather(*positive_tasks)
             for result in positive_results:
                 if result:
-                    return True  # 匹配到正向关键字，确认为bash日志
+                    return True  # 匹配到正向关键字，确认为Python日志
 
-        return False  # 未匹配到任何特征，排除为非bash日志
+        return False  # 未匹配到任何特征，排除为非Python日志
 
     @staticmethod
     async def split_logs(log_lines: list[str]) -> list[LogModel]:
         """
-        分割bash日志：将连续的bash日志块合并，单行日志单独处理
+        分割Python日志：将连续的Python日志块合并，单行日志单独处理
         """
         results = []
         index = 0
@@ -200,7 +197,7 @@ class BashParser(BaseParser):
             line = log_lines[index]
             # 检查是否匹配mandatory头（连续日志块起始）
             matched_mandatory = False
-            for mandatory_pattern, continuation_patterns in BashParser.mandatory.items():
+            for mandatory_pattern, continuation_patterns in PythonParser.mandatory.items():
                 if re.search(mandatory_pattern, line):
                     matched_mandatory = True
                     # 提取完整的日志块
@@ -215,7 +212,7 @@ class BashParser(BaseParser):
                             break
                     # 添加到结果
                     results.append(LogModel(
-                        log_type=LogTypeEnum.BASH,
+                        log_type=LogTypeEnum.PYTHON,
                         offset=index,
                         content="\n".join(log_block)
                     ))
@@ -226,7 +223,7 @@ class BashParser(BaseParser):
             # 如果不是连续日志块，单独处理单行
             if not matched_mandatory:
                 results.append(LogModel(
-                    log_type=LogTypeEnum.BASH,
+                    log_type=LogTypeEnum.PYTHON,
                     offset=index,
                     content=line
                 ))

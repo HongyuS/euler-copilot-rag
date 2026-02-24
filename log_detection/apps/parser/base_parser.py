@@ -1,8 +1,5 @@
 
 import re
-import logging
-
-from cv2 import line
 from apps.enum.log import LogTypeEnum
 from apps.schemas.log import LogModel
 
