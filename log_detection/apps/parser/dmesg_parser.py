@@ -132,28 +132,50 @@ class DMESGParser(BaseParser):
         二次确认：精准匹配DMESG栈日志核心特征（协程并发优化版）
         规则：1. 不含负向关键字 2. 匹配至少1个mandatory头 或 正向关键字
         """
-        # 第一步：并发执行所有检查任务（设置超时防止正则匹配卡死）
-        try:
-            # 并发执行三个检查任务，超时时间设为1秒（可根据实际情况调整）
-            negative_result, mandatory_result, positive_result = await asyncio.wait_for(
-                asyncio.gather(
-                    DMESGParser._check_negative_keywords(log_lines),
-                    DMESGParser._check_mandatory_patterns(log_lines),
-                    DMESGParser._check_positive_keywords(log_lines)
-                ),
-                timeout=1.0
-            )
-        except asyncio.TimeoutError:
-            # 超时情况下默认返回不匹配，避免阻塞
-            return False
-
-        # 第二步：应用匹配规则
-        # 如果包含负向关键字，直接返回False
-        if negative_result:
-            return False
-
-        # 如果匹配到mandatory头 或 正向关键字，返回True
-        return mandatory_result or positive_result
+        batch_size = 100000
+        # 第一步：分批次异步检查负向关键字
+        nagetive_tasks = []
+        for i in range(0, len(log_lines), 3*batch_size):
+            batch = log_lines[i:i+3*batch_size]
+            j = i
+            while j < min(i+3*batch_size, len(log_lines)):
+                sub_batch = batch[j, min(j+batch_size, len(batch))]
+                nagetive_tasks.append(
+                    DMESGParser._check_negative_keywords(sub_batch))
+                j += batch_size
+            nagetive_results = await asyncio.gather(*nagetive_tasks)
+            for result in nagetive_results:
+                if result:
+                    return False  # 存在负向关键字，直接排除
+        # 第二步：分批次异步检查mandatory头
+        mandatory_tasks = []
+        for i in range(0, len(log_lines), 3*batch_size):
+            batch = log_lines[i:i+3*batch_size]
+            j = i
+            while j < min(i+3*batch_size, len(log_lines)):
+                sub_batch = batch[j, min(j+batch_size, len(batch))]
+                mandatory_tasks.append(
+                    DMESGParser._check_mandatory_patterns(sub_batch))
+                j += batch_size
+            mandatory_results = await asyncio.gather(*mandatory_tasks)
+            for result in mandatory_results:
+                if result:
+                    return True  # 匹配到mandatory头，直接确认
+        # 第三步：分批次异步检查正向关键字
+        positive_tasks = []
+        for i in range(0, len(log_lines), 3*batch_size):
+            batch = log_lines[i:i+3*batch_size]
+            j = i
+            while j < min(i+3*batch_size, len(log_lines)):
+                sub_batch = batch[j, min(j+batch_size, len(batch))]
+                positive_tasks.append(
+                    DMESGParser._check_positive_keywords(sub_batch))
+                j += batch_size
+            positive_results = await asyncio.gather(*positive_tasks)
+            for result in positive_results:
+                if result:
+                    return True  # 匹配到正向关键字，确认为DMESG日志
+        return False  # 未匹配到任何特征，排除为非DMESG日志
 
     @staticmethod
     async def split_logs(log_lines: list[str]) -> list[LogModel]:
@@ -169,6 +191,8 @@ class DMESGParser(BaseParser):
                         # 继续添加后续行直到不匹配continuation_patterns
                         for j in range(index + 1, len(log_lines)):
                             if any(re.search(pat, log_lines[j]) for pat in continuation_patterns):
+                                log_block.append(log_lines[j])
+                            elif log_lines[j].strip() == '':  # 允许空行作为日志块间隔
                                 log_block.append(log_lines[j])
                             else:
                                 break
