@@ -7,7 +7,8 @@ import uuid
 class LogModel(BaseModel):
     id: str = Field(default_factory=lambda: str(
         uuid.uuid4()), description="日志ID")
-    log_type: LogTypeEnum = Field(..., description="日志类型")
+    file_path: str = Field(..., description="日志文件路径")
+    log_type: LogTypeEnum | None = Field(default=None, description="日志类型")
     offset: int = Field(..., description="日志偏移量")
     timestamp: str = Field(default="", description="日志时间戳")
     level: LogLevelEnum = Field(
@@ -17,6 +18,12 @@ class LogModel(BaseModel):
         default=None, description="日志的嵌入向量表示")
     save_path: str | None = Field(
         default=None, description="日志存储路径")
+    is_anomalous: bool = Field(
+        default=False, description="日志是否异常")
+    anomaly_reason: str | None = Field(
+        default=None, description="日志异常原因")
+    anomaly_score: float | None = Field(
+        default=None, description="日志异常分数")
 
 
 class LogTemplateModel(BaseModel):

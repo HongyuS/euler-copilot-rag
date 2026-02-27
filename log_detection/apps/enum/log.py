@@ -13,7 +13,6 @@ class LogLevelEnum(str, Enum):
 
 
 class LogTypeEnum(str, Enum):
-    BASE = "base"
     DMESG = "dmesg"
     KDUMP = "kdump"
     FTRACE = "ftrace"
@@ -25,3 +24,14 @@ class LogTypeEnum(str, Enum):
     C = "c"
     CPP = "cpp"
     OTHER = "other"
+
+# log数值的枚举
+
+
+class LogValueEnum(str, Enum):
+    TIMESTAMP = "timestamp"
+    LEVEL = "level"
+    IP = "ip"
+    PORT = "port"
+    PID = "pid"
+    TID = "tid"
