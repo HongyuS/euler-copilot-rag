@@ -1,10 +1,10 @@
-
+import asyncio
 import re
 from datetime import datetime, timedelta
 from apps.service.embedding import Embedding
 from apps.parser.log_feature import log_feature_class_mapping
 from apps.enum.log import LogTypeEnum, LogValueEnum
-from apps.schemas.log import LogModel, LogTemplateModel
+from apps.schemas.log import LogModel
 
 
 class LogParser:
@@ -21,14 +21,17 @@ class LogParser:
             if log_type in log_feature_class_mapping:
                 keywrods_regex_and_scores = log_feature_class_mapping[
                     log_type].keywords_regex_and_scores
+                sum = 0
                 score = 0
                 for keyword_regex, keyword_score in keywrods_regex_and_scores["normal"]:
+                    sum += keyword_score
                     if re.search(keyword_regex, log_line):
                         score += keyword_score
                 for keyword_regex, keyword_score in keywrods_regex_and_scores["anomalous"]:
+                    sum += keyword_score
                     if re.search(keyword_regex, log_line):
                         score += keyword_score
-                score_dict[log_type] = score
+                score_dict[log_type] = score/sum * 100 if sum > 0 else 0.0
         # 如果所有的日志类型得分都为0，则默认为unknown类型
         if all(score == 0 for score in score_dict.values()):
             return LogTypeEnum.UNKNOWN
@@ -48,10 +51,11 @@ class LogParser:
         return log_lines
 
     @staticmethod
-    async def get_log_template(log: LogModel) -> LogModel:
-        """获取日志模板"""
-        # 这里实现获取日志模板的具体逻辑
-        log_type: LogTypeEnum = log.log_type
+    async def mask_log_content(log_model: LogModel) -> str:
+        """对日志内容进行脱敏处理"""
+        # 这里实现日志内容脱敏的具体逻辑
+        log_content = log_model.content
+        log_type: LogTypeEnum = log_model.log_type
         value_mask = {
 
             LogValueEnum.TIMESTAMP: "<timestamp>",
@@ -61,17 +65,31 @@ class LogParser:
             LogValueEnum.PID: "<pid>",
             LogValueEnum.TID: "<tid>"
         }
-        template = log.content
+        masked_content = log_content
         for log_value_enum in LogValueEnum:
             regex = log_feature_class_mapping[log_type].capture_patterns.get(
                 log_value_enum.value, None)
             if regex is not None:
-                template = re.sub(regex, value_mask[log_value_enum], template)
-        log_template = LogTemplateModel(
-            log_id=log.id,
-            template=template,
-        )
-        return log_template
+                masked_content = re.sub(
+                    regex, value_mask[log_value_enum], masked_content)
+        return masked_content
+
+    @staticmethod
+    async def get_log_templates(log_models: list[LogModel], batch_size: int = 8192, need_embedding: bool = False) -> None:
+        """获取日志模板"""
+        # 这里实现获取日志模板的具体逻辑
+        log_templates = []
+        for i in range(0, len(log_models), batch_size):
+            batch_log_models = log_models[i:i+batch_size]
+            masked_contents = await asyncio.gather(
+                *[LogParser.mask_log_content(log_model) for log_model in batch_log_models])
+            log_templates += masked_contents
+        if need_embedding:
+            log_template_embeddings = await Embedding.vectorize_embedding(log_templates)
+        for i in range(len(log_models)):
+            log_models[i].template = log_templates[i]
+            if need_embedding:
+                log_models[i].template_vector = log_template_embeddings[i]
 
     @staticmethod
     async def filter_log_models_not_in_time_range(log_models: list[LogModel], time_start: datetime | None, time_end: datetime | None) -> list[LogModel]:

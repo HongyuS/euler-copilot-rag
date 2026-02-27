@@ -5,7 +5,7 @@ import random
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from apps.schemas.log import LogModel, LogTemplateModel
+from apps.schemas.log import LogModel
 from apps.schemas.cluster import ClusterModel
 
 
@@ -50,7 +50,7 @@ class ClusterService:
 
     @staticmethod
     async def DBSCAN(
-        log_templates: list[LogTemplateModel],
+        log_models: list[LogModel],
         # 最大聚类次数
         max_iterations: int = 10,
         # 最小样本数
@@ -68,10 +68,10 @@ class ClusterService:
         但这样做的缺点是可能会导致离群点识别不够准确
         """
         clusters = []
-        for log_template in log_templates:
+        for log in log_models:
             cluster = ClusterModel(
-                cluster_center=log_template.vector,
-                log_templates=[log_template]
+                cluster_center=log.template_vector,
+                log_templates=[log]
             )
             clusters.append(cluster)
         iteration = 0
@@ -113,8 +113,8 @@ class ClusterService:
             if label not in new_clusters_dict:
                 new_clusters_dict[label] = clusters[i]
             else:
-                new_clusters_dict[label].log_templates.extend(
-                    clusters[i].log_templates)
+                new_clusters_dict[label].log_models.extend(
+                    clusters[i].log_models)
         centers = kmeans.cluster_centers_
         for label, cluster in new_clusters_dict.items():
             cluster.cluster_center = centers[label].tolist()
@@ -122,7 +122,7 @@ class ClusterService:
 
     @staticmethod
     async def KMeans(
-        log_templates: list[LogTemplateModel],
+        log_models: list[LogModel],
         # 每批次处理的聚类数量
         batch_size: int = 8192,
         # 最大聚类次数
@@ -141,10 +141,10 @@ class ClusterService:
         但这样做的缺点是可能会导致聚类结果不够准确
         """
         clusters = []
-        for log_template in log_templates:
+        for log_model in log_models:
             cluster = ClusterModel(
-                cluster_center=log_template.vector,
-                log_templates=[log_template]
+                cluster_center=log_model.template_vector,
+                log_models=[log_model]
             )
             clusters.append(cluster)
         n_clusters = min(n_clusters, len(clusters))
