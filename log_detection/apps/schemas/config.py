@@ -11,6 +11,8 @@ class EmbeddingModelConfig(BaseModel):
                          description="embedding模型的api_key", alias="EMBEDDING_API_KEY")
     model_name: str = Field(default="your_model_name",
                             description="embedding模型的名称", alias="EMBEDDING_MODEL_NAME")
+    batch_size: int = Field(
+        default=32, description="批量处理日志时的批大小", alias="EMBEDDING_BATCH_SIZE")
 
 
 class LLMModelConfig(BaseModel):
@@ -22,6 +24,8 @@ class LLMModelConfig(BaseModel):
                          description="LLM模型的api_key", alias="LLM_API_KEY")
     model_name: str = Field(default="your_model_name",
                             description="LLM模型的名称", alias="LLM_MODEL_NAME")
+    batch_size: int = Field(
+        default=32, description="批量处理日志时的批大小", alias="LLM_BATCH_SIZE")
 
 
 class ConfigModel(BaseModel):
