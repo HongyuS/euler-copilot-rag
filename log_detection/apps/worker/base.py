@@ -1,6 +1,6 @@
 import uuid
 import logging
-from apps.enum.task import TaskStatusEnum
+from apps.enum.task import TaskStatusEnum, TaskTypeEnum
 from apps.service.process import ProcessHandler
 from apps.sqlite.manager.task import TaskManager
 
@@ -9,7 +9,7 @@ class BaseWorker:
     """
     BaseWorker
     """
-    name = "BaseWorker"
+    name = TaskTypeEnum.BASE
 
     @staticmethod
     def find_worker_class(worker_name):

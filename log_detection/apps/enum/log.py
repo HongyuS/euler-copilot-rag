@@ -23,9 +23,7 @@ class LogTypeEnum(str, Enum):
     JS = "javascript"
     C = "c"
     CPP = "cpp"
-    OTHER = "other"
-
-# log数值的枚举
+    UNKNOWN = "unknown"
 
 
 class LogValueEnum(str, Enum):

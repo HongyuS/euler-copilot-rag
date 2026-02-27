@@ -1,12 +1,9 @@
 from pydantic import BaseModel, Field
-from apps.schemas.embedding import EmbeddingModel
+from apps.schemas.log import LogTemplateModel
 
 
 class ClusterModel(BaseModel):
+    is_outlier: bool = Field(default=False, description="是否为离群点")
     cluster_center: list[float] = Field(..., description="聚类中心坐标")
-    embeddings: list[EmbeddingModel] = Field(..., description="属于该簇的嵌入向量列表")
-
-
-class ClustersModel(BaseModel):
-    clusters: list[ClusterModel] = Field(..., description="聚类结果列表")
-    outliers: list[EmbeddingModel] = Field(..., description="离群点嵌入向量列表")
+    log_templates: list[LogTemplateModel] = Field(
+        ..., description="聚类中的日志模板列表")
