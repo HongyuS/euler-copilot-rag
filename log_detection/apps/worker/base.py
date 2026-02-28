@@ -1,6 +1,6 @@
 import uuid
 import logging
-from apps.enum.task import TaskStatusEnum
+from apps.enum.task import TaskStatusEnum, TaskTypeEnum
 from apps.service.process import ProcessHandler
 from apps.sqlite.manager.task import TaskManager
 
@@ -9,7 +9,7 @@ class BaseWorker:
     """
     BaseWorker
     """
-    name = "BaseWorker"
+    name = TaskTypeEnum.BASE
 
     @staticmethod
     def find_worker_class(worker_name):
@@ -45,6 +45,7 @@ class BaseWorker:
         task_entity = await TaskManager.get_task_by_id(str(task_id))
         if task_entity.status == TaskStatusEnum.RUNNNING.value:
             ProcessHandler.remove_task(task_id)
+            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
         elif task_entity.status == TaskStatusEnum.PENDING.value:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
         else:

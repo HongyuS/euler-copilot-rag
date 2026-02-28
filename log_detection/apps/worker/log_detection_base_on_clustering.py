@@ -1,0 +1,203 @@
+import asyncio
+import json
+from faiss import IndexFlatL2
+import numpy as np
+import jieba
+import re
+from apps.service.embedding import Embedding
+from apps.service.cluster import ClusterService
+from apps.parser.parser import LogParser
+from apps.parser.log_feature import log_feature_class_mapping
+from apps.sqlite.manager.task import TaskManager
+from apps.schemas.task import TaskRelatedParamsModel
+from apps.schemas.cluster import ClusterModel
+from apps.enum.log import LogTypeEnum
+from apps.enum.task import TaskTypeEnum, TaskStatusEnum
+from apps.schemas.log import LogModel
+
+
+class LogDetectionBasedOnClusteringWorker:
+    name = TaskTypeEnum.LOG_DETECTION_BASE_ON_CLUSTERING
+
+    @staticmethod
+    async def create_index(datas_embedding: list[list[float]]) -> IndexFlatL2:
+        # 构建索引，这里我们选用暴力检索的方法FlatL2为例，L2代表构建的index采用的相似度度量方法为L2范数，即欧氏距离
+        # 这里必须传入一个向量的维度，创建一个空的索引
+        index = IndexFlatL2(len(datas_embedding[0]))
+        index.add(np.array(datas_embedding, dtype='float32'))   # 把向量数据加入索引
+        return index
+
+    @staticmethod
+    async def data_recall(faiss_index: IndexFlatL2, query_embedding: list[float], top_k: int) -> tuple[list[float], list[int]]:
+        Distance, Index = faiss_index.search(
+            np.array([query_embedding], dtype='float32'), top_k)
+        return Distance.tolist(), Index.tolist()
+
+    @staticmethod
+    async def merge_log_templates(log_models: list[LogModel], similarity_threshold: float = 0.8):
+        """合并相似的日志模板"""
+        # 这里实现合并相似日志模板的具体逻辑
+        log_template_embeddings = [
+            log_model.template_vector for log_model in log_models]
+        faiss_index = await LogDetectionBasedOnClusteringWorker.create_index(log_template_embeddings)
+        for i, log_model in enumerate(log_models):
+            Distance, Index = await LogDetectionBasedOnClusteringWorker.data_recall(faiss_index, log_model.template_vector, top_k=11)
+            for ind in Index:
+                id1 = i
+                while log_models[id1].parent_id is not None:
+                    id1 = log_models[id1].parent_id
+                id2 = ind
+                while log_models[id2].parent_id is not None:
+                    id2 = log_models[id2].parent_id
+                if id1 != id2 and Distance[0][Index.index(ind)] < similarity_threshold:
+                    if log_models[id1].rank < log_models[id2].rank:
+                        log_models[id2].parent_id = id1
+                        log_models[id1].sz += log_models[id2].sz
+                    elif log_models[id1].rank > log_models[id2].rank:
+                        log_models[id1].parent_id = id2
+                        log_models[id2].sz += log_models[id1].sz
+                    else:
+                        log_models[id2].parent_id = id1
+                        log_models[id1].rank += 1
+                        log_models[id1].sz += log_models[id2].sz
+
+    @staticmethod
+    async def cal_cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
+        """计算余弦相似度"""
+        vec1_np = np.array(vec1)
+        vec2_np = np.array(vec2)
+        if np.linalg.norm(vec1_np) == 0 or np.linalg.norm(vec2_np) == 0:
+            return 0.0
+        cosine_similarity = np.dot(
+            vec1_np, vec2_np) / (np.linalg.norm(vec1_np) * np.linalg.norm(vec2_np))
+        # 百分制
+        return (cosine_similarity + 1) / 2 * 100
+
+    @staticmethod
+    async def cal_jaccard_similarity(str1: str, keywords: list[str]) -> float:
+        """计算jaccard相似度"""
+        set1 = set(jieba.cut(str1))
+        set2 = set(keywords)
+        intersection = set1.intersection(set2)
+        union = set1.union(set2)
+        if len(union) == 0:
+            return 0.0
+        jaccard_similarity = len(intersection) / len(union)
+        return jaccard_similarity * 100
+
+    @staticmethod
+    async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
+        if log_type == LogTypeEnum.UNKNOWN:
+            return 0.0
+        log_class = log_feature_class_mapping.get(log_type, None)
+        if log_class is None:
+            return 0.0
+        sum = 0.0
+        score = 0.0
+        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"]:
+            sum += _
+            if re.search(anomalous_keywords, log_content):
+                score += _
+        return score/sum * 100 if sum > 0 else 0.0
+
+    @staticmethod
+    async def handle_single_log_file(file_path: str, max_anomaly_log_count: int, time_start: str, time_end: str) -> list[LogModel]:
+        """处理单个日志文件的逻辑"""
+        # 这里实现处理单个日志文件的具体逻辑
+        log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, need_split_by_regex=True, time_start=time_start, time_end=time_end)
+        await LogParser.get_log_templates(log_models=log_models, need_embedding=True)
+        await LogDetectionBasedOnClusteringWorker.merge_log_templates(log_models=log_models)
+        log_models_after_merge = [
+            log_model for log_model in log_models if log_model.parent_id is None]
+        cluster_models_DBSCAN: list[ClusterModel] = await ClusterService.DBSCAN(log_template_models=log_models_after_merge)
+        outlier_logs = []
+        normal_log_template_vector = []
+        for cluster_model in cluster_models_DBSCAN:
+            if cluster_model.is_outlier:
+                outlier_logs += cluster_model.log_models
+            else:
+                normal_log_template_vector += [
+                    log_model.template_vector for log_model in cluster_model.log_models]
+        if normal_log_template_vector:
+            normal_log_template_center = np.mean(
+                normal_log_template_vector, axis=0).tolist()
+        else:
+            normal_log_template_center = None
+        cluster_models_KMeans = await ClusterService.KMeans(outlier_logs)
+        # 通过计算与正常日志模板的相似度（normal_log_template_center），增加异常日志模板的候选，每个文件选2*max_anomaly_log_count个候选
+        cluster_models_KMeans_dis_to_normal: list[tuple[ClusterModel, float]] = [
+        ]
+        for cluster_model in cluster_models_KMeans:
+            if normal_log_template_center is not None:
+                distance_to_normal = np.linalg.norm(
+                    np.array(cluster_model.cluster_center) - np.array(normal_log_template_center))
+            else:
+                distance_to_normal = 0
+            cluster_models_KMeans_dis_to_normal.append(
+                (cluster_model, distance_to_normal))
+        cluster_models_KMeans_dis_to_normal.sort(
+            key=lambda x: x[1], reverse=True)
+        candidate_unnormal_log_models: list[LogModel] = []
+        for i in range(min(2*max_anomaly_log_count, len(cluster_models_KMeans_dis_to_normal))):
+            candidate_unnormal_log_models += cluster_models_KMeans_dis_to_normal[i][0].log_models
+        candidate_unnormal_log_model_id_set = set(
+            [log_model.id for log_model in candidate_unnormal_log_models])
+        tmp_log_cnt = 0
+        for log_model in log_models:
+            id = log_model.id
+            while log_models[id].parent_id is not None:
+                id = log_models[id].parent_id
+            if id in candidate_unnormal_log_model_id_set:
+                log_model.is_anomaly = True
+                candidate_unnormal_log_models.append(log_model)
+                tmp_log_cnt += 1
+                if tmp_log_cnt >= 2*max_anomaly_log_count:
+                    break
+
+    @staticmethod
+    async def run(task_id: str) -> None:
+        """日志检测服务"""
+        task_entity = await TaskManager.get_task_by_id(task_id)
+        if task_entity is None:
+            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED.value})
+            raise ValueError(f"任务 {task_id} 不存在")
+        task_related_params_model = TaskRelatedParamsModel(
+            **json.loads(task_entity.task_related_params))
+        query = task_related_params_model.query
+        query_embedding = await Embedding.get_embedding(query)
+        file_path_list = task_related_params_model.file_path_list
+        max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
+        anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
+        time_start = task_related_params_model.time_start
+        time_end = task_related_params_model.time_end
+        # 异常日志候选列表
+        candidate_unnormal_log_models: list[LogModel] = []
+        batch_size = 8
+        for i in range(0, len(file_path_list), batch_size):
+            batch_file_path_list = file_path_list[i:i + batch_size]
+            handle_tasks = []
+            for file_path in batch_file_path_list:
+                handle_tasks.append(LogDetectionBasedOnClusteringWorker.handle_single_log_file(
+                    file_path=file_path, max_anomaly_log_count=max_anomaly_log_count, time_start=time_start, time_end=time_end))
+            batch_candidate_unnormal_log_models = await asyncio.gather(*handle_tasks)
+            for candidate_unnormal_log_models_in_file in batch_candidate_unnormal_log_models:
+                candidate_unnormal_log_models += candidate_unnormal_log_models_in_file
+        # 通过query embedding（余弦距离 30%） 、 异常关键词（50%）和情感模型（20%）来对候选的异常日志进行排序，选出最终的异常日志列表返回
+        final_anomaly_log_models = []
+        for log_model in candidate_unnormal_log_models:
+            cosine_similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(log_model.template_vector, query_embedding)
+            jaccard_similarity = await LogDetectionBasedOnClusteringWorker.cal_jaccard_similarity(log_model.content, anomaly_keywords)
+            sentiment_score = await LogDetectionBasedOnClusteringWorker.cal_sentiment_score(log_model.log_type, log_model.content)
+            final_score = cosine_similarity * 0.3 + \
+                jaccard_similarity * 0.5 + \
+                sentiment_score * 0.2
+            final_anomaly_log_models.append((log_model, final_score))
+        final_anomaly_log_models.sort(key=lambda x: x[1], reverse=True)
+        final_anomaly_log_models = final_anomaly_log_models[:max_anomaly_log_count]
+        return [log_model for log_model, _ in final_anomaly_log_models]
+
+    @staticmethod
+    async def stop(task_id: str) -> None:
+        """停止日志检测服务"""
+        # 这里实现停止日志检测的具体逻辑
+        pass
