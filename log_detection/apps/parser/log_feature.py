@@ -609,7 +609,7 @@ class CppLogFeature:
     }
 
 
-class OtherLogFeature:
+class UnKnownLogFeature:
     """
     其他类型日志特征（兜底）
     """
@@ -667,5 +667,5 @@ log_feature_class_mapping = {
     LogTypeEnum.JS: JsLogFeature,
     LogTypeEnum.C: CLogFeature,
     LogTypeEnum.CPP: CppLogFeature,
-    LogTypeEnum.OTHER: OtherLogFeature,
+    LogTypeEnum.UNKNOWN: UnKnownLogFeature,
 }

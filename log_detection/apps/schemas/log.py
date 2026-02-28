@@ -23,12 +23,27 @@ class LogModel(BaseModel):
         default=None, description="日志存储路径")
     is_anomalous: bool = Field(
         default=False, description="日志是否异常")
-    anomaly_reason: str | None = Field(
-        default=None, description="日志异常原因")
-    anomaly_score: float | None = Field(
-        default=None, description="日志异常分数")
+    anomaly_reason: str = Field(
+        default="", description="日志异常原因，如果日志不异常，则返回空字符串")
+    anomaly_score: float = Field(
+        default=0.0, description="日志异常分数，如果日志不异常，则返回0.0")
     # 并查集参数
     parent_id: str | None = Field(
         default=None, description="并查集父节点ID")
     rank: int = Field(default=1, description="并查集秩")
     sz: int = Field(default=1, description="并查集大小")
+
+
+class LogParseResultModel(BaseModel):
+    id: str = Field(default_factory=lambda: str(
+        uuid.uuid4()), description="日志解析结果ID")
+    offset: int | None = Field(default=None, description="日志偏移量")
+    file_path: str | None = Field(default=None, description="日志文件路径")
+    is_anomalous: bool = Field(
+        default=False, description="日志是否异常")
+    task_id: str | None = Field(default=None, description="日志解析任务ID")
+    content: str | None = Field(default=None, description="日志内容")
+    anomaly_reason: str = Field(
+        default="", description="日志异常原因，如果日志不异常，则返回空字符串")
+    anomaly_score: float = Field(
+        default=0.0, description="日志异常分数，如果日志不异常，则返回0.0")

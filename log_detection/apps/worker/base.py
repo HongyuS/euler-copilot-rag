@@ -1,6 +1,9 @@
 import uuid
 import logging
+from apps.sqlite.manager.log_parse_result import LogParseResultManager
+from apps.schemas.log import LogModel, LogParseResultModel
 from apps.enum.task import TaskStatusEnum, TaskTypeEnum
+from apps.service.convert import ConvertService
 from apps.service.process import ProcessHandler
 from apps.sqlite.manager.task import TaskManager
 
@@ -9,7 +12,7 @@ class BaseWorker:
     """
     BaseWorker
     """
-    name = TaskTypeEnum.BASE
+    name = TaskTypeEnum.BASE.value
 
     @staticmethod
     def find_worker_class(worker_name):
@@ -28,6 +31,20 @@ class BaseWorker:
             logging.error("[BaseWorker] %s", err)
             raise ValueError(err)
         return task_entity.task_type
+
+    @staticmethod
+    async def add_log_parse_results(anomaly_log_models: list[LogModel], log_models: list[LogModel], task_id: str) -> None:
+        """将异常日志模型列表添加到日志解析结果表中"""
+        anomaly_log_models_id_set = set(
+            [log_model.id for log_model in anomaly_log_models])
+        for log_model in log_models:
+            if log_model.id in anomaly_log_models_id_set:
+                log_model.is_anomalous = True
+            else:
+                log_model.is_anomalous = False
+        log_parse_result_models = await ConvertService.log_models_to_log_parse_result_models(
+            log_models, task_id)
+        await LogParseResultManager.add_log_parse_results(log_parse_result_models)
 
     @staticmethod
     async def run(task_id: uuid.UUID) -> bool:
