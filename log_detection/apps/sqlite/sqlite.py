@@ -16,6 +16,15 @@ table_ddl_list = {
             task_related_params TEXT,
             created_at TEXT NOT NULL
         )
+    ''',
+    "log_parse_result_table": '''
+        CREATE TABLE IF NOT EXISTS log_parse_result_table(
+            id TEXT PRIMARY KEY,
+            file_path TEXT NOT NULL,
+            task_id TEXT NOT NULL,
+            anomaly_reason TEXT,
+            anomaly_score REAL
+        )
     '''
 }
 

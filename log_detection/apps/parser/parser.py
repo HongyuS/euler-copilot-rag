@@ -156,16 +156,6 @@ class LogParser:
                 log_line = log_lines[index]
                 # 提取时间戳
                 log_type = LogParser.get_log_line_type(log_line)
-                if log_type == LogTypeEnum.UNKNOWN:
-                    log_models.append(LogModel(
-                        file_path=file_path,
-                        log_type=log_type,
-                        offset=offset,
-                        content=log_line
-                    ))
-                    offset += 1
-                    index += 1
-                    continue
                 # 判断是否为连续日志的开头，
                 match_header_regex = None
                 for header_regex in log_feature_class_mapping[log_type].mandatory:

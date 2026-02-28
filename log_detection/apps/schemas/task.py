@@ -1,7 +1,7 @@
 import uuid
 from pydantic import BaseModel, Field
 from datetime import datetime
-from apps.enum.task import TaskStatusEnum
+from apps.enum.task import TaskStatusEnum, TaskTypeEnum
 
 
 class TaskModel(BaseModel):
@@ -10,9 +10,10 @@ class TaskModel(BaseModel):
     task_name: str = Field(..., description="任务名称")
     task_type: str = Field(..., description="任务类型")
     compltetion_precent: float = Field(..., description="任务完成百分比")
-    status: TaskStatusEnum = Field(..., description="任务状态")
+    status: str = Field(..., description="任务状态")
     task_related_params: str | None = Field(None, description="任务相关参数")
-    created_at: str = Field(..., description="任务创建时间")
+    created_at: str = Field(default_factory=lambda: datetime.now().strftime(
+        '%Y-%m-%d %H:%M:%S'), description="任务创建时间")
 
 
 class TaskRelatedParamsModel(BaseModel):

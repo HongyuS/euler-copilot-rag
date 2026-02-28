@@ -28,6 +28,12 @@ class LLMModelConfig(BaseModel):
         default=32, description="批量处理日志时的批大小", alias="LLM_BATCH_SIZE")
 
 
+class RunConfig(BaseModel):
+    host: str = Field(default="0.0.0.0",
+                      description="服务运行的主机地址", alias="RUN_HOST")
+    port: int = Field(default=12144, description="服务运行的端口号", alias="RUN_PORT")
+
+
 class ConfigModel(BaseModel):
     log_pare_use_cpu_limit: int | None = Field(
         default=None, description="日志解析服务使用的CPU上限", alias="LOG_PARE_USE_CPU_LIMIT")
@@ -37,3 +43,5 @@ class ConfigModel(BaseModel):
         default=EmbeddingModelConfig(), description="embedding模型配置", alias="EMBEDDING_MODEL")
     llm_model: LLMModelConfig = Field(
         default=LLMModelConfig(), description="LLM模型配置", alias="LLM_MODEL")
+    run_config: RunConfig = Field(
+        default=RunConfig(), description="服务运行配置", alias="RUN_CONFIG")
