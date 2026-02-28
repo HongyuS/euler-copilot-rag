@@ -5,6 +5,7 @@ from apps.service.embedding import Embedding
 from apps.parser.log_feature import log_feature_class_mapping
 from apps.enum.log import LogTypeEnum, LogValueEnum
 from apps.schemas.log import LogModel
+from apps.service.ocr import OcrTool
 
 
 class LogParser:
@@ -45,9 +46,14 @@ class LogParser:
         读取日志文件，返回日志模型列表
         """
         log_lines = []
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            for line in f:
-                log_lines.append(line.strip())
+        image_end = re.compile(r".*\.(jpg|jpeg|png|bmp|gif)$", re.IGNORECASE)
+        text_end = re.compile(r".*\.(log|txt|md|json|xml|csv)$", re.IGNORECASE)
+        if re.match(image_end, file_path):
+            log_lines = asyncio.run(OcrTool.image_to_text_list(file_path))
+        if re.match(text_end, file_path) is None:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    log_lines.append(line.strip())
         return log_lines
 
     @staticmethod
@@ -141,7 +147,6 @@ class LogParser:
 
     @staticmethod
     async def parse_log_file(file_path: str,
-                             need_embedding: bool = False,
                              need_split_by_regex: bool = False,
                              time_start: datetime | None = None,
                              time_end: datetime | None = None,
@@ -205,8 +210,4 @@ class LogParser:
         if time_start is not None or time_end is not None:
             log_models = await LogParser.filter_log_models_not_in_time_range(
                 log_models, time_start, time_end)
-        if need_embedding:
-            embeddings = await Embedding.vectorize_embedding([log_model.content for log_model in log_models])
-            for i, log_model in enumerate(log_models):
-                log_model.vector = embeddings[i]
         return log_models

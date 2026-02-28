@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from apps.enum.provider import ProviderEnum
+from apps.enum.ocr import OcrMethodEnum
 
 
 class EmbeddingModelConfig(BaseModel):
@@ -34,6 +35,13 @@ class RunConfig(BaseModel):
     port: int = Field(default=12144, description="服务运行的端口号", alias="RUN_PORT")
 
 
+class OcrConfig(BaseModel):
+    method: OcrMethodEnum = Field(
+        default=OcrMethodEnum.OFFLINE, description="OCR识别方法，online表示使用在线OCR API，offline表示使用本地OCR模型", alias="OCR_METHOD")
+    api_url: str = Field(
+        default="", description="在线OCR API的URL地址，当method为online时需要配置", alias="OCR_API_URL")
+
+
 class ConfigModel(BaseModel):
     log_pare_use_cpu_limit: int | None = Field(
         default=None, description="日志解析服务使用的CPU上限", alias="LOG_PARE_USE_CPU_LIMIT")
@@ -45,3 +53,5 @@ class ConfigModel(BaseModel):
         default=LLMModelConfig(), description="LLM模型配置", alias="LLM_MODEL")
     run_config: RunConfig = Field(
         default=RunConfig(), description="服务运行配置", alias="RUN_CONFIG")
+    ocr_config: OcrConfig = Field(
+        default=OcrConfig(), description="OCR配置", alias="OCR_CONFIG")

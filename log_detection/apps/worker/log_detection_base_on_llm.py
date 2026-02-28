@@ -44,7 +44,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
     async def handle_single_log_file(file_path: str, max_anomaly_log_count: int, query: str, llm: LLMService, time_start: str, time_end: str) -> list[LogModel]:
         """处理单个日志文件的逻辑"""
         # 这里实现处理单个日志文件的具体逻辑
-        log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, time_start=time_start, time_end=time_end)
+        log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, time_start=time_start, time_end=time_end, chunk_size=llm.max_tokens//3*2)
         for i in range(0, len(log_models), llm.batch_size):
             batch_log_models = log_models[i:i + llm.batch_size]
             handle_tasks = []
