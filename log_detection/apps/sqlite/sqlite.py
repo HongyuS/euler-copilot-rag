@@ -11,6 +11,7 @@ table_ddl_list = {
         CREATE TABLE IF NOT EXISTS task_table (
             task_id TEXT PRIMARY KEY,
             task_name TEXT NOT NULL,
+            task_type TEXT NOT NULL,
             completion_precent REAL NOT NULL,
             status TEXT NOT NULL,
             task_related_params TEXT,
@@ -30,12 +31,12 @@ table_ddl_list = {
 
 
 class AsyncSQLiteSingleton:
-    """异步 SQLite 磁盘数据库单例类（修复跨线程使用问题）"""
-    DB_PATH = Config().get_config().sql_lite_db_path
-    # 异步锁，保证并发操作的顺序性
-    _async_lock = asyncio.Lock()
-
+    def __init__(self):
+        self.DB_PATH = Config().get_config().sql_lite_db_path
+        self._async_lock = asyncio.Lock()
+        self._sync_init_database()
     # -------------------------- 同步操作函数（所有操作都在同一个线程执行） --------------------------
+
     def _sync_init_database(self):
         """同步初始化数据库（完整生命周期，单线程内完成）"""
         conn = None
@@ -64,7 +65,6 @@ class AsyncSQLiteSingleton:
             if conn:
                 conn.close()
 
-    @staticmethod
     def _sync_execute_query(self, sql: str, params: dict) -> list[dict]:
         """同步执行查询（完整生命周期，单线程内完成）"""
         conn = None
@@ -86,7 +86,6 @@ class AsyncSQLiteSingleton:
             if conn:
                 conn.close()
 
-    @staticmethod
     def _sync_execute_modify(self, sql: str, params: dict) -> bool:
         """同步执行增删改（完整生命周期，单线程内完成）"""
         conn = None
@@ -117,7 +116,6 @@ class AsyncSQLiteSingleton:
             result = await asyncio.to_thread(self._sync_init_database)
             return result
 
-    @staticmethod
     async def execute_query(self, sql: str, params: dict = {}) -> list[dict]:
         """
         异步执行查询语句
@@ -129,7 +127,6 @@ class AsyncSQLiteSingleton:
             # 整个查询操作在同一个线程中完成
             return await asyncio.to_thread(self._sync_execute_query, sql, params)
 
-    @staticmethod
     async def execute_modify(self, sql: str, params: dict = {}) -> bool:
         """
         异步执行增删改语句
@@ -140,3 +137,4 @@ class AsyncSQLiteSingleton:
         async with self._async_lock:
             # 整个修改操作在同一个线程中完成
             return await asyncio.to_thread(self._sync_execute_modify, sql, params)
+    

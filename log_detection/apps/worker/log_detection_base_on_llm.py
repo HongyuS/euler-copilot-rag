@@ -8,15 +8,12 @@ from datetime import datetime
 from apps.prompt.log_detection import DETECT_LOG_PROMPT
 from apps.worker.base import BaseWorker
 from apps.service.embedding import Embedding
-from apps.service.cluster import ClusterService
 from apps.service.llm import LLMService
-from apps.service.convert import ConvertService
 from apps.parser.parser import LogParser
 from apps.sqlite.manager.task import TaskManager
-from apps.sqlite.manager.log_parse_result import LogParseResultManager
 from apps.schemas.task import TaskRelatedParamsModel
 from apps.enum.task import TaskTypeEnum, TaskStatusEnum
-from apps.schemas.log import LogModel, LogParseResultModel
+from apps.schemas.log import LogModel
 from apps.config.config import Config
 
 
@@ -44,7 +41,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
     async def handle_single_log_file(file_path: str, max_anomaly_log_count: int, query: str, llm: LLMService, time_start: str, time_end: str) -> list[LogModel]:
         """处理单个日志文件的逻辑"""
         # 这里实现处理单个日志文件的具体逻辑
-        log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, time_start=time_start, time_end=time_end, chunk_size=llm.max_tokens//3*2)
+        log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, time_start=time_start, time_end=time_end, chunk_size=min(8192, llm.max_tokens//3*2))
         for i in range(0, len(log_models), llm.batch_size):
             batch_log_models = log_models[i:i + llm.batch_size]
             handle_tasks = []
@@ -84,7 +81,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
         candidate_unnormal_log_models: list[LogModel] = []
         batch_size = 8
         llm = LLMService(openai_api_key=Config().get_config().llm_model.api_key, openai_api_base=Config().get_config().llm_model.end_point, model_name=Config(
-        ).get_config().llm_model.model_name, max_tokens=Config.OPENAI_MAX_TOKENS, batch_size=Config().get_config().llm_model.batch_size)
+        ).get_config().llm_model.model_name, max_tokens=Config().get_config().llm_model.max_tokens, batch_size=Config().get_config().llm_model.batch_size)
         for i in range(0, len(file_path_list), batch_size):
             batch_file_path_list = file_path_list[i:i + batch_size]
             handle_tasks = []

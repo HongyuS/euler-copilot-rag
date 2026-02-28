@@ -21,7 +21,7 @@ class LogParseResultManager:
         if limit is not None:
             sql_str += " LIMIT :limit"
             params["limit"] = limit
-        results = await AsyncSQLiteSingleton.execute_query(sql_str, params)
+        results = await AsyncSQLiteSingleton().execute_query(sql_str, params)
         for i in range(len(results)):
             results[i] = LogParseResultModel(**results[i])
 
@@ -44,7 +44,7 @@ class LogParseResultManager:
             """
             params = [(model.id, model.file_path, model.is_anomalous, model.task_id, model.content,
                        model.anomaly_reason, model.anomaly_score) for model in batch_models]
-            result = await AsyncSQLiteSingleton.execute_non_query(sql_str, params)
+            result = await AsyncSQLiteSingleton().execute_non_query(sql_str, params)
             if not result:
                 return False
         return result

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from apps.enum.provider import ProviderEnum
 from apps.enum.ocr import OcrMethodEnum
+from apps.enum.task import TaskTypeEnum
 
 
 class EmbeddingModelConfig(BaseModel):
@@ -25,6 +26,8 @@ class LLMModelConfig(BaseModel):
                          description="LLM模型的api_key", alias="LLM_API_KEY")
     model_name: str = Field(default="your_model_name",
                             description="LLM模型的名称", alias="LLM_MODEL_NAME")
+    max_tokens: int = Field(
+        default=2048, description="LLM模型生成文本的最大token数量", alias="LLM_MAX_TOKENS")
     batch_size: int = Field(
         default=32, description="批量处理日志时的批大小", alias="LLM_BATCH_SIZE")
 
@@ -45,8 +48,10 @@ class OcrConfig(BaseModel):
 class ConfigModel(BaseModel):
     log_pare_use_cpu_limit: int | None = Field(
         default=None, description="日志解析服务使用的CPU上限", alias="LOG_PARE_USE_CPU_LIMIT")
+    log_parse_method: TaskTypeEnum = Field(
+        default=TaskTypeEnum.LOG_DETECTION_BASE_ON_LLM, description="日志解析方法，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）", alias="LOG_PARSE_METHOD")
     sql_lite_db_path: str = Field(
-        default="sqlite_multi_process.db", description="SQLite数据库文件路径", alias="SQL_LITE_DB_PATH")
+        default="log_detection_multi_process.db", description="SQLite数据库文件路径", alias="SQL_LITE_DB_PATH")
     embedding_model: EmbeddingModelConfig = Field(
         default=EmbeddingModelConfig(), description="embedding模型配置", alias="EMBEDDING_MODEL")
     llm_model: LLMModelConfig = Field(

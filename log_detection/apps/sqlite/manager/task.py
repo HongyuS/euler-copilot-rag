@@ -14,7 +14,7 @@ class TaskManager:
             WHERE task_id = :task_id
         """
         params = {"task_id": task_id}
-        results = await AsyncSQLiteSingleton.execute_query(sql_str, params)
+        results = await AsyncSQLiteSingleton().execute_query(sql_str, params)
         if results:
             return TaskModel(**results[0])
         return None
@@ -30,7 +30,7 @@ class TaskManager:
             FROM task_table
             WHERE task_id IN ({placeholders})
         """
-        results = await AsyncSQLiteSingleton.execute_query(sql_str, tuple(task_ids))
+        results = await AsyncSQLiteSingleton().execute_query(sql_str, tuple(task_ids))
         for i in range(len(results)):
             results[i] = TaskModel(**results[i])
         return results
@@ -48,7 +48,7 @@ class TaskManager:
         tmp_tuple = ()
         for s in status:
             tmp_tuple += (s.value,)
-        results = await AsyncSQLiteSingleton.execute_query(sql_str, tmp_tuple)
+        results = await AsyncSQLiteSingleton().execute_query(sql_str, tmp_tuple)
         for i in range(len(results)):
             results[i] = TaskModel(**results[i])
         return results
@@ -68,7 +68,7 @@ class TaskManager:
             SET {set_clause_str}
             WHERE task_id = :task_id
         """
-        result = await AsyncSQLiteSingleton.execute_modify(sql_str, params)
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
         return TaskModel(**update_data) if result else None
 
     @staticmethod
@@ -78,7 +78,7 @@ class TaskManager:
             INSERT INTO task_table (task_id, task_name, task_type, completion_precent, status, task_related_params, created_at)
             VALUES (:task_id, :task_name, :task_type, :completion_precent, :status, :task_related_params, :created_at)
         """
-        result = await AsyncSQLiteSingleton.execute_modify(sql_str, task.model_dump(exclude_none=True, by_alias=True))
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, task.model_dump(exclude_none=True, by_alias=True))
         return result
 
     @staticmethod
@@ -89,7 +89,7 @@ class TaskManager:
             WHERE task_id = :task_id
         """
         params = {"task_id": task_id}
-        result = await AsyncSQLiteSingleton.execute_modify(sql_str, params)
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
         return result
 
     @staticmethod
@@ -102,7 +102,7 @@ class TaskManager:
             DELETE FROM task_table
             WHERE task_id IN ({placeholders})
         """
-        result = await AsyncSQLiteSingleton.execute_modify(sql_str, tuple(task_ids))
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, tuple(task_ids))
         return result
 
     @staticmethod
@@ -113,5 +113,5 @@ class TaskManager:
             WHERE status = :status
         """
         params = {"status": status}
-        result = await AsyncSQLiteSingleton.execute_modify(sql_str, params)
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
         return result

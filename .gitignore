@@ -11,6 +11,7 @@ nohup*
 .env
 start.sh
 
+*.tmol
 *.key
 *.crt
 

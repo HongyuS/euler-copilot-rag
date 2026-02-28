@@ -8,12 +8,15 @@ from apps.worker.base import BaseWorker
 from apps.enum.task import TaskTypeEnum, TaskStatusEnum
 from apps.enum.log import LogLevelEnum, LogTypeEnum
 from apps.sqlite.manager.log_parse_result import LogParseResultManager
+from apps.config.config import Config
 
 
 class LogTaskHandleService:
     @staticmethod
-    async def create_log_parse_task(task_type: TaskTypeEnum, query: str, file_path_list: list[str], max_anomaly_log_count: int, anomaly_keywords: list[str], time_start: str, time_end: str) -> str:
+    async def create_log_parse_task(task_type: TaskTypeEnum | None, query: str, file_path_list: list[str], max_anomaly_log_count: int, anomaly_keywords: list[str], time_start: str, time_end: str) -> str:
         """创建日志解析任务"""
+        if task_type is None:
+            task_type = Config().get_config().log_parse_method
         task_model = TaskModel(
             task_name=f"{task_type.value} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             task_type=task_type.value,

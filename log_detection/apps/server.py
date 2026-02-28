@@ -14,7 +14,7 @@ mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
     name="create_log_parse_task",
     description="""
     这是创建日志解析任务的工具函数，前端会调用这个接口来创建日志解析任务。参数包括：
-    - task_type: 任务类型，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）
+    - task_type: 任务类型，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）,也可以者不传，默认为配置文件中设置的日志解析方法
     - query: 查询语句，用于描述当前的异常现象或者需要关注的日志内容，基于这个查询语句，日志检测Worker会进行日志异常检测
     - file_path_list: 日志文件路径列表，包含需要进行日志检测的日志文件的路径
     - max_anomaly_log_count: 最大异常日志数量，日志检测Worker会根据这个数量来限制返回的异常日志的数量，确保不会返回过多的异常日志
@@ -27,8 +27,8 @@ mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
     }
     """
 )
-async def create_log_parse_task(task_type: TaskTypeEnum, query: str, file_path_list: list[str], max_anomaly_log_count: int, anomaly_keywords: list[str], time_start: str, time_end: str) -> str:
-    task_id = await LogTaskHandleService.create_log_detection_task(task_type=task_type, query=query, file_path_list=file_path_list, max_anomaly_log_count=max_anomaly_log_count, anomaly_keywords=anomaly_keywords, time_start=time_start, time_end=time_end)
+async def create_log_parse_task(task_type: TaskTypeEnum | None = None, query: str = "", file_path_list: list[str] = [], max_anomaly_log_count: int = 0, anomaly_keywords: list[str] = [], time_start: str = "", time_end: str = "") -> str:
+    task_id = await LogTaskHandleService.create_log_parse_task(task_type=task_type, query=query, file_path_list=file_path_list, max_anomaly_log_count=max_anomaly_log_count, anomaly_keywords=anomaly_keywords, time_start=time_start, time_end=time_end)
     return {
         "task_id": task_id
     }
@@ -95,10 +95,9 @@ async def get_task_result(task_id: str, limit: int | None = None, is_anomalous: 
     log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, limit, is_anomalous)
     return [log_parse_result_model.model_dump(exclude_none=True) for log_parse_result_model in log_parse_result_models]
 
-if __name__ == "__main__":
-    # 启动 MCP 服务器
-    # 使用 stdio transport，这是 MCP 工具的标准方式
-    # 启动一个携程，每隔5s通过TaskHandleService.async def listen_and_process_tasks()来监听并处理任务队列中的任务
+# 定义异步主函数，统一管理异步任务和MCP服务器启动
 
-    asyncio.create_task(TaskService.listen_and_process_tasks())
-    mcp.run(transport='sse')
+
+if __name__ == "__main__":
+    TaskService.run_task_listener_in_process()
+    mcp.run(transport="sse")
