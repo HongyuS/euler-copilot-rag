@@ -16,6 +16,14 @@ multiprocessing_context = multiprocessing.get_context('spawn')
 class TaskService:
     """任务服务类"""
     @staticmethod
+    async def update_running_tasks_to_pending_tasks():
+        """将所有运行中的任务状态更新为待处理，避免因服务重启导致的任务状态不一致问题"""
+        task_models = await TaskManager.get_tasks_by_status([TaskStatusEnum.RUNNING])
+        for task_model in task_models:
+            await ProcessHandler.remove_task(task_model.task_id)
+        await TaskManager.update_running_tasks_to_pending_tasks()
+
+    @staticmethod
     async def process_successful_or_failed_tasks():
         """处理所有成功或失败的任务"""
         tasks = await TaskManager.get_tasks_by_status([TaskStatusEnum.SUCCESSFUL, TaskStatusEnum.FAILED])

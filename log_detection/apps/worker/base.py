@@ -52,7 +52,7 @@ class BaseWorker:
         worker_name = await BaseWorker.get_worker_name(task_id)
         flag = ProcessHandler.add_task(
             task_id, BaseWorker.find_worker_class(worker_name).run, task_id)
-        await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.RUNNNING.value})
+        await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.RUNNING.value})
         return flag
 
     @staticmethod
@@ -60,7 +60,7 @@ class BaseWorker:
         '''停止任务'''
         worker_name = await BaseWorker.get_worker_name(task_id)
         task_entity = await TaskManager.get_task_by_id(str(task_id))
-        if task_entity.status == TaskStatusEnum.RUNNNING.value:
+        if task_entity.status == TaskStatusEnum.RUNNING.value:
             ProcessHandler.remove_task(task_id)
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
         elif task_entity.status == TaskStatusEnum.PENDING.value:

@@ -9,7 +9,7 @@ class TaskManager:
     async def get_task_by_id(task_id: str) -> TaskModel | None:
         """根据任务ID获取任务信息"""
         sql_str = """
-            SELECT task_id, task_name, completion_precent, status, task_related_params, created_at
+            SELECT task_id, pid, task_name, completion_precent, status, task_related_params, created_at
             FROM task_table
             WHERE task_id = :task_id
         """
@@ -26,7 +26,7 @@ class TaskManager:
             return []
         placeholders = ', '.join(['?'] * len(task_ids))
         sql_str = f"""
-            SELECT task_id, task_name, task_type, completion_precent, status, task_related_params, created_at
+            SELECT task_id, pid, task_name, task_type, completion_precent, status, task_related_params, created_at
             FROM task_table
             WHERE task_id IN ({placeholders})
         """
@@ -39,7 +39,7 @@ class TaskManager:
     async def get_tasks_by_status(status: list[TaskStatusEnum]) -> list[TaskModel]:
         """根据任务状态获取任务列表"""
         sql_str = """
-            SELECT task_id, task_name, task_type, completion_precent, status, task_related_params, created_at
+            SELECT task_id, pid, task_name, task_type, completion_precent, status, task_related_params, created_at
             FROM task_table
             WHERE status IN ({placeholders})
         """
@@ -72,11 +72,24 @@ class TaskManager:
         return TaskModel(**update_data) if result else None
 
     @staticmethod
+    async def update_running_tasks_to_pending_tasks():
+        """将所有正在运行的任务状态更新为待执行（用于服务重启后恢复任务状态）"""
+        sql_str = """
+            UPDATE task_table
+            SET status = :pending_status
+            WHERE status = :running_status
+        """
+        params = {"pending_status": TaskStatusEnum.PENDING.value,
+                  "running_status": TaskStatusEnum.RUNNING.value}
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
+        return result
+
+    @staticmethod
     async def create_task(task: TaskModel) -> bool:
         """创建新任务"""
         sql_str = """
-            INSERT INTO task_table (task_id, task_name, task_type, completion_precent, status, task_related_params, created_at)
-            VALUES (:task_id, :task_name, :task_type, :completion_precent, :status, :task_related_params, :created_at)
+            INSERT INTO task_table (task_id, pid, task_name, task_type, completion_precent, status, task_related_params, created_at)
+            VALUES (:task_id, :pid, :task_name, :task_type, :completion_precent, :status, :task_related_params, :created_at)
         """
         result = await AsyncSQLiteSingleton().execute_modify(sql_str, task.model_dump(exclude_none=True, by_alias=True))
         return result

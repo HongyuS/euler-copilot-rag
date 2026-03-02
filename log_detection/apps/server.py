@@ -4,6 +4,7 @@ import uuid
 from apps.config.config import Config
 from apps.service.log import LogTaskHandleService
 from apps.enum.task import TaskTypeEnum
+from apps.sqlite.manager.task import TaskManager
 from apps.service.task import TaskService
 host = Config().get_config().run_config.host
 port = Config().get_config().run_config.port
@@ -98,6 +99,11 @@ async def get_task_result(task_id: str, limit: int | None = None, is_anomalous: 
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
 
 
+def init():
+    asyncio.run(TaskManager.update_running_tasks_to_pending_tasks())
+
+
 if __name__ == "__main__":
+    init()
     TaskService.run_task_listener_in_process()
     mcp.run(transport="sse")

@@ -10,6 +10,7 @@ table_ddl_list = {
     "task_table": '''
         CREATE TABLE IF NOT EXISTS task_table (
             task_id TEXT PRIMARY KEY,
+            pid INTEGER,
             task_name TEXT NOT NULL,
             task_type TEXT NOT NULL,
             completion_precent REAL NOT NULL,
@@ -137,4 +138,3 @@ class AsyncSQLiteSingleton:
         async with self._async_lock:
             # 整个修改操作在同一个线程中完成
             return await asyncio.to_thread(self._sync_execute_modify, sql, params)
-    

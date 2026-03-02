@@ -46,8 +46,6 @@ class OcrConfig(BaseModel):
 
 
 class ConfigModel(BaseModel):
-    log_pare_use_cpu_limit: int | None = Field(
-        default=None, description="日志解析服务使用的CPU上限", alias="LOG_PARE_USE_CPU_LIMIT")
     log_parse_method: TaskTypeEnum = Field(
         default=TaskTypeEnum.LOG_DETECTION_BASE_ON_LLM, description="日志解析方法，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）", alias="LOG_PARSE_METHOD")
     sql_lite_db_path: str = Field(
