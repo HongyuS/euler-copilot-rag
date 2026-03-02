@@ -92,9 +92,13 @@ async def stop_task(task_id: str) -> dict:
     ...
 ]
 """)
-async def get_task_result(task_id: str, limit: int | None = None, is_anomalous: bool | None = None) -> list[dict]:
-    log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, limit, is_anomalous)
-    return [log_parse_result_model.model_dump(exclude_none=True) for log_parse_result_model in log_parse_result_models]
+async def get_task_result(task_id: str, offset: int | None = None, limit: int | None = None, is_anomalous: bool | None = None) -> list[dict]:
+    total, log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, offset, limit, is_anomalous)
+    return {
+        "total": total,
+        "results": [log_parse_result_model.model_dump(
+            exclude_none=True) for log_parse_result_model in log_parse_result_models]
+    }
 
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
 

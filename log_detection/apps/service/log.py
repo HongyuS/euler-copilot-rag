@@ -47,7 +47,7 @@ class LogTaskHandleService:
         return task_model
 
     @staticmethod
-    async def get_task_result(task_id: uuid.UUID, limit: int | None = None, is_anomalous: bool | None = None) -> list[LogParseResultModel]:
+    async def get_task_result(task_id: uuid.UUID, limit: int | None = None, offset: int | None = None, is_anomalous: bool | None = None) -> tuple[int, list[LogParseResultModel]]:
         """获取任务结果"""
-        log_parse_result_models = await LogParseResultManager.get_log_parse_results_by_task_id(str(task_id), limit, is_anomalous)
-        return log_parse_result_models
+        total, log_parse_result_models = await LogParseResultManager.get_log_parse_results_by_task_id(str(task_id), limit, offset, is_anomalous)
+        return total, log_parse_result_models
