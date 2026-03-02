@@ -10,7 +10,7 @@ class TaskTypeEnum(str, Enum):
 
 class TaskStatusEnum(str, Enum):
     PENDING = "pending"
-    RUNNNING = "running"
+    RUNNING = "running"
     CANCLED = "cancled"
     SUCCESSFUL = "successful"
     FAILED = "failed"

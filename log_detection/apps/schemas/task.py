@@ -7,6 +7,7 @@ from apps.enum.task import TaskStatusEnum, TaskTypeEnum
 class TaskModel(BaseModel):
     task_id: str = Field(default_factory=lambda: str(
         uuid.uuid4()), description="任务ID")
+    pid: int | None = Field(None, description="任务对应的进程ID")
     task_name: str = Field(..., description="任务名称")
     task_type: str = Field(..., description="任务类型")
     compltetion_precent: float = Field(..., description="任务完成百分比")
