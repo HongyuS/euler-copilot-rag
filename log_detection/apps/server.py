@@ -75,22 +75,24 @@ async def stop_task(task_id: str) -> dict:
 @mcp.tool(name="get_task_result", description="""
     这是获取任务结果的工具函数，前端会调用这个接口来获取任务的执行结果。参数包括：
 - task_id: 任务ID，uuid4格式
-- limit: 返回的结果数量限制，如果为null或者不传，则返回所有结果；如果为整数，则返回异常分数最高的前limit条结果
-- is_anomalous: 是否只返回异常日志，如果为null或者不传，则返回所有日志；如果为true，则只返回异常日志；如果为false，则只返回正常日志
-这个函数会返回一个日志解析结果的列表，每个日志解析结果包括：日志解析结果ID、日志偏移量、日志文件路径、日志是否异常、日志解析任务ID、日志内容、日志异常原因、日志异常分数。返回格式如下：
-[
-    {
-        "id": "日志解析结果ID，uuid4格式",
-        "offset": 日志偏移量，整数类型,
-        "file_path": "日志文件路径",
-        "is_anomalous": 日志是否异常，布尔类型,
-        "task_id": "日志解析任务ID，uuid4格式",
-        "content": "日志内容",
-        "anomaly_reason": "日志异常原因，如果日志不异常，则返回空字符串",
-        "anomaly_score": 日志异常分数，如果日志不异常，则返回0.0
-    },
-    ...
-]
+- offset: 偏移量，整数类型，表示从第几条结果开始返回，用于分页查询
+- limit: 返回结果的数量，整数类型，表示一次返回多少条结果，用于分页查询
+- is_anomalous: 是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志
+这个函数会返回任务的执行结果，包括总结果数量和结果列表。结果列表中的每个元素包含：日志文件路径、任务ID、异常原因（如果是异常日志则有值，否则为null）、异常分数（如果是异常日志则有值，否则为null）。返回格式如下：
+{
+    "total": 总结果数量，整数类型,
+    "results": [
+        {
+            "id": "日志解析结果ID，uuid4格式",
+            "file_path": "日志文件路径",
+            "task_id": "任务ID，uuid4格式",
+            "is_anomalous": "日志是否异常，布尔类型",
+            "content": "日志内容，字符串类型",
+            "anomaly_reason": "日志异常原因，如果日志不异常，则返回空字符串",
+            "anomaly_score": "日志异常分数，如果日志不异常，则返回0.0"
+        },
+        ...
+    ]
 """)
 async def get_task_result(task_id: str, offset: int | None = None, limit: int | None = None, is_anomalous: bool | None = None) -> list[dict]:
     total, log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, offset, limit, is_anomalous)
