@@ -39,7 +39,7 @@ class BaseWorker:
         anomaly_log_models_id_set = set(
             [log_model.id for log_model in anomaly_log_models])
         for log_model in log_models:
-            if log_model.id in anomaly_log_models_id_set:
+            if log_model.id in anomaly_log_models_id_set and log_model.anomaly_score > 0:
                 log_model.is_anomalous = True
             else:
                 log_model.is_anomalous = False
@@ -74,11 +74,15 @@ class BaseWorker:
     async def stop(task_id: uuid.UUID) -> bool:
         '''停止任务'''
         task_entity = await TaskManager.get_task_by_id(str(task_id))
+        print(task_entity.model_dump())
+        print(task_entity.status)
+        print((task_entity.status == TaskStatusEnum.RUNNING.value)
+              or (task_entity.status == TaskStatusEnum.PENDING.value))
         if task_entity.status == TaskStatusEnum.RUNNING.value:
-            ProcessHandler.remove_task(task_id)
+            await ProcessHandler.remove_task(task_id)
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
+            return True
         elif task_entity.status == TaskStatusEnum.PENDING.value:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
-        else:
-            return False
-        return True
+            return True
+        return False

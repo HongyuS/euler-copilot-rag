@@ -7,6 +7,7 @@ import multiprocessing
 import logging
 from apps.sqlite.manager.task import TaskManager
 from apps.enum.task import TaskStatusEnum
+from apps.config.config import Config
 logger = logging.getLogger(__name__)
 
 multiprocessing = multiprocessing.get_context('spawn')
@@ -15,6 +16,8 @@ multiprocessing = multiprocessing.get_context('spawn')
 class ProcessHandler:
     ''' 进程处理器类'''
     time_out = 10
+    cpu_use_limit = Config().get_config().cpu_use_limit
+    cpu_use_limit = min(max(cpu_use_limit, 1), os.cpu_count()//2)
 
     @staticmethod
     def subprocess_target(target, *args, **kwargs):
@@ -30,9 +33,9 @@ class ProcessHandler:
         """添加任务到进程池"""
         # 当本机每个cpu使用率>=85%时，认为进程池已满，拒绝添加新任务
         # 计算cpu使用率
-        cpu_usage = os.getloadavg()[2] / os.cpu_count() * 100
-        if cpu_usage >= 85:
-            warning = f"CPU使用率过高({cpu_usage:.2f}%)，拒绝添加新任务。"
+        task_running = await TaskManager.get_tasks_by_status([TaskStatusEnum.RUNNING])
+        if len(task_running) >= ProcessHandler.cpu_use_limit:
+            warning = f"当前运行的任务数 {len(task_running)} 已达到CPU使用限制 {ProcessHandler.cpu_use_limit}，无法添加新任务 {task_id}。"
             logger.warning(f"[ProcessHandler] %s", warning)
             return False
         task_model = await TaskManager.get_task_by_id(task_id)
@@ -56,6 +59,7 @@ class ProcessHandler:
     async def remove_task(task_id: uuid.UUID):
         """从进程池中移除任务"""
         task_model = await TaskManager.get_task_by_id(task_id)
+        
         if task_model and task_model.pid:
             try:
                 pid = task_model.pid
@@ -65,3 +69,6 @@ class ProcessHandler:
             except Exception as e:
                 warning = f"杀死进程 {task_id} 失败: {e}"
                 logger.warning(f"[ProcessHandler] %s", warning)
+        else:
+            info = f"任务ID {task_id} 不存在或没有关联的进程，无法移除。"
+            logger.info(f"[ProcessHandler] %s", info)

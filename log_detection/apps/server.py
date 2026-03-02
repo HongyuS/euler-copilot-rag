@@ -95,7 +95,7 @@ async def stop_task(task_id: str) -> dict:
     ]
 """)
 async def get_task_result(task_id: str, offset: int | None = None, limit: int | None = None, is_anomalous: bool | None = None) -> list[dict]:
-    total, log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, offset, limit, is_anomalous)
+    total, log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, limit, offset, is_anomalous)
     return {
         "total": total,
         "results": [log_parse_result_model.model_dump(

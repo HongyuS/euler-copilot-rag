@@ -2,6 +2,7 @@ from multiprocessing import Lock
 import asyncio
 import sqlite3
 import logging
+from typing import Any
 from apps.config.config import Config
 
 logger = logging.getLogger(__name__)
@@ -22,12 +23,14 @@ table_ddl_list = {
     "log_parse_result_table": '''
         CREATE TABLE IF NOT EXISTS log_parse_result_table(
             id TEXT PRIMARY KEY,
+            file_path TEXT,
             offset INTEGER,
             is_anomalous BOOLEAN NOT NULL,
-            file_path TEXT NOT NULL,
-            task_id TEXT NOT NULL,
+            task_id TEXT,
+            content TEXT,
             anomaly_reason TEXT,
-            anomaly_score REAL
+            anomaly_score REAL,
+            FOREIGN KEY (task_id) REFERENCES task_table (task_id) ON DELETE CASCADE
         )
     '''
 }
@@ -89,8 +92,13 @@ class AsyncSQLiteSingleton:
             if conn:
                 conn.close()
 
-    def _sync_execute_modify(self, sql: str, params: dict) -> bool:
-        """同步执行增删改（完整生命周期，单线程内完成）"""
+    def _sync_execute_modify(self, sql: str, params: Any) -> bool:
+        """
+        同步执行增删改（支持单条/批量，完整生命周期，单线程内完成）
+        :param sql: SQL修改语句（位置参数用?，命名参数用:param_name）
+        :param params: 单条：dict/元组；批量：list[元组]
+        :return: 是否执行成功
+        """
         conn = None
         try:
             conn = sqlite3.connect(
@@ -99,7 +107,17 @@ class AsyncSQLiteSingleton:
                 timeout=5
             )
             cursor = conn.cursor()
-            cursor.execute(sql, params)
+
+            # 判断是否为批量操作
+            if isinstance(params, list) and len(params) > 0 and isinstance(params[0], (tuple, list)):
+                # 批量操作：使用 executemany
+                cursor.executemany(sql, params)
+                logger.debug(f"批量执行修改成功，影响行数: {cursor.rowcount}")
+            else:
+                # 单条操作：使用 execute
+                cursor.execute(sql, params)
+                logger.debug(f"单条执行修改成功，影响行数: {cursor.rowcount}")
+
             conn.commit()
             return True
         except sqlite3.Error as e:
