@@ -28,7 +28,7 @@ mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
     }
     """
 )
-async def create_log_parse_task(task_type: TaskTypeEnum | None = None, query: str = "", file_path_list: list[str] = [], max_anomaly_log_count: int = 0, anomaly_keywords: list[str] = [], time_start: str = "", time_end: str = "") -> str:
+async def create_log_parse_task(task_type: TaskTypeEnum | None = None, query: str = "", file_path_list: list[str] = [], max_anomaly_log_count: int = 64, anomaly_keywords: list[str] = [], time_start: str = "", time_end: str = "") -> str:
     task_id = await LogTaskHandleService.create_log_parse_task(task_type=task_type, query=query, file_path_list=file_path_list, max_anomaly_log_count=max_anomaly_log_count, anomaly_keywords=anomaly_keywords, time_start=time_start, time_end=time_end)
     return {
         "task_id": task_id
@@ -106,10 +106,17 @@ async def get_task_result(task_id: str, offset: int | None = None, limit: int | 
 
 
 def init():
-    asyncio.run(TaskManager.update_running_tasks_to_pending_tasks())
+    asyncio.run(TaskService.update_running_tasks_to_pending_tasks())
 
 
 if __name__ == "__main__":
     init()
-    TaskService.run_task_listener_in_process()
-    mcp.run(transport="sse")
+    try:
+        listener = TaskService.run_task_listener_in_process()
+        mcp.run(transport="sse")
+    except Exception as e:
+        print(f"启动MCP Server失败，错误信息：{e}")
+    finally:
+        import os
+        import signal
+        os.kill(listener.pid, signal.SIGKILL)

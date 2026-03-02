@@ -28,7 +28,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
         """处理单个日志模型的逻辑"""
         log_content = log_model.content
         prompt = DETECT_LOG_PROMPT.format(query=query, log_content=log_content)
-        llm_response = await llm.nostream([], prompt, "请直接返回JSON格式的字符串，包含anomaly_score（异常分数，0-100）和anomaly_reason（异常原因）两个字段", st_str="{", end_str="}")
+        llm_response = await llm.nostream([], prompt, "请直接返回JSON格式的字符串，包含anomaly_score（异常分数，0-100）和anomaly_reason（异常原因）两个字段", st_str="{", en_str="}")
         try:
             response_dict = json.loads(llm_response)
             log_model.anomaly_score = response_dict.get("anomaly_score", 0.0)
@@ -56,45 +56,51 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
     @staticmethod
     async def run(task_id: str) -> None:
         """日志检测服务"""
-        task_entity = await TaskManager.get_task_by_id(task_id)
-        if task_entity is None:
-            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED.value})
-            raise ValueError(f"任务 {task_id} 不存在")
-        task_related_params_js = json.loads(task_entity.task_related_params)
-        if "time_start" in task_related_params_js:
-            task_related_params_js["timestart"] = datetime.strptime(task_related_params_js["time_start"],
-                                                                    '%Y-%m-%d %H:%M')
-        if "time_end" in task_related_params_js:
-            task_related_params_js["time_end"] = datetime.strptime(task_related_params_js["time_end"],
-                                                                   '%Y-%m-%d %H:%M')
-        task_related_params_model = TaskRelatedParamsModel(
-            **task_related_params_js)
-        query = task_related_params_model.query
-        query_embedding = await Embedding.get_embedding(query)
-        file_path_list = task_related_params_model.file_path_list
-        max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
-        anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
-        time_start = task_related_params_model.time_start
-        time_end = task_related_params_model.time_end
-        # 异常日志候选列表
-        log_models = []
-        candidate_unnormal_log_models: list[LogModel] = []
-        batch_size = 8
-        llm = LLMService(openai_api_key=Config().get_config().llm_model.api_key, openai_api_base=Config().get_config().llm_model.end_point, model_name=Config(
-        ).get_config().llm_model.model_name, max_tokens=Config().get_config().llm_model.max_tokens, batch_size=Config().get_config().llm_model.batch_size)
-        for i in range(0, len(file_path_list), batch_size):
-            batch_file_path_list = file_path_list[i:i + batch_size]
-            handle_tasks = []
-            for file_path in batch_file_path_list:
-                handle_tasks.append(LogDetectionBasedOnLLMWorker.handle_single_log_file(
-                    file_path, max_anomaly_log_count, query, llm))
-            batch_results = await asyncio.gather(*handle_tasks)
-            for log_model_list, candidate_unnormal_log_model_list in batch_results:
-                log_models.extend(log_model_list)
-                candidate_unnormal_log_models.extend(
-                    candidate_unnormal_log_model_list)
-        candidate_unnormal_log_models.sort(
-            key=lambda x: x.anomaly_score, reverse=True)
-        candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
-        await LogDetectionBasedOnLLMWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
-        await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL.value})
+        try:
+            task_entity = await TaskManager.get_task_by_id(task_id)
+            if task_entity is None:
+                await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED.value})
+                raise ValueError(f"任务 {task_id} 不存在")
+            task_related_params_js = json.loads(
+                task_entity.task_related_params)
+            if "time_start" in task_related_params_js:
+                task_related_params_js["timestart"] = datetime.strptime(task_related_params_js["time_start"],
+                                                                        '%Y-%m-%d %H:%M')
+            if "time_end" in task_related_params_js:
+                task_related_params_js["time_end"] = datetime.strptime(task_related_params_js["time_end"],
+                                                                       '%Y-%m-%d %H:%M')
+            task_related_params_model = TaskRelatedParamsModel(
+                **task_related_params_js)
+            query = task_related_params_model.query
+            query_embedding = await Embedding.get_embedding(query)
+            file_path_list = task_related_params_model.file_path_list
+            max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
+            anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
+            time_start = task_related_params_model.time_start
+            time_end = task_related_params_model.time_end
+            # 异常日志候选列表
+            log_models = []
+            candidate_unnormal_log_models: list[LogModel] = []
+            batch_size = 8
+            llm = LLMService(openai_api_key=Config().get_config().llm_model.api_key, openai_api_base=Config().get_config().llm_model.end_point, model_name=Config(
+            ).get_config().llm_model.model_name, max_tokens=Config().get_config().llm_model.max_tokens, batch_size=Config().get_config().llm_model.batch_size)
+            file_path_list = await BaseWorker.get_files_from_file_path_list(file_path_list)
+            for i in range(0, len(file_path_list), batch_size):
+                batch_file_path_list = file_path_list[i:i + batch_size]
+                handle_tasks = []
+                for file_path in batch_file_path_list:
+                    handle_tasks.append(LogDetectionBasedOnLLMWorker.handle_single_log_file(
+                        file_path, max_anomaly_log_count, query, llm, time_start, time_end))
+                batch_results = await asyncio.gather(*handle_tasks)
+                for log_model_list, candidate_unnormal_log_model_list in batch_results:
+                    log_models.extend(log_model_list)
+                    candidate_unnormal_log_models.extend(
+                        candidate_unnormal_log_model_list)
+            candidate_unnormal_log_models.sort(
+                key=lambda x: x.anomaly_score, reverse=True)
+            candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
+            await LogDetectionBasedOnLLMWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
+            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
+        except Exception as e:
+            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})
+            raise e

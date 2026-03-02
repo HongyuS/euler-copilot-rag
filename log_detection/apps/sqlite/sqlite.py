@@ -22,6 +22,8 @@ table_ddl_list = {
     "log_parse_result_table": '''
         CREATE TABLE IF NOT EXISTS log_parse_result_table(
             id TEXT PRIMARY KEY,
+            offset INTEGER,
+            is_anomalous BOOLEAN NOT NULL,
             file_path TEXT NOT NULL,
             task_id TEXT NOT NULL,
             anomaly_reason TEXT,

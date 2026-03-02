@@ -59,7 +59,7 @@ class LogParseResultManager:
             """
             params = [(model.id, model.file_path, model.is_anomalous, model.task_id, model.content,
                        model.anomaly_reason, model.anomaly_score) for model in batch_models]
-            result = await AsyncSQLiteSingleton().execute_non_query(sql_str, params)
+            result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
             if not result:
                 return False
         return result

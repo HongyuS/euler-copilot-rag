@@ -24,11 +24,11 @@ class LogParser:
                     log_type].keywords_regex_and_scores
                 sum = 0
                 score = 0
-                for keyword_regex, keyword_score in keywrods_regex_and_scores["normal"]:
+                for keyword_regex, keyword_score in keywrods_regex_and_scores["normal"].items():
                     sum += keyword_score
                     if re.search(keyword_regex, log_line):
                         score += keyword_score
-                for keyword_regex, keyword_score in keywrods_regex_and_scores["anomalous"]:
+                for keyword_regex, keyword_score in keywrods_regex_and_scores["anomalous"].items():
                     sum += keyword_score
                     if re.search(keyword_regex, log_line):
                         score += keyword_score
@@ -50,7 +50,7 @@ class LogParser:
         text_end = re.compile(r".*\.(log|txt|md|json|xml|csv)$", re.IGNORECASE)
         if re.match(image_end, file_path):
             log_lines = asyncio.run(OcrTool.image_to_text_list(file_path))
-        if re.match(text_end, file_path) is None:
+        if re.match(text_end, file_path):
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 for line in f:
                     log_lines.append(line.strip())

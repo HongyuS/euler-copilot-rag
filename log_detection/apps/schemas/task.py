@@ -7,12 +7,12 @@ from apps.enum.task import TaskStatusEnum, TaskTypeEnum
 class TaskModel(BaseModel):
     task_id: str = Field(default_factory=lambda: str(
         uuid.uuid4()), description="任务ID")
-    pid: int | None = Field(None, description="任务对应的进程ID")
+    pid: int | None = Field(default=None, description="任务对应的进程ID")
     task_name: str = Field(..., description="任务名称")
     task_type: str = Field(..., description="任务类型")
-    compltetion_precent: float = Field(..., description="任务完成百分比")
+    completion_precent: float = Field(..., description="任务完成百分比")
     status: str = Field(..., description="任务状态")
-    task_related_params: str | None = Field(None, description="任务相关参数")
+    task_related_params: str | None = Field(default=None, description="任务相关参数")
     created_at: str = Field(default_factory=lambda: datetime.now().strftime(
         '%Y-%m-%d %H:%M:%S'), description="任务创建时间")
 
@@ -24,5 +24,5 @@ class TaskRelatedParamsModel(BaseModel):
     max_anomaly_log_count: int = Field(default=100, description="最大异常日志数量")
     anomaly_keywords: list[str] = Field(
         default_factory=list, description="异常关键词列表")
-    time_start: datetime | None = Field(None, description="日志时间范围起始时间")
-    time_end: datetime | None = Field(None, description="日志时间范围结束时间")
+    time_start: datetime | None = Field(default=None, description="日志时间范围起始时间")
+    time_end: datetime | None = Field(default=None, description="日志时间范围结束时间")
