@@ -74,10 +74,6 @@ class BaseWorker:
     async def stop(task_id: uuid.UUID) -> bool:
         '''停止任务'''
         task_entity = await TaskManager.get_task_by_id(str(task_id))
-        print(task_entity.model_dump())
-        print(task_entity.status)
-        print((task_entity.status == TaskStatusEnum.RUNNING.value)
-              or (task_entity.status == TaskStatusEnum.PENDING.value))
         if task_entity.status == TaskStatusEnum.RUNNING.value:
             await ProcessHandler.remove_task(task_id)
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})

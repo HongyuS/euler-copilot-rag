@@ -167,7 +167,7 @@ class LogParser:
                     if re.search(header_regex, log_line):
                         match_header_regex = header_regex
                         break
-                if match_header_regex is not None:
+                if log_type != LogTypeEnum.UNKNOWN and match_header_regex is not None:
                     current = log_line+"\n"
                     index += 1
                     while index < len(log_lines):
@@ -194,6 +194,7 @@ class LogParser:
                         offset=offset,
                         content=log_line
                     ))
+                    index += 1
                     offset += 1
         else:
             for log_line in log_lines:

@@ -28,7 +28,6 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
         """处理单个日志模型的逻辑"""
         log_content = log_model.content
         prompt = DETECT_LOG_PROMPT.format(query=query, log_content=log_content)
-        print(f"【调试】生成日志检测的提示词：{prompt}")  # 调试输出提示词
         llm_response = await llm.nostream([], prompt, "请直接返回JSON格式的字符串，包含anomaly_score（异常分数，0-100）和anomaly_reason（异常原因）两个字段", st_str="{", en_str="}")
         try:
             response_dict = json.loads(llm_response)

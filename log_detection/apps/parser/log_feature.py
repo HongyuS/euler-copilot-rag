@@ -73,14 +73,6 @@ class DmesgLogFeature:
             r'^\s+',
             r'\+[0-9a-fx]+/[0-9a-fx]+',
             r'\[[a-zA-Z0-9_]+\]\s*$',
-        ],
-        "kernel:": [
-            r"\[\s*\d+\.\d+\]",  # 匹配类似于 "[12345.678901]" 的时间戳
-            r"error|warn|fail|critical|trace|unknown|fatal",  # 匹配日志级别
-            r"\b(?:\d{1,3}\.){3}\d{1,3}\b",  # 匹配IP地址
-            r"\b\d{1,5}\b",  # 匹配端口号
-            r"\bPID[:=]?\s*\d+\b",  # 匹配PID
-            r"\bTID[:=]?\s*\d+\b",  # 匹配TID
         ]
     }
 

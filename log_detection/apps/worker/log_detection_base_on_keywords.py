@@ -27,16 +27,13 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
     name = TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value
 
     @staticmethod
-    async def cal_jaccard_similarity(str1: str, keywords: list[str]) -> float:
+    async def cal_keyword_similarity(str1: str, keywords: list[str]) -> float:
         """计算jaccard相似度"""
-        set1 = set(jieba.cut(str1))
-        set2 = set(keywords)
-        intersection = set1.intersection(set2)
-        union = set1.union(set2)
-        if len(union) == 0:
-            return 0.0
-        jaccard_similarity = len(intersection) / len(union)
-        return jaccard_similarity * 100
+        words = list(jieba.cut(str1))
+        keywords = set(keywords)
+        words_set = set(words)
+        intersection = words_set & keywords
+        return (len(intersection) / len(keywords) if len(keywords) > 0 else 0.0)*100
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
@@ -45,7 +42,7 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
             return 0.0
         sum = 0.0
         score = 0.0
-        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"]:
+        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"].items():
             sum += _
             if re.search(anomalous_keywords, log_content):
                 score += _
@@ -60,8 +57,8 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
             log_type = log_model.log_type
             log_content = log_model.content
             sentiment_score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(log_type, log_content)
-            jaccard_similarity = await LogDetectionBasedOnKeywordsWorker.cal_jaccard_similarity(log_content, anomaly_keywords)
-            final_score = 0.5*sentiment_score + 0.5*jaccard_similarity
+            keyword_similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(log_content, anomaly_keywords)
+            final_score = 0.2*sentiment_score + 0.8*keyword_similarity
             log_model.anomaly_score = final_score
         candidate_unnormal_log_models = sorted(
             log_models, key=lambda x: x.anomaly_score, reverse=True)[:max_anomaly_log_count]
