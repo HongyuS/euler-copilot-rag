@@ -22,17 +22,14 @@ class LogParser:
             if log_type in log_feature_class_mapping:
                 keywrods_regex_and_scores = log_feature_class_mapping[
                     log_type].keywords_regex_and_scores
-                sum = 0
                 score = 0
                 for keyword_regex, keyword_score in keywrods_regex_and_scores["normal"].items():
-                    sum += keyword_score
                     if re.search(keyword_regex, log_line):
                         score += keyword_score
                 for keyword_regex, keyword_score in keywrods_regex_and_scores["anomalous"].items():
-                    sum += keyword_score
                     if re.search(keyword_regex, log_line):
                         score += keyword_score
-                score_dict[log_type] = score/sum * 100 if sum > 0 else 0.0
+                score_dict[log_type] = score
         # 如果所有的日志类型得分都为0，则默认为unknown类型
         if all(score == 0 for score in score_dict.values()):
             return LogTypeEnum.UNKNOWN
@@ -62,22 +59,15 @@ class LogParser:
         # 这里实现日志内容脱敏的具体逻辑
         log_content = log_model.content
         log_type: LogTypeEnum = log_model.log_type
-        value_mask = {
-
-            LogValueEnum.TIMESTAMP: "<timestamp>",
-            LogValueEnum.LEVEL: "<level>",
-            LogValueEnum.IP: "<ip>",
-            LogValueEnum.PORT: "<port>",
-            LogValueEnum.PID: "<pid>",
-            LogValueEnum.TID: "<tid>"
-        }
-        masked_content = log_content
-        for log_value_enum in LogValueEnum:
+        value_and_value_mask = [(LogValueEnum.IP, "<ip>"), (LogValueEnum.TIMESTAMP, "<timestamp>"),
+                                (LogValueEnum.LEVEL, "<level>")]
+        masked_content = log_content[:]
+        for log_value_enum, mask in value_and_value_mask:
             regex = log_feature_class_mapping[log_type].capture_patterns.get(
                 log_value_enum.value, None)
             if regex is not None:
                 masked_content = re.sub(
-                    regex, value_mask[log_value_enum], masked_content)
+                    regex, mask, masked_content)
         return masked_content
 
     @staticmethod
@@ -114,16 +104,45 @@ class LogParser:
                     # 获取第一个匹配的时间戳字符串
                     timestamp_str = timestamp.group(0)
                     # 将时间戳字符串转换为datetime对象
-                    time_fromat_list = [
+                    time_format_list = [
+                        # 基础标准格式（年-月-日 时:分:秒）
                         "%Y-%m-%d %H:%M:%S",
                         "%Y/%m/%d %H:%M:%S",
+                        "%Y.%m.%d %H:%M:%S",
+                        # 带毫秒/微秒的标准格式
+                        "%Y-%m-%d %H:%M:%S.%f",
+                        "%Y/%m/%d %H:%M:%S.%f",
+                        "%Y.%m.%d %H:%M:%S.%f",
                         "%Y-%m-%d %H:%M:%S,%f",
                         "%Y/%m/%d %H:%M:%S,%f",
+                        "%Y.%m.%d %H:%M:%S,%f",
+                        # 带时区的格式（适配国际化日志）
+                        "%Y-%m-%d %H:%M:%S%z",
+                        "%Y-%m-%d %H:%M:%S.%f%z",
+                        "%Y-%m-%dT%H:%M:%S%z",
+                        "%Y-%m-%dT%H:%M:%S.%f%z",
+                        # ISO8601格式（Go/Java/JS常用）
+                        "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%dT%H:%M:%S.%f",
+                        # 月份缩写格式（Bash/系统日志常用）
                         "%b %d %H:%M:%S",
-                        "%b %d %H:%M:%S,%f"
-
+                        "%b %d %H:%M:%S.%f",
+                        "%b %d %H:%M:%S,%f",
+                        "%B %d %H:%M:%S",  # 月份全称（如January）
+                        "%B %d %H:%M:%S.%f",
+                        # 带年份的月份格式（Java日志常用）
+                        "%b %d %Y %H:%M:%S",
+                        "%b %d %Y %H:%M:%S.%f",
+                        "%B %d %Y %H:%M:%S",
+                        "%B %d %Y %H:%M:%S.%f",
+                        # 美式日期格式（部分日志场景）
+                        "%m/%d/%Y %H:%M:%S",
+                        "%m/%d/%Y %H:%M:%S.%f",
+                        # 内核/系统日志简化格式（dmesg/ftrace）
+                        "%s.%f",  # Unix时间戳+小数（如1710000000.123456）
+                        "%s"      # 纯Unix时间戳（10位数字）
                     ]
-                    for time_fromat in time_fromat_list:
+                    for time_fromat in time_format_list:
                         try:
                             timestamp_dt = datetime.strptime(
                                 timestamp_str, time_fromat)

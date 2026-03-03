@@ -46,14 +46,14 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         faiss_index = await LogDetectionBasedOnClusteringWorker.create_index(log_template_embeddings)
         for i, log_model in enumerate(log_models):
             Distance, Index = await LogDetectionBasedOnClusteringWorker.data_recall(faiss_index, log_model.template_vector, top_k=11)
-            for ind in Index:
+            for ind in Index[0]:
                 id1 = i
                 while log_models[id1].parent_id is not None:
                     id1 = log_models[id1].parent_id
                 id2 = ind
                 while log_models[id2].parent_id is not None:
                     id2 = log_models[id2].parent_id
-                if id1 != id2 and Distance[0][Index.index(ind)] < similarity_threshold:
+                if id1 != id2:
                     if log_models[id1].rank < log_models[id2].rank:
                         log_models[id2].parent_id = id1
                         log_models[id1].sz += log_models[id2].sz
@@ -96,7 +96,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
             return 0.0
         sum = 0.0
         score = 0.0
-        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"]:
+        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"].items():
             sum += _
             if re.search(anomalous_keywords, log_content):
                 score += _
@@ -107,11 +107,13 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         """处理单个日志文件的逻辑"""
         # 这里实现处理单个日志文件的具体逻辑
         log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, need_split_by_regex=True, time_start=time_start, time_end=time_end)
+        if len(log_models) == 0:
+            return log_models, []
         await LogParser.get_log_templates(log_models=log_models, need_embedding=True)
         await LogDetectionBasedOnClusteringWorker.merge_log_templates(log_models=log_models)
         log_models_after_merge = [
             log_model for log_model in log_models if log_model.parent_id is None]
-        cluster_models_DBSCAN: list[ClusterModel] = await ClusterService.DBSCAN(log_template_models=log_models_after_merge)
+        cluster_models_DBSCAN: list[ClusterModel] = await ClusterService.DBSCAN(log_models=log_models_after_merge)
         outlier_logs = []
         normal_log_template_vector = []
         for cluster_model in cluster_models_DBSCAN:
@@ -145,8 +147,8 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         candidate_unnormal_log_model_id_set = set(
             [log_model.id for log_model in candidate_unnormal_log_models])
         tmp_log_cnt = 0
-        for log_model in log_models:
-            id = log_model.id
+        for _, log_model in enumerate(log_models):
+            id = _
             while log_models[id].parent_id is not None:
                 id = log_models[id].parent_id
             if id in candidate_unnormal_log_model_id_set:
@@ -167,12 +169,16 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                 raise ValueError(f"任务 {task_id} 不存在")
             task_related_params_js = json.loads(
                 task_entity.task_related_params)
-            if "time_start" in task_related_params_js:
-                task_related_params_js["timestart"] = datetime.strptime(task_related_params_js["time_start"],
-                                                                        '%Y-%m-%d %H:%M')
-            if "time_end" in task_related_params_js:
+            if "time_start" in task_related_params_js and task_related_params_js["time_start"]:
+                task_related_params_js["time_start"] = datetime.strptime(task_related_params_js["time_start"],
+                                                                         '%Y-%m-%d %H:%M')
+            else:
+                task_related_params_js["time_start"] = None
+            if "time_end" in task_related_params_js and task_related_params_js["time_end"]:
                 task_related_params_js["time_end"] = datetime.strptime(task_related_params_js["time_end"],
                                                                        '%Y-%m-%d %H:%M')
+            else:
+                task_related_params_js["time_end"] = None
             task_related_params_model = TaskRelatedParamsModel(
                 **task_related_params_js)
             query = task_related_params_model.query
