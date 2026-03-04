@@ -15,7 +15,7 @@ max_top_k = 100
 # GitHub线上检索配置
 [github]
 enabled = true
-token = "REDACTED"
+token = ""
 issue_repos = ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"]
 commit_repo = "torvalds/linux"
 default_online_top_k = 2

@@ -10,7 +10,7 @@ temperature = 0.7
 # 向量化服务配置（embedding）
 [embedding]
 type = "openai"
-api_key = "sk-73dfc8ac9d414f9eaa8a67294eda7dae"
+api_key = ""
 endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings"
 model_name = "text-embedding-v4"
 timeout = 30
