@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 import json
 import uuid
@@ -17,6 +18,12 @@ class LogTaskHandleService:
         """创建日志解析任务"""
         if task_type is None:
             task_type = Config().get_config().log_parse_method
+        file_path_existed_list = []
+        for file_path in file_path_list:
+            if os.path.exists(file_path):
+                file_path_existed_list.append(file_path)
+        file_path_list = file_path_existed_list
+        # 生成一个新的文件目录，用于存储当前任务的相关文件
         task_model = TaskModel(
             task_name=f"{task_type.value} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             task_type=task_type.value,

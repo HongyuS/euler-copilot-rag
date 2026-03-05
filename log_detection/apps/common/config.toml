@@ -11,7 +11,7 @@ EMBEDDING_PROVIDER = "openai"
 EMBEDDING_END_POINT = "https://api.siliconflow.cn/v1/embeddings"
 EMBEDDING_API_KEY = "sk-kljekpatgfcpasgnxdubhloovfzaydyyzydsufcwvuvssjab"
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
-EMBEDDING_BATCH_SIZE = 32
+EMBEDDING_BATCH_SIZE = 8192
 
 # LLM模型配置
 [LLM_MODEL]

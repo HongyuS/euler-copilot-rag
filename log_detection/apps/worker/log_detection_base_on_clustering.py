@@ -46,7 +46,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
             log_model.template_vector for log_model in log_models]
         faiss_index = await LogDetectionBasedOnClusteringWorker.create_index(log_template_embeddings)
         top_k = int(math.log10(len(log_models)))
-        top_k=max(top_k, 2)
+        top_k = max(top_k, 2)
         for i, log_model in enumerate(log_models):
             Distance, Index = await LogDetectionBasedOnClusteringWorker.data_recall(faiss_index, log_model.template_vector, top_k=top_k)
             for ind in Index[0]:

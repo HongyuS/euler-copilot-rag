@@ -1,3 +1,5 @@
+import uuid
+from pydantic import BaseModel, Field
 import asyncio
 from mcp.server import FastMCP
 import uuid
@@ -28,7 +30,21 @@ mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
     }
     """
 )
-async def create_log_parse_task(task_type: TaskTypeEnum | None = None, query: str = "", file_path_list: list[str] = [], max_anomaly_log_count: int = 64, anomaly_keywords: list[str] = [], time_start: str = "", time_end: str = "") -> str:
+async def create_log_parse_task(
+    task_type: TaskTypeEnum | None = None,
+    query: str = Field(default="",
+                       description="查询语句，用于描述当前的异常现象或者需要关注的日志内容，基于这个查询语句，日志检测Worker会进行日志异常检测"),
+    file_path_list: list[str] = Field(default_factory=list,
+                                      description="日志文件路径列表，包含需要进行日志检测的日志文件的路径"),
+    max_anomaly_log_count: int = Field(default=64,
+                                       description="最大异常日志数量，日志检测Worker会根据这个数量来限制返回的异常日志的数量，确保不会返回过多的异常日志"),
+    anomaly_keywords: list[str] = Field(default_factory=list,
+                                        description="异常关键词列表，基于关键词的日志检测Worker会使用这个异常关键词列表来进行日志的异常检测"),
+    time_start: str | None = Field(
+        default=None, description="日志时间范围的起始时间，格式为 'YYYY-MM-DD HH:MM'", pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$"),
+    time_end: str | None = Field(
+        default=None, description="日志时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM'", pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+) -> str:
     task_id = await LogTaskHandleService.create_log_parse_task(task_type=task_type, query=query, file_path_list=file_path_list, max_anomaly_log_count=max_anomaly_log_count, anomaly_keywords=anomaly_keywords, time_start=time_start, time_end=time_end)
     return {
         "task_id": task_id
@@ -52,8 +68,10 @@ async def create_log_parse_task(task_type: TaskTypeEnum | None = None, query: st
 }
     """
 )
-async def get_task_status(task_id: str) -> dict:
+async def get_task_status(task_id: uuid.UUID = Field(description="任务ID，uuid4格式")) -> dict:
     task_model = await LogTaskHandleService.get_task_message(task_id)
+    if task_model is None:
+        raise ValueError(f"任务 {task_id} 不存在")
     return task_model.model_dump(exclude_none=True)
 
 
@@ -65,7 +83,7 @@ async def get_task_status(task_id: str) -> dict:
         "success": true // 如果成功停止了任务，则为true；如果没有成功停止任务（例如任务已经完成或者不存在），则为false
     }
 """)
-async def stop_task(task_id: str) -> dict:
+async def stop_task(task_id: uuid.UUID = Field(description="任务ID，uuid4格式")) -> dict:
     success = await LogTaskHandleService.stop_task(task_id)
     return {
         "success": success
@@ -94,7 +112,14 @@ async def stop_task(task_id: str) -> dict:
         ...
     ]
 """)
-async def get_task_result(task_id: str, offset: int | None = None, limit: int | None = None, is_anomalous: bool | None = None) -> list[dict]:
+async def get_task_result(task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+                          offset: int | None = Field(
+                              default=None, description="偏移量，整数类型，表示从第几条结果开始返回，用于分页查询"),
+                          limit: int | None = Field(
+                              default=None, description="返回结果的数量，整数类型，表示一次返回多少条结果，用于分页查询"),
+                          is_anomalous: bool | None = Field(
+                              default=None, description="是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志")
+                          ) -> dict:
     total, log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, limit, offset, is_anomalous)
     return {
         "total": total,
