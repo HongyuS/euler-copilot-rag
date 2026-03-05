@@ -30,6 +30,3 @@ class LogValueEnum(str, Enum):
     TIMESTAMP = "timestamp"
     LEVEL = "level"
     IP = "ip"
-    PORT = "port"
-    PID = "pid"
-    TID = "tid"

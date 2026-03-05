@@ -26,13 +26,17 @@ class TaskService:
     @staticmethod
     async def process_successful_or_failed_tasks():
         """处理所有成功或失败的任务"""
-        tasks = await TaskManager.get_tasks_by_status([TaskStatusEnum.SUCCESSFUL, TaskStatusEnum.FAILED])
+        tasks = await TaskManager.get_tasks_by_status([TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE, TaskStatusEnum.FAILED_PENDING_REMOVE])
         for task in tasks:
             try:
                 await ProcessHandler.remove_task(task.task_id)
                 logger.info(f"任务 {task.task_id} 处理完成并移除")
             except Exception as e:
                 logger.error(f"处理任务 {task.task_id} 时出错: {e}")
+            if task.status == TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value:
+                await TaskManager.update_task_by_id(task.task_id, {"status": TaskStatusEnum.SUCCESSFUL.value})
+            elif task.status == TaskStatusEnum.FAILED_PENDING_REMOVE.value:
+                await TaskManager.update_task_by_id(task.task_id, {"status": TaskStatusEnum.FAILED.value})
         return []  # 修正：将return移出循环，否则只处理第一个任务就返回
 
     @staticmethod
@@ -41,7 +45,7 @@ class TaskService:
         tasks = await TaskManager.get_tasks_by_status([TaskStatusEnum.PENDING])
         for task in tasks:
             try:
-                result = BaseWorker.run(task.task_id)
+                result = await BaseWorker.run(task.task_id)
                 if not result:
                     continue  # 修正：使用continue而非break，避免处理一个失败就停止所有任务
             except Exception as e:
@@ -81,7 +85,6 @@ class TaskService:
         listener_process = multiprocessing_context.Process(
             target=TaskService._run_async_loop,  # 指向类的静态方法
             name="TaskListenerProcess",  # 给进程命名，方便调试
-            daemon=True  # 设置为守护进程，主进程退出时自动终止
         )
 
         # 启动进程

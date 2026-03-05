@@ -46,6 +46,8 @@ class OcrConfig(BaseModel):
 
 
 class ConfigModel(BaseModel):
+    cpu_use_limit: int = Field(
+        default=8, description="当本机每个cpu使用率达到该值时，认为进程池已满，拒绝添加新任务", alias="CPU_USE_LIMIT")
     log_parse_method: TaskTypeEnum = Field(
         default=TaskTypeEnum.LOG_DETECTION_BASE_ON_LLM, description="日志解析方法，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）", alias="LOG_PARSE_METHOD")
     sql_lite_db_path: str = Field(

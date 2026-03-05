@@ -11,6 +11,7 @@ class ConvertService:
                 id=log_model.id,
                 file_path=log_model.file_path,
                 task_id=task_id,
+                offset=log_model.offset,
                 content=log_model.content,
                 is_anomalous=log_model.is_anomalous,
                 anomaly_score=log_model.anomaly_score,

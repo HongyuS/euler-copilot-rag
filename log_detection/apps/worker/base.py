@@ -1,5 +1,6 @@
 import uuid
 import logging
+import os
 from apps.sqlite.manager.log_parse_result import LogParseResultManager
 from apps.schemas.log import LogModel, LogParseResultModel
 from apps.enum.task import TaskStatusEnum, TaskTypeEnum
@@ -38,7 +39,7 @@ class BaseWorker:
         anomaly_log_models_id_set = set(
             [log_model.id for log_model in anomaly_log_models])
         for log_model in log_models:
-            if log_model.id in anomaly_log_models_id_set:
+            if log_model.id in anomaly_log_models_id_set and log_model.anomaly_score > 0:
                 log_model.is_anomalous = True
             else:
                 log_model.is_anomalous = False
@@ -47,10 +48,24 @@ class BaseWorker:
         await LogParseResultManager.add_log_parse_results(log_parse_result_models)
 
     @staticmethod
+    async def get_files_from_file_path_list(file_path_list: list[str]) -> list[str]:
+        """从文件路径列表中获取所有的文件路径"""
+        file_path_list = list(set(file_path_list))
+        all_file_paths = []
+        for file_path in file_path_list:
+            if os.path.isfile(file_path):
+                all_file_paths.append(file_path)
+            elif os.path.isdir(file_path):
+                for root, dirs, files in os.walk(file_path):
+                    for file in files:
+                        all_file_paths.append(os.path.join(root, file))
+        return all_file_paths
+
+    @staticmethod
     async def run(task_id: uuid.UUID) -> bool:
         '''运行任务'''
         worker_name = await BaseWorker.get_worker_name(task_id)
-        flag = ProcessHandler.add_task(
+        flag = await ProcessHandler.add_task(
             task_id, BaseWorker.find_worker_class(worker_name).run, task_id)
         await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.RUNNING.value})
         return flag
@@ -58,14 +73,12 @@ class BaseWorker:
     @staticmethod
     async def stop(task_id: uuid.UUID) -> bool:
         '''停止任务'''
-        worker_name = await BaseWorker.get_worker_name(task_id)
         task_entity = await TaskManager.get_task_by_id(str(task_id))
         if task_entity.status == TaskStatusEnum.RUNNING.value:
-            ProcessHandler.remove_task(task_id)
+            await ProcessHandler.remove_task(task_id)
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
+            return True
         elif task_entity.status == TaskStatusEnum.PENDING.value:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCLED.value})
-        else:
-            return False
-        task_id = await (BaseWorker.find_worker_class(worker_name).stop(task_id))
-        return (task_id is not None)
+            return True
+        return False

@@ -20,7 +20,7 @@ class LogTaskHandleService:
         task_model = TaskModel(
             task_name=f"{task_type.value} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             task_type=task_type.value,
-            compltetion_precent=0.0,
+            completion_precent=0.0,
             status=TaskStatusEnum.PENDING.value,
             task_related_params=json.dumps({
                 "query": query,
@@ -31,8 +31,10 @@ class LogTaskHandleService:
                 "time_end": time_end
             })
         )
-        task_id = await TaskManager.create_task(task_model)
-        return task_id
+        flag = await TaskManager.create_task(task_model)
+        if not flag:
+            raise Exception("创建任务失败")
+        return task_model.task_id
 
     @staticmethod
     async def stop_task(task_id: uuid.UUID) -> bool:

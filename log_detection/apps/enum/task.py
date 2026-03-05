@@ -12,5 +12,7 @@ class TaskStatusEnum(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     CANCLED = "cancled"
+    SUCCESSFUL_PENDING_REMOVE = "successful_pending_remove"
+    FAILED_PENDING_REMOVE = "failed_pending_remove"
     SUCCESSFUL = "successful"
     FAILED = "failed"

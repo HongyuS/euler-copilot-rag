@@ -27,16 +27,13 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
     name = TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value
 
     @staticmethod
-    async def cal_jaccard_similarity(str1: str, keywords: list[str]) -> float:
+    async def cal_keyword_similarity(str1: str, keywords: list[str]) -> float:
         """计算jaccard相似度"""
-        set1 = set(jieba.cut(str1))
-        set2 = set(keywords)
-        intersection = set1.intersection(set2)
-        union = set1.union(set2)
-        if len(union) == 0:
-            return 0.0
-        jaccard_similarity = len(intersection) / len(union)
-        return jaccard_similarity * 100
+        words = list(jieba.cut(str1))
+        keywords = set(keywords)
+        words_set = set(words)
+        intersection = words_set & keywords
+        return (len(intersection) / len(keywords) if len(keywords) > 0 else 0.0)*100
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
@@ -45,7 +42,7 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
             return 0.0
         sum = 0.0
         score = 0.0
-        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"]:
+        for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"].items():
             sum += _
             if re.search(anomalous_keywords, log_content):
                 score += _
@@ -60,8 +57,8 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
             log_type = log_model.log_type
             log_content = log_model.content
             sentiment_score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(log_type, log_content)
-            jaccard_similarity = await LogDetectionBasedOnKeywordsWorker.cal_jaccard_similarity(log_content, anomaly_keywords)
-            final_score = 0.5*sentiment_score + 0.5*jaccard_similarity
+            keyword_similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(log_content, anomaly_keywords)
+            final_score = 0.2*sentiment_score + 0.8*keyword_similarity
             log_model.anomaly_score = final_score
         candidate_unnormal_log_models = sorted(
             log_models, key=lambda x: x.anomaly_score, reverse=True)[:max_anomaly_log_count]
@@ -70,43 +67,49 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
     @staticmethod
     async def run(task_id: str) -> None:
         """日志检测服务"""
-        task_entity = await TaskManager.get_task_by_id(task_id)
-        if task_entity is None:
-            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED.value})
-            raise ValueError(f"任务 {task_id} 不存在")
-        task_related_params_js = json.loads(task_entity.task_related_params)
-        if "time_start" in task_related_params_js:
-            task_related_params_js["timestart"] = datetime.strptime(task_related_params_js["time_start"],
-                                                                    '%Y-%m-%d %H:%M')
-        if "time_end" in task_related_params_js:
-            task_related_params_js["time_end"] = datetime.strptime(task_related_params_js["time_end"],
-                                                                   '%Y-%m-%d %H:%M')
-        task_related_params_model = TaskRelatedParamsModel(
-            **task_related_params_js)
-        query = task_related_params_model.query
-        query_embedding = await Embedding.get_embedding(query)
-        file_path_list = task_related_params_model.file_path_list
-        max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
-        anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
-        time_start = task_related_params_model.time_start
-        time_end = task_related_params_model.time_end
-        # 异常日志候选列表
-        log_models = []
-        candidate_unnormal_log_models: list[LogModel] = []
-        batch_size = 8
-        for i in range(0, len(file_path_list), batch_size):
-            batch_file_path_list = file_path_list[i:i + batch_size]
-            handle_tasks = []
-            for file_path in batch_file_path_list:
-                handle_tasks.append(LogDetectionBasedOnKeywordsWorker.handle_single_log_file(
-                    file_path, max_anomaly_log_count, anomaly_keywords, time_start, time_end))
-            batch_results = await asyncio.gather(*handle_tasks)
-            for log_model_list, candidate_unnormal_log_model_list in batch_results:
-                log_models.extend(log_model_list)
-                candidate_unnormal_log_models.extend(
-                    candidate_unnormal_log_model_list)
-        candidate_unnormal_log_models.sort(
-            key=lambda x: x.anomaly_score, reverse=True)
-        candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
-        await LogDetectionBasedOnKeywordsWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
-        await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL.value})
+        try:
+            task_entity = await TaskManager.get_task_by_id(task_id)
+            if task_entity is None:
+                await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED.value})
+                raise ValueError(f"任务 {task_id} 不存在")
+            task_related_params_js = json.loads(
+                task_entity.task_related_params)
+            if "time_start" in task_related_params_js:
+                task_related_params_js["timestart"] = datetime.strptime(task_related_params_js["time_start"],
+                                                                        '%Y-%m-%d %H:%M')
+            if "time_end" in task_related_params_js:
+                task_related_params_js["time_end"] = datetime.strptime(task_related_params_js["time_end"],
+                                                                       '%Y-%m-%d %H:%M')
+            task_related_params_model = TaskRelatedParamsModel(
+                **task_related_params_js)
+            query = task_related_params_model.query
+            query_embedding = await Embedding.get_embedding(query)
+            file_path_list = task_related_params_model.file_path_list
+            max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
+            anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
+            time_start = task_related_params_model.time_start
+            time_end = task_related_params_model.time_end
+            # 异常日志候选列表
+            log_models = []
+            candidate_unnormal_log_models: list[LogModel] = []
+            batch_size = 8
+            file_path_list = await BaseWorker.get_files_from_file_path_list(file_path_list)
+            for i in range(0, len(file_path_list), batch_size):
+                batch_file_path_list = file_path_list[i:i + batch_size]
+                handle_tasks = []
+                for file_path in batch_file_path_list:
+                    handle_tasks.append(LogDetectionBasedOnKeywordsWorker.handle_single_log_file(
+                        file_path, max_anomaly_log_count, anomaly_keywords, time_start, time_end))
+                batch_results = await asyncio.gather(*handle_tasks)
+                for log_model_list, candidate_unnormal_log_model_list in batch_results:
+                    log_models.extend(log_model_list)
+                    candidate_unnormal_log_models.extend(
+                        candidate_unnormal_log_model_list)
+            candidate_unnormal_log_models.sort(
+                key=lambda x: x.anomaly_score, reverse=True)
+            candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
+            await LogDetectionBasedOnKeywordsWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
+            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
+        except Exception as e:
+            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})
+            raise e

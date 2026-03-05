@@ -37,15 +37,15 @@ class ClusterService:
             if label not in new_clusters_dict:
                 new_clusters_dict[label] = clusters[i]
             else:
-                new_clusters_dict[label].log_templates.extend(
-                    clusters[i].log_templates)
+                new_clusters_dict[label].log_models.extend(
+                    clusters[i].log_models)
         clusters_extend = new_clusters_dict.values()
         for cluster in clusters_extend:
             cluster.is_outlier = False
         new_clusters += clusters_extend
         for cluster in new_clusters:
             cluster.cluster_center = np.mean(
-                [log_template.vector for log_template in cluster.log_templates], axis=0).tolist()
+                [log_model.template_vector for log_model in cluster.log_models], axis=0).tolist()
         return new_clusters
 
     @staticmethod
@@ -71,7 +71,7 @@ class ClusterService:
         for log in log_models:
             cluster = ClusterModel(
                 cluster_center=log.template_vector,
-                log_templates=[log]
+                log_models=[log]
             )
             clusters.append(cluster)
         iteration = 0
@@ -167,3 +167,4 @@ class ClusterService:
                 new_clusters.extend(kmeans_result)
             clusters = new_clusters
             iteration += 1
+        return clusters

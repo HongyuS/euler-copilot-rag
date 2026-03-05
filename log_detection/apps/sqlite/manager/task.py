@@ -9,7 +9,7 @@ class TaskManager:
     async def get_task_by_id(task_id: str) -> TaskModel | None:
         """根据任务ID获取任务信息"""
         sql_str = """
-            SELECT task_id, pid, task_name, completion_precent, status, task_related_params, created_at
+            SELECT task_id, pid, task_name, task_type, completion_precent, status, task_related_params, created_at
             FROM task_table
             WHERE task_id = :task_id
         """
@@ -69,7 +69,7 @@ class TaskManager:
             WHERE task_id = :task_id
         """
         result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
-        return TaskModel(**update_data) if result else None
+        return result
 
     @staticmethod
     async def update_running_tasks_to_pending_tasks():
@@ -91,7 +91,7 @@ class TaskManager:
             INSERT INTO task_table (task_id, pid, task_name, task_type, completion_precent, status, task_related_params, created_at)
             VALUES (:task_id, :pid, :task_name, :task_type, :completion_precent, :status, :task_related_params, :created_at)
         """
-        result = await AsyncSQLiteSingleton().execute_modify(sql_str, task.model_dump(exclude_none=True, by_alias=True))
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, task.model_dump(exclude_none=False, by_alias=True))
         return result
 
     @staticmethod

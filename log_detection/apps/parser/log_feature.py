@@ -9,6 +9,7 @@ class DmesgLogFeature:
         "normal":
         {
             r'localhost kernel:': 2.0,          # 经典syslog格式dmesg头（最高权重）
+            r'localhost \w+:': 1.9,             # 反向格式syslog头
             r'\[ *\d+\.\d+\] \w+:': 1.8,        # dmesg标准时间戳+子系统
             r'kernel: \[ *\d+\.\d+\]': 1.8,     # 反向格式syslog
             r'\[\<[0-9a-fA-F]+\>\]': 1.6,       # x86架构栈地址格式
@@ -73,14 +74,6 @@ class DmesgLogFeature:
             r'^\s+',
             r'\+[0-9a-fx]+/[0-9a-fx]+',
             r'\[[a-zA-Z0-9_]+\]\s*$',
-        ],
-        "kernel:": [
-            r"\[\s*\d+\.\d+\]",  # 匹配类似于 "[12345.678901]" 的时间戳
-            r"error|warn|fail|critical|trace|unknown|fatal",  # 匹配日志级别
-            r"\b(?:\d{1,3}\.){3}\d{1,3}\b",  # 匹配IP地址
-            r"\b\d{1,5}\b",  # 匹配端口号
-            r"\bPID[:=]?\s*\d+\b",  # 匹配PID
-            r"\bTID[:=]?\s*\d+\b",  # 匹配TID
         ]
     }
 
@@ -94,13 +87,10 @@ class DmesgLogFeature:
      - tid: 线程ID
     """
     capture_patterns = {
-        # 兼容dmesg特有时间戳
-        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}|\[\s*\d+\.\d+\])\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|Oops|panic)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\b(?:PID|Comm:)\s*\d+\b",  # 兼容dmesg的Comm格式
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\[\s*\d+\.\d+\]|\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\b",
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|warning|notice|info|debug|DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|PANIC|panic)\b",
+        # 核心优化：同时匹配 纯IP 和 IP+端口 格式
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?\b"
     }
 
 
@@ -152,12 +142,11 @@ class KdumpLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}|\[\s*\d+\.\d+\])\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|PANIC|panic)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        # 新增毫秒/时间戳
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+|\[\s*\d+\.\d+\]|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}|\d{10,13})\b",
+        # 新增crash/fault
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|FATAL|PANIC|panic|DEBUG|INFO|WARNING|ERROR|CRITICAL|UNKNOWN|crash|fault|fatal)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -209,14 +198,9 @@ class FtraceLogFeature:
     }
 
     capture_patterns = {
-        # 兼容ftrace时间戳
-        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}|\d+\.\d+)\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        # 兼容ftrace的PID位置
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+|\b\d+\s+\d+\s+\w+",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\d+\.\d+|\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}|\d{10,13}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\b",
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|warning|notice|info|debug|TRACE|VERBOSE|DEBUG|INFO|WARNING|ERROR|CRITICAL|UNKNOWN)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -271,12 +255,10 @@ class BashLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|syntax error|Permission denied)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}|\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}|\d{10,13})\b",
+        # 新增sudo/auth
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|warning|notice|info|debug|sudo|auth|error|INFO|WARNING|UNKNOWN)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -326,12 +308,11 @@ class PythonLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|(\w+)Error)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\b(?:TID|thread)\s*\d+\b"  # 兼容thread关键字
+        # 新增ISO8601/毫秒
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}(?:\.\d+)?|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\b",
+        # 新增WARN/NOTSET
+        LogValueEnum.LEVEL: r"\b(?:DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL|TRACE|VERBOSE|NOTSET|unknown|UNKNOWN)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -384,12 +365,10 @@ class JavaLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|(\w+)Exception)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\b(?:TID|thread)\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}(?:\.\d+)?|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s+\d{4}\s+\d{2}:\d{2}:\d{2})\b",  # 新增美式时间
+        # 新增Java特有的级别
+        LogValueEnum.LEVEL: r"\b(?:TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL|SEVERE|INFO|CONFIG|FINE|FINER|FINEST|UNKNOWN)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -438,12 +417,10 @@ class GoLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|panic|runtime error)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\b(?:TID|goroutine)\s*\d+\b"  # 兼容goroutine
+        # 新增Unix时间戳
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?|\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}|\d{10,13})\b",
+        LogValueEnum.LEVEL: r"\b(?:DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC|panic|CRITICAL|TRACE|UNKNOWN)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -493,12 +470,10 @@ class JsLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|(\w+)Error)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?|\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}|\d{10,13}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})\b",
+        # 新增LOG
+        LogValueEnum.LEVEL: r"\b(?:DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG|VERBOSE|UNKNOWN)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -547,12 +522,10 @@ class CLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|error|warning|note)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}|\[\s*\d+\.\d+\]|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}|\d{10,13})\b",
+        # 新增syslog宏
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|warning|notice|info|debug|DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL|UNKNOWN|LOG_ERR|LOG_INFO|LOG_WARNING)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -600,12 +573,9 @@ class CppLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|error|warning|note)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}(?:\.\d+)?|\[\s*\d+\.\d+\]|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}|\d{10,13})\b",
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|warning|notice|info|debug|DEBUG|INFO|WARNING|ERROR|CRITICAL|FATAL|UNKNOWN|LOG_ERR|LOG_INFO|LOG_WARNING|TRACE)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
@@ -646,12 +616,9 @@ class UnKnownLogFeature:
     }
 
     capture_patterns = {
-        LogValueEnum.TIMESTAMP: r"\b\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\b",
-        LogValueEnum.LEVEL: r"\b(DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL)\b",
-        LogValueEnum.IP: r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
-        LogValueEnum.PORT: r"\b\d{1,5}\b",
-        LogValueEnum.PID: r"\bPID[:=]?\s*\d+\b",
-        LogValueEnum.TID: r"\bTID[:=]?\s*\d+\b"
+        LogValueEnum.TIMESTAMP: r"\b(?:\[\s*\d+\.\d+\]|\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}(?:\.\d+)?|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}|\d+\.\d+|\d{10,13})\b",
+        LogValueEnum.LEVEL: r"\b(?:emerg|alert|crit|err|warning|notice|info|debug|DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|PANIC|panic|VERBOSE|LOG|crash|fault|sudo|auth|NOTSET|SEVERE|CONFIG|FINE|FINER|FINEST|LOG_ERR|LOG_INFO|LOG_WARNING)\b",
+        LogValueEnum.IP: r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{1,5})?(?:\/\d{1,2})?\b"
     }
 
 
