@@ -1,4 +1,5 @@
 import asyncio
+import math
 import json
 from faiss import IndexFlatL2
 import numpy as np
@@ -44,8 +45,10 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         log_template_embeddings = [
             log_model.template_vector for log_model in log_models]
         faiss_index = await LogDetectionBasedOnClusteringWorker.create_index(log_template_embeddings)
+        top_k = int(math.log10(len(log_models)))
+        top_k=max(top_k, 2)
         for i, log_model in enumerate(log_models):
-            Distance, Index = await LogDetectionBasedOnClusteringWorker.data_recall(faiss_index, log_model.template_vector, top_k=11)
+            Distance, Index = await LogDetectionBasedOnClusteringWorker.data_recall(faiss_index, log_model.template_vector, top_k=top_k)
             for ind in Index[0]:
                 id1 = i
                 while log_models[id1].parent_id is not None:
@@ -78,16 +81,13 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         return (cosine_similarity + 1) / 2 * 100
 
     @staticmethod
-    async def cal_jaccard_similarity(str1: str, keywords: list[str]) -> float:
+    async def cal_keyword_similarity(str1: str, keywords: list[str]) -> float:
         """计算jaccard相似度"""
-        set1 = set(jieba.cut(str1))
-        set2 = set(keywords)
-        intersection = set1.intersection(set2)
-        union = set1.union(set2)
-        if len(union) == 0:
-            return 0.0
-        jaccard_similarity = len(intersection) / len(union)
-        return jaccard_similarity * 100
+        words = list(jieba.cut(str1))
+        keywords = set(keywords)
+        words_set = set(words)
+        intersection = words_set & keywords
+        return (len(intersection) / len(keywords) if len(keywords) > 0 else 0.0)*100
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
@@ -139,6 +139,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                 distance_to_normal = 0
             cluster_models_KMeans_dis_to_normal.append(
                 (cluster_model, distance_to_normal))
+
         cluster_models_KMeans_dis_to_normal.sort(
             key=lambda x: x[1], reverse=True)
         candidate_unnormal_log_models: list[LogModel] = []
@@ -207,16 +208,17 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
             # 通过query embedding（余弦距离 30%） 、 异常关键词（50%）和情感模型（20%）来对候选的异常日志进行排序，选出最终的异常日志列表返回
             for log_model in candidate_unnormal_log_models:
                 cosine_similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(log_model.template_vector, query_embedding)
-                jaccard_similarity = await LogDetectionBasedOnClusteringWorker.cal_jaccard_similarity(log_model.content, anomaly_keywords)
+                keyword_similarity = await LogDetectionBasedOnClusteringWorker.cal_keyword_similarity(log_model.content, anomaly_keywords)
                 sentiment_score = await LogDetectionBasedOnClusteringWorker.cal_sentiment_score(log_model.log_type, log_model.content)
                 final_score = cosine_similarity * 0.3 + \
-                    jaccard_similarity * 0.5 + \
+                    keyword_similarity * 0.5 + \
                     sentiment_score * 0.2
                 log_model.anomaly_score = final_score
             candidate_unnormal_log_models.sort(
                 key=lambda x: x.anomaly_score, reverse=True)
             candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
             await LogDetectionBasedOnClusteringWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
+
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
         except Exception as e:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})
