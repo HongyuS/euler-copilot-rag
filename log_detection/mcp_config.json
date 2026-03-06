@@ -1,0 +1,7 @@
+{
+    "mcpServers": {
+        "log_detection": {
+            "url": "http://localhost:12144/sse"
+        }
+    }
+}
