@@ -174,13 +174,13 @@ log_detection/
 
 #### 系统要求
 
-- Python 3.9+
+- Python 3.11+
 - Linux/Windows/macOS
 
 #### 安装依赖
 
 ```bash
-cd /home/zjq/euler-copilot-rag/log_detection/src
+cd ../euler-copilot-rag/log_detection
 pip install -r requirements.txt
 ```
 
