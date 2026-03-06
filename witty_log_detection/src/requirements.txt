@@ -1,0 +1,21 @@
+# Machine Learning & Data Processing
+numpy==1.26.4
+scikit-learn==1.7.0
+
+# Deep Learning & Embeddings
+faiss-cpu==1.13.2
+
+# NLP Processing
+jieba==0.42.1
+
+# Web & API
+requests==2.32.2
+openai==1.93.0
+
+# Image Processing & OCR
+Pillow==10.3.0
+opencv-python==4.9.0.80
+
+# Configuration & Validation
+PyYAML==6.0.2
+pydantic==2.11.7

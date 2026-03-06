@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "log-detection-test"
+version = "0.1.0"
+description = "Log detection testing suite"
+authors = ["zhaojiaqi18@huawei.com"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pytest = "^7.4.0"
+pytest-asyncio = "^0.21.0"
+pydantic = "^2.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
