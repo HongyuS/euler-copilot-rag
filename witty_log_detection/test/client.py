@@ -124,19 +124,14 @@ async def main() -> None:
     headers = {}
     client = MCPClient(url, headers)
     await client.init()
-    # js = {
-    #     "task_type": "log_detection_base_on_keywords",
-    #     "query": "我的网卡掉了帮我分析下异常",
-    #     "file_path_list": ["/home/zjq/test/2026330_test/test.log"],
-    #     "anomaly_keywords": ["disconnected"],
-    #     "max_anomaly_log_count": 64
-    # }
-    # result = await client.call_tool("create_log_parse_task", js)
-    # print(result)
-    js={
-        "task_id": "8f644266-f1e7-4d5e-bf3d-f1607365a269"
+    js = {
+        "task_type": "log_detection_base_on_keywords",
+        "query": "我的网卡掉了帮我分析下异常",
+        "file_path_list": ["/home/zjq/test/2026330_test/test.log"],
+        "anomaly_keywords": ["disconnected"],
+        "max_anomaly_log_count": 64
     }
-    result = await client.call_tool("get_task_message", js)
+    result = await client.call_tool("create_log_parse_task", js)
     print(result)
     await client.stop()
 
