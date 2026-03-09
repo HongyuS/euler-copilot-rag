@@ -1,5 +1,5 @@
-# RAG服务私有配置
-port = 12311
+# RAG MCP 本地配置
+language = "zh"
 
 # Token相关配置
 [token]
@@ -14,11 +14,20 @@ max_top_k = 100
 
 # GitHub线上检索配置
 [github]
-enabled = true
+enabled = false
 token = ""
 issue_repos = ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"]
 commit_repo = "torvalds/linux"
-default_online_top_k = 2
+default_online_top_k = 5
 max_candidates = 20
 request_timeout = 10
 rate_limit_delay = 1
+
+# 向量化服务配置
+[embedding]
+type = "openai"
+api_key = ""
+endpoint = ""
+model_name = "text-embedding-ada-002"
+timeout = 30
+vector_dimension = 1024
