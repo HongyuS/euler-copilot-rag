@@ -14,7 +14,7 @@ start.sh
 *.tmol
 *.key
 *.crt
-
+*.db
 /logs
 app.log
 encrypted_config.json
