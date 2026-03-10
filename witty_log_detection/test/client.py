@@ -1,6 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 """MCP Client"""
-
+import json
 import asyncio
 import logging
 from contextlib import AsyncExitStack
@@ -127,12 +127,44 @@ async def main() -> None:
     js = {
         "task_type": "log_detection_base_on_keywords",
         "query": "我的网卡掉了帮我分析下异常",
-        "file_path_list": ["/home/zjq/test/2026330_test/test.log"],
+        "file_path_list": ["/home/zjq/euler-copilot-rag/witty_log_detection/test/test.log"],
         "anomaly_keywords": ["disconnected"],
         "max_anomaly_log_count": 64
     }
+    print(js)
     result = await client.call_tool("create_log_parse_task", js)
     print(result)
+    
+    
+    # 解析 task_id 并轮询等待任务完成
+    task_data = json.loads(result.content[0].text)
+    task_id = task_data["task_id"]
+    print(f"任务已创建, task_id: {task_id}")
+    while True:
+        msg_result = await client.call_tool("get_task_message", {"task_id": task_id})
+        msg_data = json.loads(msg_result.content[0].text)
+        status = msg_data.get("status", "")
+        percent = msg_data.get("completion_precent", 0)
+        print(f"任务状态: {status}, 完成度: {percent}%")
+        if status in ("successful", "failed"):
+            break
+        await asyncio.sleep(2)
+
+    # 获取并打印 is_anomalous、anomaly_score
+    if status == "successful":
+        result_resp = await client.call_tool("get_task_result", {"task_id": task_id, "limit": 20})
+        result_data = json.loads(result_resp.content[0].text)
+        total = result_data["total"]
+        results = result_data["results"]
+        print(f"\n共 {total} 条结果, 显示前 {len(results)} 条:")
+        for i, item in enumerate(results, 1):
+            content_preview = (item.get("content", "") or "")[:80]
+            print(f"  [{i}] is_anomalous={item.get('is_anomalous')}, anomaly_score={item.get('anomaly_score')}, content={content_preview}...")
+    else:
+        print("任务失败, 无检测结果")
+        
+        
+        
     await client.stop()
 
 if __name__ == "__main__":

@@ -78,7 +78,7 @@ class LogParseResultManager:
 
         # 转换为模型（数据库已排序，无需内存再排序）
         log_results = [LogParseResultModel(**result) for result in results]
-
+        log_results.sort(key=lambda x: (x.file_path, x.offset))
         return total_count, log_results
 
     @staticmethod
