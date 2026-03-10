@@ -1,12 +1,14 @@
-from multiprocessing import Lock
+from multiprocessing import Lock as ProcessLock
 import asyncio
 import sqlite3
 import logging
-from typing import Any
+from typing import Any, Optional
 from src.config.config import Config
 
+# 配置日志
 logger = logging.getLogger(__name__)
 
+# 表结构定义
 table_ddl_list = {
     "task_table": '''
         CREATE TABLE IF NOT EXISTS task_table (
@@ -37,76 +39,107 @@ table_ddl_list = {
 
 
 class AsyncSQLiteSingleton:
-    def __init__(self):
-        self.DB_PATH = Config().get_config().sql_lite_db_path
-        self._async_lock = asyncio.Lock()
-        self._sync_init_database()
-    # -------------------------- 同步操作函数（所有操作都在同一个线程执行） --------------------------
+    # 类级别的单例实例
+    _instance: Optional['AsyncSQLiteSingleton'] = None
+    # 进程级锁（跨进程保护）
+    _process_lock = ProcessLock()
+    # 类级锁（单例创建保护）
+    _class_lock = asyncio.Lock()
 
-    def _sync_init_database(self):
-        """同步初始化数据库（完整生命周期，单线程内完成）"""
-        conn = None
+    def __new__(cls):
+        """实现单例模式"""
+        if cls._instance is None:
+            with cls._process_lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __init__(self):
+        # 防止重复初始化
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        
+        # 数据库配置
+        self.DB_PATH = Config().get_config().sql_lite_db_path
+        # 异步锁（协程级）
+        self._async_lock = asyncio.Lock()
+        # 数据库连接（复用连接，避免频繁创建/关闭）
+        self._conn: Optional[sqlite3.Connection] = None
+        # 初始化标记
+        self._initialized = False
+        
+        # 初始化数据库连接
+        self._init_connection()
+
+    def _init_connection(self):
+        """初始化数据库连接（复用连接）"""
         try:
-            # 创建连接时指定 check_same_thread=False 允许跨线程（但我们会保证单线程使用）
-            conn = sqlite3.connect(
+            # 增加超时时间到30秒，关闭自动提交
+            self._conn = sqlite3.connect(
                 self.DB_PATH,
                 check_same_thread=False,
-                timeout=5
+                timeout=30.0,  # 增加超时时间
+                isolation_level=None  # 关闭自动提交，手动控制事务
             )
-            conn.execute("PRAGMA foreign_keys = ON")
+            # 启用外键约束
+            self._conn.execute("PRAGMA foreign_keys = ON")
+            # 启用 WAL 模式（提高并发性能）
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            # 设置同步模式为NORMAL（平衡性能和安全性）
+            self._conn.execute("PRAGMA synchronous=NORMAL")
+            
+            logger.info("数据库连接初始化成功")
+        except sqlite3.Error as e:
+            logger.error(f"数据库连接初始化失败: {e}")
+            raise
 
+    # -------------------------- 同步操作函数（所有操作都在同一个连接执行） --------------------------
+    def _sync_init_database(self) -> bool:
+        """同步初始化数据库（复用连接）"""
+        if not self._conn:
+            self._init_connection()
+
+        try:
             # 初始化所有表
-            for ddl in table_ddl_list.values():
-                cursor = conn.cursor()
-                cursor.execute(ddl)
-            conn.commit()
+            for table_name, ddl in table_ddl_list.items():
+                self._conn.execute(ddl)
+            self._conn.commit()
             logger.info("数据库初始化成功，表创建完成")
+            self._initialized = True
             return True
         except sqlite3.Error as e:
-            if conn:
-                conn.rollback()
+            self._conn.rollback()
             logger.error(f"数据库初始化失败: {e}")
             return False
-        finally:
-            if conn:
-                conn.close()
 
-    def _sync_execute_query(self, sql: str, params: dict | tuple) -> list[dict]:
-        """同步执行查询（完整生命周期，单线程内完成）"""
-        conn = None
+    def _sync_execute_query(self, sql: str, params: dict | tuple = ()) -> list[dict]:
+        """同步执行查询（复用连接）"""
+        if not self._conn:
+            self._init_connection()
+
         try:
-            conn = sqlite3.connect(
-                self.DB_PATH,
-                check_same_thread=False,
-                timeout=5
-            )
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+            self._conn.row_factory = sqlite3.Row
+            cursor = self._conn.cursor()
             cursor.execute(sql, params)
             results = [dict(row) for row in cursor.fetchall()]
+            logger.debug(f"执行查询成功，返回 {len(results)} 条记录")
             return results
         except sqlite3.Error as e:
-            logger.error(f"执行查询失败: {e}")
+            logger.error(f"执行查询失败: {e} (SQL: {sql}, params: {params})")
             return []
-        finally:
-            if conn:
-                conn.close()
 
-    def _sync_execute_modify(self, sql: str, params: Any) -> bool:
+    def _sync_execute_modify(self, sql: str, params: Any = ()) -> bool:
         """
-        同步执行增删改（支持单条/批量，完整生命周期，单线程内完成）
+        同步执行增删改（支持单条/批量，复用连接）
         :param sql: SQL修改语句（位置参数用?，命名参数用:param_name）
         :param params: 单条：dict/元组；批量：list[元组]
         :return: 是否执行成功
         """
-        conn = None
+        if not self._conn:
+            self._init_connection()
+
         try:
-            conn = sqlite3.connect(
-                self.DB_PATH,
-                check_same_thread=False,
-                timeout=5
-            )
-            cursor = conn.cursor()
+            cursor = self._conn.cursor()
 
             # 判断是否为批量操作
             if isinstance(params, list) and len(params) > 0 and isinstance(params[0], (tuple, list)):
@@ -118,26 +151,20 @@ class AsyncSQLiteSingleton:
                 cursor.execute(sql, params)
                 logger.debug(f"单条执行修改成功，影响行数: {cursor.rowcount}")
 
-            conn.commit()
+            self._conn.commit()
             return True
         except sqlite3.Error as e:
-            if conn:
-                conn.rollback()
-            logger.error(f"执行修改失败: {e}")
+            self._conn.rollback()
+            logger.error(f"执行修改失败: {e} (SQL: {sql}, params: {params})")
             return False
-        finally:
-            if conn:
-                conn.close()
 
     # -------------------------- 异步封装接口 --------------------------
-    async def init_database(self):
+    async def init_database(self) -> bool:
         """异步初始化数据库"""
         async with self._async_lock:
-            # 整个初始化操作在同一个线程中完成
-            result = await asyncio.to_thread(self._sync_init_database)
-            return result
+            return await asyncio.to_thread(self._sync_init_database)
 
-    async def execute_query(self, sql: str, params: dict | tuple = {}) -> list[dict]:
+    async def execute_query(self, sql: str, params: dict | tuple = ()) -> list[dict]:
         """
         异步执行查询语句
         :param sql: SQL查询语句（支持命名参数 :param_name 或位置参数 ?）
@@ -145,10 +172,9 @@ class AsyncSQLiteSingleton:
         :return: 查询结果列表（每行是字典）
         """
         async with self._async_lock:
-            # 整个查询操作在同一个线程中完成
             return await asyncio.to_thread(self._sync_execute_query, sql, params)
 
-    async def execute_modify(self, sql: str, params: dict | tuple = {}) -> bool:
+    async def execute_modify(self, sql: str, params: Any = ()) -> bool:
         """
         异步执行增删改语句
         :param sql: SQL修改语句（支持命名参数 :param_name 或位置参数 ?）
@@ -156,5 +182,20 @@ class AsyncSQLiteSingleton:
         :return: 是否执行成功
         """
         async with self._async_lock:
-            # 整个修改操作在同一个线程中完成
             return await asyncio.to_thread(self._sync_execute_modify, sql, params)
+
+    async def close_connection(self):
+        """关闭数据库连接"""
+        async with self._async_lock:
+            def _close():
+                if self._conn:
+                    self._conn.close()
+                    self._conn = None
+                    logger.info("数据库连接已关闭")
+            await asyncio.to_thread(_close)
+
+    def __del__(self):
+        """析构函数：确保连接关闭"""
+        if self._conn:
+            self._conn.close()
+            logger.info("析构函数中关闭数据库连接")
