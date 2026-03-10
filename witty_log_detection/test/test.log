@@ -1,9 +1,0 @@
-Jan 15 09:30:31 localhost rsyslogd[5053]: [origin software="rsyslogd" swVersion="8.2110.0" x-pid="5053" x-info="https://www.rsyslog.com"] rsyslogd was HUPed
-Jan 15 09:30:31 localhost systemd[1]: rsyslog.service: Sent signal SIGHUP to main process 5053 (rsyslogd) on client request.
-Jan 15 09:33:02 localhost kernel: [    0.000000] Booting Linux on physical CPU 0x0300000000 [0x480fd020]
-Jan 15 09:33:02 localhost kernel: [    0.000000] Linux version 5.10.0-136.12.0.86.oe2203sp1.aarch64 (root@dc-64g.compass-ci) (gcc_old (GCC) 10.3.1, GNU ld (GNU Binutils) 2.37) #1 SMP Tue Dec 27 17:51:19 CST 2022
-Jan 15 09:33:02 localhost kernel: [    0.000000] efi: EFI v2.70 by EDK II
-Jan 15 09:33:02 localhost kernel: [    0.000000] efi: SMBIOS 3.0=0x5f960000 ACPI 2.0=0x5ffe0018 MEMATTR=0x4cf10018 MOKvar=0x5f640000 RNG=0x5fa6e118 MEMRESERVE=0x4cf55218 
-Jan 15 09:33:02 localhost kernel: [    0.000000] efi: seeding entropy pool
-Jan 15 09:33:02 localhost kernel: [    0.000000] ACPI: Early table checksum verification disabled
-Jan 15 09:33:02 localhost kernel: [    0.000000] ACPI: RSDP 0x000000005FFE0018 000024 (v02 HISI  )
