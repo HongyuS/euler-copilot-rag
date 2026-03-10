@@ -77,16 +77,19 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
                 raise ValueError(f"任务 {task_id} 不存在")
             task_related_params_js = json.loads(
                 task_entity.task_related_params)
-            if "time_start" in task_related_params_js:
-                task_related_params_js["timestart"] = datetime.strptime(task_related_params_js["time_start"],
-                                                                        '%Y-%m-%d %H:%M')
-            if "time_end" in task_related_params_js:
+            if "time_start" in task_related_params_js and task_related_params_js["time_start"]:
+                task_related_params_js["time_start"] = datetime.strptime(task_related_params_js["time_start"],
+                                                                         '%Y-%m-%d %H:%M')
+            else:
+                task_related_params_js["time_start"] = None
+            if "time_end" in task_related_params_js and task_related_params_js["time_end"]:
                 task_related_params_js["time_end"] = datetime.strptime(task_related_params_js["time_end"],
                                                                        '%Y-%m-%d %H:%M')
+            else:
+                task_related_params_js["time_end"] = None
             task_related_params_model = TaskRelatedParamsModel(
                 **task_related_params_js)
             query = task_related_params_model.query
-            query_embedding = await Embedding.get_embedding(query)
             file_path_list = task_related_params_model.file_path_list
             max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
             anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords

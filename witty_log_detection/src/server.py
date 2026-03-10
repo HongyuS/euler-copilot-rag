@@ -8,6 +8,7 @@ from src.service.log import LogTaskHandleService
 from src.enum.task import TaskTypeEnum
 from src.sqlite.manager.task import TaskManager
 from src.service.task import TaskService
+
 host = Config().get_config().run_config.host
 port = Config().get_config().run_config.port
 mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
@@ -28,27 +29,47 @@ mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
     {
         "task_id": "生成的任务ID，uuid4格式"
     }
-    """
+    """,
 )
 async def create_log_parse_task(
     task_type: TaskTypeEnum | None = None,
-    query: str = Field(default="",
-                       description="查询语句，用于描述当前的异常现象或者需要关注的日志内容，基于这个查询语句，日志检测Worker会进行日志异常检测"),
-    file_path_list: list[str] = Field(default_factory=list,
-                                      description="日志文件路径列表，包含需要进行日志检测的日志文件的路径"),
-    max_anomaly_log_count: int = Field(default=64,
-                                       description="最大异常日志数量，日志检测Worker会根据这个数量来限制返回的异常日志的数量，确保不会返回过多的异常日志"),
-    anomaly_keywords: list[str] = Field(default_factory=list,
-                                        description="异常关键词列表，基于关键词的日志检测Worker会使用这个异常关键词列表来进行日志的异常检测"),
+    query: str = Field(
+        default="",
+        description="查询语句，用于描述当前的异常现象或者需要关注的日志内容，基于这个查询语句，日志检测Worker会进行日志异常检测",
+    ),
+    file_path_list: list[str] = Field(
+        default_factory=list,
+        description="日志文件路径列表，包含需要进行日志检测的日志文件的路径",
+    ),
+    max_anomaly_log_count: int = Field(
+        default=64,
+        description="最大异常日志数量，日志检测Worker会根据这个数量来限制返回的异常日志的数量，确保不会返回过多的异常日志",
+    ),
+    anomaly_keywords: list[str] = Field(
+        default_factory=list,
+        description="异常关键词列表，基于关键词的日志检测Worker会使用这个异常关键词列表来进行日志的异常检测",
+    ),
     time_start: str | None = Field(
-        default=None, description="日志时间范围的起始时间，格式为 'YYYY-MM-DD HH:MM'", pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$"),
+        default=None,
+        description="日志时间范围的起始时间，格式为 'YYYY-MM-DD HH:MM'",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$",
+    ),
     time_end: str | None = Field(
-        default=None, description="日志时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM'", pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
+        default=None,
+        description="日志时间范围的结束时间，格式为 'YYYY-MM-DD HH:MM'",
+        pattern=r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$",
+    ),
 ) -> str:
-    task_id = await LogTaskHandleService.create_log_parse_task(task_type=task_type, query=query, file_path_list=file_path_list, max_anomaly_log_count=max_anomaly_log_count, anomaly_keywords=anomaly_keywords, time_start=time_start, time_end=time_end)
-    return {
-        "task_id": task_id
-    }
+    task_id = await LogTaskHandleService.create_log_parse_task(
+        task_type=task_type,
+        query=query,
+        file_path_list=file_path_list,
+        max_anomaly_log_count=max_anomaly_log_count,
+        anomaly_keywords=anomaly_keywords,
+        time_start=time_start,
+        time_end=time_end,
+    )
+    return {"task_id": task_id}
 
 
 @mcp.tool(
@@ -66,31 +87,38 @@ async def create_log_parse_task(
     "task_related_params": "任务相关参数，json字符串格式",
     "created_at": "任务创建时间，格式为 'YYYY-MM-DD HH:MM:SS'"
 }
-    """
+    """,
 )
-async def get_task_status(task_id: uuid.UUID = Field(description="任务ID，uuid4格式")) -> dict:
+async def get_task_status(
+    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+) -> dict:
     task_model = await LogTaskHandleService.get_task_message(task_id)
     if task_model is None:
         raise ValueError(f"任务 {task_id} 不存在")
     return task_model.model_dump(exclude_none=True)
 
 
-@mcp.tool(name="stop_task", description="""
+@mcp.tool(
+    name="stop_task",
+    description="""
     这是停止任务的工具函数，前端会调用这个接口来停止正在执行的任务。参数包括：
     - task_id: 任务ID，uuid4格式
     这个函数会返回一个布尔值，表示是否成功停止了任务。返回格式如下：
     {
         "success": true // 如果成功停止了任务，则为true；如果没有成功停止任务（例如任务已经完成或者不存在），则为false
     }
-""")
-async def stop_task(task_id: uuid.UUID = Field(description="任务ID，uuid4格式")) -> dict:
+""",
+)
+async def stop_task(
+    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+) -> dict:
     success = await LogTaskHandleService.stop_task(task_id)
-    return {
-        "success": success
-    }
+    return {"success": success}
 
 
-@mcp.tool(name="get_task_result", description="""
+@mcp.tool(
+    name="get_task_result",
+    description="""
     这是获取任务结果的工具函数，前端会调用这个接口来获取任务的执行结果。参数包括：
 - task_id: 任务ID，uuid4格式
 - offset: 偏移量，整数类型，表示从第几条结果开始返回，用于分页查询
@@ -111,21 +139,34 @@ async def stop_task(task_id: uuid.UUID = Field(description="任务ID，uuid4格�
         },
         ...
     ]
-""")
-async def get_task_result(task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
-                          offset: int | None = Field(
-                              default=None, description="偏移量，整数类型，表示从第几条结果开始返回，用于分页查询"),
-                          limit: int | None = Field(
-                              default=None, description="返回结果的数量，整数类型，表示一次返回多少条结果，用于分页查询"),
-                          is_anomalous: bool | None = Field(
-                              default=None, description="是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志")
-                          ) -> dict:
-    total, log_parse_result_models = await LogTaskHandleService.get_task_result(task_id, limit, offset, is_anomalous)
+""",
+)
+async def get_task_result(
+    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    offset: int | None = Field(
+        default=None,
+        description="偏移量，整数类型，表示从第几条结果开始返回，用于分页查询",
+    ),
+    limit: int | None = Field(
+        default=None,
+        description="返回结果的数量，整数类型，表示一次返回多少条结果，用于分页查询",
+    ),
+    is_anomalous: bool | None = Field(
+        default=None,
+        description="是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志",
+    ),
+) -> dict:
+    total, log_parse_result_models = await LogTaskHandleService.get_task_result(
+        task_id, limit, offset, is_anomalous
+    )
     return {
         "total": total,
-        "results": [log_parse_result_model.model_dump(
-            exclude_none=True) for log_parse_result_model in log_parse_result_models]
+        "results": [
+            log_parse_result_model.model_dump(exclude_none=True)
+            for log_parse_result_model in log_parse_result_models
+        ],
     }
+
 
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
 
@@ -144,4 +185,6 @@ if __name__ == "__main__":
     finally:
         import os
         import signal
+        print(f"任务监听进程ID：{listener.pid}")
         os.kill(listener.pid, signal.SIGKILL)
+        print(f"任务监听进程ID：{listener.pid} 已被终止")
