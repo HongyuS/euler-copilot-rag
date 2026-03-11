@@ -30,7 +30,7 @@ dependencies = [
   "pydantic==2.11.7",
 
   # mcp
-  "mcp==1.9.4",
+  "mcp==1.17.0",
 
   # toml
   "toml == 0.10.2",
