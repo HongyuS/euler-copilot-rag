@@ -6,6 +6,7 @@ import uuid
 from src.config.config import Config
 from src.service.log import LogTaskHandleService
 from src.enum.task import TaskTypeEnum
+from src.sqlite.sqlite import AsyncSQLiteSingleton
 from src.sqlite.manager.task import TaskManager
 from src.service.task import TaskService
 
@@ -172,8 +173,8 @@ async def get_task_result(
 
 
 def init():
+    AsyncSQLiteSingleton()._sync_init_database()
     asyncio.run(TaskService.update_running_tasks_to_pending_tasks())
-
 
 if __name__ == "__main__":
     init()

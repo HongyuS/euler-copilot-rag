@@ -10,7 +10,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.worker.base import BaseWorker
 from src.worker.log_detection_base_on_keywords import LogDetectionBasedOnKeywordsWorker
-from src.worker.log_detection_base_on_clustering import LogDetectionBasedOnClusteringWorker
+from src.worker.log_detection_base_on_clustering import (
+    LogDetectionBasedOnClusteringWorker,
+)
 from src.worker.log_detection_base_on_llm import LogDetectionBasedOnLLMWorker
 from src.service.task import TaskService
 from src.sqlite.manager.task import TaskManager
@@ -28,7 +30,7 @@ from src.sqlite.sqlite import AsyncSQLiteSingleton
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
     """初始化数据库"""
-    asyncio.run(AsyncSQLiteSingleton().init_database())
+    AsyncSQLiteSingleton()._sync_init_database()
     yield
 
 
@@ -50,16 +52,14 @@ def temp_directory_with_logs():
     """创建临时目录和日志文件"""
     test_dir = Path("/tmp/test_logs")
     test_dir.mkdir(exist_ok=True)
-    
+
     (test_dir / "file1.log").write_text(
         "2024-01-01 10:00:00 ERROR: device disconnected\n"
     )
-    (test_dir / "file2.log").write_text(
-        "2024-01-01 10:01:00 ERROR: network failed\n"
-    )
-    
+    (test_dir / "file2.log").write_text("2024-01-01 10:01:00 ERROR: network failed\n")
+
     yield str(test_dir)
-    
+
     for f in test_dir.iterdir():
         f.unlink()
     test_dir.rmdir()
@@ -73,18 +73,18 @@ async def test_task():
         "query": "network error",
         "file_path_list": ["/tmp/test.log"],
         "max_anomaly_log_count": 100,
-        "anomaly_keywords": ["error", "failed"]
+        "anomaly_keywords": ["error", "failed"],
     }
-    
+
     task_model = TaskModel(
         task_id=task_id,
         task_name="test_task",
         task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
         completion_precent=0.0,
         status=TaskStatusEnum.PENDING.value,
-        task_related_params=json.dumps(params)
+        task_related_params=json.dumps(params),
     )
-    
+
     await TaskManager.create_task(task_model)
     yield task_id
     await TaskManager.delete_task_by_id(task_id)
@@ -96,7 +96,9 @@ class TestBaseWorker:
     @pytest.mark.asyncio
     async def test_find_worker_class_exists(self):
         """测试查找存在的worker类"""
-        worker_class = BaseWorker.find_worker_class(TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value)
+        worker_class = BaseWorker.find_worker_class(
+            TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value
+        )
         assert worker_class is not None
         assert worker_class.name == TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value
 
@@ -136,9 +138,13 @@ class TestBaseWorker:
         assert temp_log_file in file_paths
 
     @pytest.mark.asyncio
-    async def test_get_files_from_file_path_list_directory(self, temp_directory_with_logs):
+    async def test_get_files_from_file_path_list_directory(
+        self, temp_directory_with_logs
+    ):
         """测试处理目录路径"""
-        file_paths = await BaseWorker.get_files_from_file_path_list([temp_directory_with_logs])
+        file_paths = await BaseWorker.get_files_from_file_path_list(
+            [temp_directory_with_logs]
+        )
         assert len(file_paths) == 2
 
     @pytest.mark.asyncio
@@ -148,15 +154,21 @@ class TestBaseWorker:
         assert len(file_paths) == 0
 
     @pytest.mark.asyncio
-    async def test_get_files_from_file_path_list_mixed(self, temp_log_file, temp_directory_with_logs):
+    async def test_get_files_from_file_path_list_mixed(
+        self, temp_log_file, temp_directory_with_logs
+    ):
         """测试处理混合路径"""
-        file_paths = await BaseWorker.get_files_from_file_path_list([temp_log_file, temp_directory_with_logs])
+        file_paths = await BaseWorker.get_files_from_file_path_list(
+            [temp_log_file, temp_directory_with_logs]
+        )
         assert len(file_paths) == 3
 
     @pytest.mark.asyncio
     async def test_get_files_from_file_path_list_non_existent(self):
         """测试处理不存在的文件路径"""
-        file_paths = await BaseWorker.get_files_from_file_path_list(["/non/existent/path.log"])
+        file_paths = await BaseWorker.get_files_from_file_path_list(
+            ["/non/existent/path.log"]
+        )
         assert len(file_paths) == 0
 
     @pytest.mark.asyncio
@@ -169,22 +181,26 @@ class TestBaseWorker:
                 offset=0,
                 is_anomalous=False,
                 anomaly_score=85.0,
-                anomaly_reason="network disconnected"
+                anomaly_reason="network disconnected",
             ),
             LogModel(
                 file_path="/tmp/test.log",
                 content="info: device connected",
                 offset=1,
                 is_anomalous=False,
-                anomaly_score=0.0
-            )
+                anomaly_score=0.0,
+            ),
         ]
-        
+
         anomaly_log_models = [log_models[0]]
-        
-        await BaseWorker.add_log_parse_results(anomaly_log_models, log_models, test_task)
-        
-        results = await LogParseResultManager.get_log_parse_results_by_task_id(test_task)
+
+        await BaseWorker.add_log_parse_results(
+            anomaly_log_models, log_models, test_task
+        )
+
+        results = await LogParseResultManager.get_log_parse_results_by_task_id(
+            test_task
+        )
         assert len(results) == 2
 
 
@@ -196,7 +212,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算关键词完全匹配的相似度"""
         text = "error disconnected network"
         keywords = ["error", "disconnected", "network"]
-        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert similarity == 100.0
 
     @pytest.mark.asyncio
@@ -204,7 +222,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算关键词部分匹配的相似度"""
         text = "error network"
         keywords = ["error", "disconnected", "network"]
-        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert 0 < similarity < 100.0
 
     @pytest.mark.asyncio
@@ -212,7 +232,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算关键词不匹配的相似度"""
         text = "success completed"
         keywords = ["error", "disconnected", "failed"]
-        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert similarity == 0.0
 
     @pytest.mark.asyncio
@@ -220,7 +242,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算关键词为空列表的相似度"""
         text = "error network"
         keywords = []
-        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert similarity == 0.0
 
     @pytest.mark.asyncio
@@ -228,7 +252,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算空字符串与关键词的相似度"""
         text = ""
         keywords = ["error", "network"]
-        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert similarity == 0.0
 
     @pytest.mark.asyncio
@@ -236,7 +262,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算包含中文关键词的相似度"""
         text = "网络 断开 连接"
         keywords = ["网络", "断开", "连接"]
-        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnKeywordsWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert similarity == 100.0
 
     @pytest.mark.asyncio
@@ -244,7 +272,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算包含异常关键词的日志情感分数"""
         log_type = LogTypeEnum.DMESG
         log_content = "error: device disconnected"
-        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(log_type, log_content)
+        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(
+            log_type, log_content
+        )
         assert 0 <= score <= 100.0
 
     @pytest.mark.asyncio
@@ -252,7 +282,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算不包含异常关键词的日志情感分数"""
         log_type = LogTypeEnum.DMESG
         log_content = "info: device connected successfully"
-        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(log_type, log_content)
+        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(
+            log_type, log_content
+        )
         assert score == 0.0
 
     @pytest.mark.asyncio
@@ -260,14 +292,18 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算未知日志类型的情感分数"""
         log_type = None
         log_content = "error: something failed"
-        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(log_type, log_content)
+        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(
+            log_type, log_content
+        )
         assert score == 0.0
 
     @pytest.mark.asyncio
     async def test_cal_sentiment_score_empty_log_type(self):
         """测试计算日志类型为空的情感分数"""
         log_content = "error: something failed"
-        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(None, log_content)
+        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(
+            None, log_content
+        )
         assert score == 0.0
 
     @pytest.mark.asyncio
@@ -275,7 +311,9 @@ class TestLogDetectionBasedOnKeywordsWorker:
         """测试计算Python日志类型的情感分数"""
         log_type = LogTypeEnum.PYTHON
         log_content = "ERROR: Connection refused"
-        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(log_type, log_content)
+        score = await LogDetectionBasedOnKeywordsWorker.cal_sentiment_score(
+            log_type, log_content
+        )
         assert 0 <= score <= 100.0
 
 
@@ -287,7 +325,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试关键词相似度计算"""
         text = "error disconnected network"
         keywords = ["error", "disconnected", "network"]
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_keyword_similarity(text, keywords)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_keyword_similarity(
+            text, keywords
+        )
         assert similarity == 100.0
 
     @pytest.mark.asyncio
@@ -295,7 +335,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试情感分数计算"""
         log_type = LogTypeEnum.DMESG
         log_content = "error: device disconnected"
-        score = await LogDetectionBasedOnClusteringWorker.cal_sentiment_score(log_type, log_content)
+        score = await LogDetectionBasedOnClusteringWorker.cal_sentiment_score(
+            log_type, log_content
+        )
         assert 0 <= score <= 100.0
 
     @pytest.mark.asyncio
@@ -303,7 +345,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试计算完全相似的向量"""
         vec1 = [1.0, 2.0, 3.0]
         vec2 = [1.0, 2.0, 3.0]
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(vec1, vec2)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(
+            vec1, vec2
+        )
         assert similarity == 100.0
 
     @pytest.mark.asyncio
@@ -311,7 +355,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试计算完全不相似的向量"""
         vec1 = [1.0, 0.0, 0.0]
         vec2 = [0.0, 1.0, 0.0]
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(vec1, vec2)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(
+            vec1, vec2
+        )
         assert similarity == 50.0
 
     @pytest.mark.asyncio
@@ -319,7 +365,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试计算部分相似的向量"""
         vec1 = [1.0, 1.0, 0.0]
         vec2 = [1.0, 0.0, 0.0]
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(vec1, vec2)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(
+            vec1, vec2
+        )
         assert 0 < similarity < 100.0
 
     @pytest.mark.asyncio
@@ -327,7 +375,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试计算零向量相似度"""
         vec1 = [0.0, 0.0, 0.0]
         vec2 = [1.0, 2.0, 3.0]
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(vec1, vec2)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(
+            vec1, vec2
+        )
         assert similarity == 0.0
 
     @pytest.mark.asyncio
@@ -335,7 +385,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试计算高维向量相似度"""
         vec1 = [1.0] * 100
         vec2 = [1.0] * 100
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(vec1, vec2)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(
+            vec1, vec2
+        )
         assert similarity == 100.0
 
     @pytest.mark.asyncio
@@ -343,7 +395,9 @@ class TestLogDetectionBasedOnClusteringWorker:
         """测试计算包含负值的向量相似度"""
         vec1 = [1.0, -1.0, 0.0]
         vec2 = [1.0, 1.0, 0.0]
-        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(vec1, vec2)
+        similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(
+            vec1, vec2
+        )
         assert 0 <= similarity <= 100.0
 
 
@@ -354,38 +408,50 @@ class TestClusterService:
     async def test_single_DBSCAN(self):
         """测试单次DBSCAN聚类"""
         from src.schemas.cluster import ClusterModel
-        
+
         clusters = [
             ClusterModel(
                 cluster_center=[1.0, 2.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test1", offset=0)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test1", offset=0)
+                ],
             ),
             ClusterModel(
                 cluster_center=[1.1, 2.1],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test2", offset=1)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test2", offset=1)
+                ],
             ),
         ]
-        
-        result = await ClusterService.single_DBSCAN(eps=0.5, min_samples=2, clusters=clusters)
+
+        result = await ClusterService.single_DBSCAN(
+            eps=0.5, min_samples=2, clusters=clusters
+        )
         assert len(result) > 0
 
     @pytest.mark.asyncio
     async def test_single_DBSCAN_all_outliers(self):
         """测试所有点都是离群点的情况"""
         from src.schemas.cluster import ClusterModel
-        
+
         clusters = [
             ClusterModel(
                 cluster_center=[1.0, 2.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test1", offset=0)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test1", offset=0)
+                ],
             ),
             ClusterModel(
                 cluster_center=[10.0, 20.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test2", offset=1)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test2", offset=1)
+                ],
             ),
         ]
-        
-        result = await ClusterService.single_DBSCAN(eps=0.1, min_samples=2, clusters=clusters)
+
+        result = await ClusterService.single_DBSCAN(
+            eps=0.1, min_samples=2, clusters=clusters
+        )
         assert len(result) > 0
         outlier_count = sum(1 for c in result if c.is_outlier)
         assert outlier_count > 0
@@ -394,23 +460,31 @@ class TestClusterService:
     async def test_single_DBSCAN_all_in_cluster(self):
         """测试所有点都在簇中的情况"""
         from src.schemas.cluster import ClusterModel
-        
+
         clusters = [
             ClusterModel(
                 cluster_center=[1.0, 2.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test1", offset=0)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test1", offset=0)
+                ],
             ),
             ClusterModel(
                 cluster_center=[1.1, 2.1],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test2", offset=1)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test2", offset=1)
+                ],
             ),
             ClusterModel(
                 cluster_center=[1.2, 2.2],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test3", offset=2)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test3", offset=2)
+                ],
             ),
         ]
-        
-        result = await ClusterService.single_DBSCAN(eps=0.5, min_samples=1, clusters=clusters)
+
+        result = await ClusterService.single_DBSCAN(
+            eps=0.5, min_samples=1, clusters=clusters
+        )
         assert len(result) > 0
         outlier_count = sum(1 for c in result if c.is_outlier)
         assert outlier_count == 0
@@ -419,63 +493,83 @@ class TestClusterService:
     async def test_single_KMeans(self):
         """测试单次KMeans聚类"""
         from src.schemas.cluster import ClusterModel
-        
+
         clusters = [
             ClusterModel(
                 cluster_center=[1.0, 2.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test1", offset=0)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test1", offset=0)
+                ],
             ),
             ClusterModel(
                 cluster_center=[1.1, 2.1],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test2", offset=1)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test2", offset=1)
+                ],
             ),
             ClusterModel(
                 cluster_center=[1.2, 2.2],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test3", offset=2)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test3", offset=2)
+                ],
             ),
         ]
-        
-        result = await ClusterService.single_KMeans(n_clusters=2, n_init=10, random_state=42, clusters=clusters)
+
+        result = await ClusterService.single_KMeans(
+            n_clusters=2, n_init=10, random_state=42, clusters=clusters
+        )
         assert len(result) > 0
 
     @pytest.mark.asyncio
     async def test_single_KMeans_k_greater_than_clusters(self):
         """测试K值大于聚类数量的情况"""
         from src.schemas.cluster import ClusterModel
-        
+
         clusters = [
             ClusterModel(
                 cluster_center=[1.0, 2.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test1", offset=0)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test1", offset=0)
+                ],
             ),
         ]
-        
-        result = await ClusterService.single_KMeans(n_clusters=5, n_init=10, random_state=42, clusters=clusters)
+
+        result = await ClusterService.single_KMeans(
+            n_clusters=5, n_init=10, random_state=42, clusters=clusters
+        )
         assert len(result) == 1
 
     @pytest.mark.asyncio
     async def test_single_KMeans_k_equals_1(self):
         """测试K值为1的情况"""
         from src.schemas.cluster import ClusterModel
-        
+
         clusters = [
             ClusterModel(
                 cluster_center=[1.0, 2.0],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test1", offset=0)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test1", offset=0)
+                ],
             ),
             ClusterModel(
                 cluster_center=[1.1, 2.1],
-                log_models=[LogModel(file_path="/tmp/test.log", content="test2", offset=1)]
+                log_models=[
+                    LogModel(file_path="/tmp/test.log", content="test2", offset=1)
+                ],
             ),
         ]
-        
-        result = await ClusterService.single_KMeans(n_clusters=1, n_init=10, random_state=42, clusters=clusters)
+
+        result = await ClusterService.single_KMeans(
+            n_clusters=1, n_init=10, random_state=42, clusters=clusters
+        )
         assert len(result) == 1
 
     @pytest.mark.asyncio
     async def test_single_KMeans_empty_clusters(self):
         """测试空聚类列表"""
-        result = await ClusterService.single_KMeans(n_clusters=1, n_init=10, random_state=42, clusters=[])
+        result = await ClusterService.single_KMeans(
+            n_clusters=1, n_init=10, random_state=42, clusters=[]
+        )
         assert len(result) == 0
 
     @pytest.mark.asyncio
@@ -486,17 +580,19 @@ class TestClusterService:
                 file_path="/tmp/test.log",
                 content="error: device disconnected",
                 offset=0,
-                template_vector=[0.1] * 768
+                template_vector=[0.1] * 768,
             ),
             LogModel(
                 file_path="/tmp/test.log",
                 content="error: network failed",
                 offset=1,
-                template_vector=[0.11] * 768
+                template_vector=[0.11] * 768,
             ),
         ]
-        
-        result = await ClusterService.DBSCAN(log_models=log_models, max_iterations=2, batch_size=8)
+
+        result = await ClusterService.DBSCAN(
+            log_models=log_models, max_iterations=2, batch_size=8
+        )
         assert len(result) > 0
 
     @pytest.mark.asyncio
@@ -514,12 +610,14 @@ class TestClusterService:
                 file_path="/tmp/test.log",
                 content=f"error: device {i}",
                 offset=i,
-                template_vector=[0.1 + i * 0.001] * 768
+                template_vector=[0.1 + i * 0.001] * 768,
             )
             for i in range(100)
         ]
-        
-        result = await ClusterService.DBSCAN(log_models=log_models, max_iterations=2, batch_size=8)
+
+        result = await ClusterService.DBSCAN(
+            log_models=log_models, max_iterations=2, batch_size=8
+        )
         assert len(result) > 0
 
     @pytest.mark.asyncio
@@ -530,17 +628,19 @@ class TestClusterService:
                 file_path="/tmp/test.log",
                 content="error: device disconnected",
                 offset=0,
-                template_vector=[0.1] * 768
+                template_vector=[0.1] * 768,
             ),
             LogModel(
                 file_path="/tmp/test.log",
                 content="error: network failed",
                 offset=1,
-                template_vector=[0.11] * 768
+                template_vector=[0.11] * 768,
             ),
         ]
-        
-        result = await ClusterService.KMeans(log_models=log_models, max_iterations=2, batch_size=8)
+
+        result = await ClusterService.KMeans(
+            log_models=log_models, max_iterations=2, batch_size=8
+        )
         assert len(result) > 0
 
     @pytest.mark.asyncio
@@ -558,12 +658,14 @@ class TestClusterService:
                 file_path="/tmp/test.log",
                 content=f"error: device {i}",
                 offset=i,
-                template_vector=[0.1 + i * 0.001] * 768
+                template_vector=[0.1 + i * 0.001] * 768,
             )
             for i in range(100)
         ]
-        
-        result = await ClusterService.KMeans(log_models=log_models, max_iterations=2, batch_size=8)
+
+        result = await ClusterService.KMeans(
+            log_models=log_models, max_iterations=2, batch_size=8
+        )
         assert len(result) > 0
 
 
@@ -577,9 +679,9 @@ class TestLLMService:
             openai_api_key="test_key",
             openai_api_base="https://test.com",
             model_name="test-model",
-            max_tokens=1024
+            max_tokens=1024,
         )
-        
+
         chat = llm.assemble_chat(chat=[], system_call="system", user_call="user")
         assert len(chat) == 2
         assert chat[0]["role"] == "system"
@@ -594,9 +696,9 @@ class TestLLMService:
             openai_api_key="test_key",
             openai_api_base="https://test.com",
             model_name="test-model",
-            max_tokens=1024
+            max_tokens=1024,
         )
-        
+
         history = [{"role": "assistant", "content": "previous"}]
         chat = llm.assemble_chat(chat=history, system_call="system", user_call="user")
         assert len(chat) == 3
@@ -609,9 +711,9 @@ class TestLLMService:
             openai_api_key="test_key",
             openai_api_base="https://test.com",
             model_name="test-model",
-            max_tokens=1024
+            max_tokens=1024,
         )
-        
+
         chat = llm.assemble_chat(chat=None, system_call="system", user_call="user")
         assert len(chat) == 2
 
@@ -624,7 +726,7 @@ class TestLLMService:
             openai_api_base=config.llm_model.end_point,
             model_name=config.llm_model.model_name,
             max_tokens=config.llm_model.max_tokens,
-            batch_size=config.llm_model.batch_size
+            batch_size=config.llm_model.batch_size,
         )
         assert llm is not None
         assert llm.openai_api_key == config.llm_model.api_key
@@ -643,15 +745,15 @@ class TestTaskService:
             task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
             completion_precent=100.0,
             status=TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value,
-            task_related_params=json.dumps({})
+            task_related_params=json.dumps({}),
         )
         await TaskManager.create_task(task_model)
-        
+
         result = await TaskService.process_successful_or_failed_tasks()
-        
+
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.SUCCESSFUL.value
-        
+
         await TaskManager.delete_task_by_id(task_id)
 
     @pytest.mark.asyncio
@@ -664,24 +766,27 @@ class TestTaskService:
             task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
             completion_precent=0.0,
             status=TaskStatusEnum.FAILED_PENDING_REMOVE.value,
-            task_related_params=json.dumps({})
+            task_related_params=json.dumps({}),
         )
         await TaskManager.create_task(task_model)
-        
+
         result = await TaskService.process_successful_or_failed_tasks()
-        
+
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.FAILED.value
-        
+
         await TaskManager.delete_task_by_id(task_id)
 
     @pytest.mark.asyncio
     async def test_process_pending_tasks(self, test_task):
         """测试处理待处理任务"""
         result = await TaskService.process_pending_tasks()
-        
+
         task = await TaskManager.get_task_by_id(test_task)
-        assert task.status in [TaskStatusEnum.RUNNING.value, TaskStatusEnum.CANCLED.value]
+        assert task.status in [
+            TaskStatusEnum.RUNNING.value,
+            TaskStatusEnum.CANCLED.value,
+        ]
 
     @pytest.mark.asyncio
     async def test_update_running_tasks_to_pending_tasks(self):
@@ -693,15 +798,15 @@ class TestTaskService:
             task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
             completion_precent=50.0,
             status=TaskStatusEnum.RUNNING.value,
-            task_related_params=json.dumps({})
+            task_related_params=json.dumps({}),
         )
         await TaskManager.create_task(task_model)
-        
+
         result = await TaskService.update_running_tasks_to_pending_tasks()
-        
+
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.PENDING.value
-        
+
         await TaskManager.delete_task_by_id(task_id)
 
     @pytest.mark.asyncio
@@ -718,9 +823,7 @@ class TestLogModel:
     async def test_create_log_model(self):
         """测试创建日志模型"""
         log_model = LogModel(
-            file_path="/tmp/test.log",
-            content="error: device disconnected",
-            offset=0
+            file_path="/tmp/test.log", content="error: device disconnected", offset=0
         )
         assert log_model.id is not None
         assert len(log_model.id) > 0
@@ -737,7 +840,7 @@ class TestLogModel:
             offset=0,
             is_anomalous=True,
             anomaly_reason="network disconnected",
-            anomaly_score=85.0
+            anomaly_score=85.0,
         )
         assert log_model.is_anomalous is True
         assert log_model.anomaly_reason == "network disconnected"
@@ -751,7 +854,7 @@ class TestLogModel:
             content="error: device disconnected",
             offset=0,
             template="<level>: device <action>",
-            template_vector=[0.1] * 768
+            template_vector=[0.1] * 768,
         )
         assert log_model.template == "<level>: device <action>"
         assert len(log_model.template_vector) == 768
@@ -765,7 +868,7 @@ class TestLogModel:
             content="error: device disconnected",
             offset=0,
             start_time=time,
-            end_time=time
+            end_time=time,
         )
         assert log_model.start_time is not None
         assert log_model.end_time is not None
@@ -786,7 +889,7 @@ class TestLogModel:
             template_vector=[0.1] * 768,
             is_anomalous=True,
             anomaly_reason="network disconnected",
-            anomaly_score=85.0
+            anomaly_score=85.0,
         )
         assert log_model.log_type == LogTypeEnum.DMESG
         assert log_model.level == LogLevelEnum.ERROR
@@ -804,7 +907,7 @@ class TestTaskModel:
             task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
             completion_precent=0.0,
             status=TaskStatusEnum.PENDING.value,
-            task_related_params=json.dumps({})
+            task_related_params=json.dumps({}),
         )
         assert task_model.task_id is not None
         assert len(task_model.task_id) > 0
@@ -819,7 +922,7 @@ class TestTaskModel:
             completion_precent=50.0,
             status=TaskStatusEnum.RUNNING.value,
             pid=12345,
-            task_related_params=json.dumps({})
+            task_related_params=json.dumps({}),
         )
         assert task_model.pid == 12345
         assert task_model.completion_precent == 50.0
@@ -828,26 +931,26 @@ class TestTaskModel:
     @pytest.mark.asyncio
     async def test_task_model_with_time_range(self):
         """测试带时间范围的任务模型"""
-        time_start = datetime.now().strftime('%Y-%m-%d %H:%M')
-        time_end = datetime.now().strftime('%Y-%m-%d %H:%M')
-        
+        time_start = datetime.now().strftime("%Y-%m-%d %H:%M")
+        time_end = datetime.now().strftime("%Y-%m-%d %H:%M")
+
         params = {
             "time_start": time_start,
             "time_end": time_end,
             "query": "network error",
             "file_path_list": ["/tmp/test.log"],
             "max_anomaly_log_count": 100,
-            "anomaly_keywords": ["error", "failed"]
+            "anomaly_keywords": ["error", "failed"],
         }
-        
+
         task_model = TaskModel(
             task_name="test_task",
             task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
             completion_precent=0.0,
             status=TaskStatusEnum.PENDING.value,
-            task_related_params=json.dumps(params)
+            task_related_params=json.dumps(params),
         )
-        
+
         params_loaded = json.loads(task_model.task_related_params)
         assert "time_start" in params_loaded
         assert "time_end" in params_loaded
@@ -856,27 +959,27 @@ class TestTaskModel:
     @pytest.mark.asyncio
     async def test_task_model_with_all_fields(self):
         """测试所有字段的任务模型"""
-        time_start = datetime.now().strftime('%Y-%m-%d %H:%M')
-        time_end = datetime.now().strftime('%Y-%m-%d %H:%M')
-        
+        time_start = datetime.now().strftime("%Y-%m-%d %H:%M")
+        time_end = datetime.now().strftime("%Y-%m-%d %H:%M")
+
         params = {
             "time_start": time_start,
             "time_end": time_end,
             "query": "network error",
             "file_path_list": ["/tmp/test.log"],
             "max_anomaly_log_count": 100,
-            "anomaly_keywords": ["error", "failed"]
+            "anomaly_keywords": ["error", "failed"],
         }
-        
+
         task_model = TaskModel(
             task_name="test_task",
             task_type=TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value,
             completion_precent=100.0,
             status=TaskStatusEnum.SUCCESSFUL.value,
             pid=12345,
-            task_related_params=json.dumps(params)
+            task_related_params=json.dumps(params),
         )
-        
+
         assert task_model.pid == 12345
         assert task_model.completion_precent == 100.0
         assert task_model.status == TaskStatusEnum.SUCCESSFUL.value
@@ -889,29 +992,32 @@ class TestIntegration:
     async def test_full_task_workflow(self, test_task):
         """测试完整任务流程"""
         task_id = test_task
-        
+
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.PENDING.value
-        
+
         result = await TaskService.process_pending_tasks()
-        
+
         task = await TaskManager.get_task_by_id(task_id)
-        assert task.status in [TaskStatusEnum.RUNNING.value, TaskStatusEnum.CANCLED.value]
+        assert task.status in [
+            TaskStatusEnum.RUNNING.value,
+            TaskStatusEnum.CANCLED.value,
+        ]
 
     @pytest.mark.asyncio
     async def test_worker_run_and_stop(self, test_task):
         """测试worker运行和停止"""
         task_id = test_task
-        
+
         result = await BaseWorker.run(uuid.UUID(task_id))
         assert result is True
-        
+
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.RUNNING.value
-        
+
         result = await BaseWorker.stop(uuid.UUID(task_id))
         assert result is True
-        
+
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.CANCLED.value
 
