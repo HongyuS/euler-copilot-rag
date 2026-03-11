@@ -134,8 +134,7 @@ async def main() -> None:
     print(js)
     result = await client.call_tool("create_log_parse_task", js)
     print(result)
-    
-    
+
     # 解析 task_id 并轮询等待任务完成
     task_data = json.loads(result.content[0].text)
     task_id = task_data["task_id"]
@@ -162,9 +161,12 @@ async def main() -> None:
             print(f"  [{i}] is_anomalous={item.get('is_anomalous')}, anomaly_score={item.get('anomaly_score')}, content={content_preview}...")
     else:
         print("任务失败, 无检测结果")
-        
-        
-        
+
+    js = {
+        "task_id": task_id
+    }
+    result = await client.call_tool("get_task_result", js)
+    print(result)
     await client.stop()
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import uuid
+import json
 from pydantic import BaseModel, Field
 import asyncio
 from mcp.server import FastMCP
@@ -70,7 +71,7 @@ async def create_log_parse_task(
         time_start=time_start,
         time_end=time_end,
     )
-    return {"task_id": task_id}
+    return json.dumps({"task_id": task_id})
 
 
 @mcp.tool(
@@ -92,11 +93,11 @@ async def create_log_parse_task(
 )
 async def get_task_status(
     task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
-) -> dict:
+) -> str:
     task_model = await LogTaskHandleService.get_task_message(task_id)
     if task_model is None:
         raise ValueError(f"任务 {task_id} 不存在")
-    return task_model.model_dump(exclude_none=True)
+    return json.dumps(task_model.model_dump(exclude_none=True))
 
 
 @mcp.tool(
@@ -112,9 +113,9 @@ async def get_task_status(
 )
 async def stop_task(
     task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
-) -> dict:
+) -> str:
     success = await LogTaskHandleService.stop_task(task_id)
-    return {"success": success}
+    return json.dumps({"success": success})
 
 
 @mcp.tool(
@@ -156,17 +157,17 @@ async def get_task_result(
         default=None,
         description="是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志",
     ),
-) -> dict:
+) -> str:
     total, log_parse_result_models = await LogTaskHandleService.get_task_result(
         task_id, limit, offset, is_anomalous
     )
-    return {
+    return json.dumps({
         "total": total,
         "results": [
             log_parse_result_model.model_dump(exclude_none=True)
             for log_parse_result_model in log_parse_result_models
         ],
-    }
+    })
 
 
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
@@ -175,6 +176,7 @@ async def get_task_result(
 def init():
     AsyncSQLiteSingleton()._sync_init_database()
     asyncio.run(TaskService.update_running_tasks_to_pending_tasks())
+
 
 if __name__ == "__main__":
     init()
