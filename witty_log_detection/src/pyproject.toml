@@ -41,6 +41,7 @@ dependencies = [
   # OCR
   "paddleocr==2.9.1",
   "paddlepaddle==2.6.2"
+  "setuptools==82.0.1"
 ]
 
 [[tool.uv.index]]
