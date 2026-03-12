@@ -35,7 +35,7 @@ ExecStartPre=/usr/bin/bash -c "timeout 600 /usr/local/bin/uv sync \
   --project /opt/mcp-servers/servers/witty_log_detection/src || echo 'UV sync failed, use existing venv' && exit 0"
 
 # 主执行：启动服务
-ExecStart=/usr/local/bin/uv run --project /opt/mcp-servers/servers/witty_log_detection/src src/server.py
+ExecStart=/usr/local/bin/uv run --project /opt/mcp-servers/servers/witty_log_detection/src /opt/mcp-servers/servers/witty_log_detection/src/server.py
 
 # 启动策略（避免无限重启）
 Restart=on-failure

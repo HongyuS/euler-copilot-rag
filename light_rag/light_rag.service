@@ -31,7 +31,7 @@ Environment=PIP_DEFAULT_TIMEOUT=180
 ExecStartPre=/usr/bin/bash -c "timeout 600 /usr/local/bin/uv sync --project /opt/mcp-servers/servers/light_rag/src --cache-dir /opt/mcp-servers/servers/light_rag/.uv_cache || echo 'UV sync failed, use existing venv' && exit 0"
 
 # 主执行：uv run 启动服务
-ExecStart=/usr/local/bin/uv run --project /opt/mcp-servers/servers/light_rag/src server.py
+ExecStart=/usr/local/bin/uv run --project /opt/mcp-servers/servers/light_rag/src /opt/mcp-servers/servers/light_rag/src/server.py
 
 # 启动策略
 Restart=always
