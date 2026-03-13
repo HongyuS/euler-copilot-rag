@@ -1,6 +1,6 @@
 {
     "mcpServers": {
-        "rag": {
+        "light_rag": {
             "url": "http://localhost:12311/sse"
         }
     }
