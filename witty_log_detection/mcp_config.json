@@ -1,6 +1,6 @@
 {
     "mcpServers": {
-        "log_detection": {
+        "witty_log_detection": {
             "url": "http://localhost:12144/sse"
         }
     }
