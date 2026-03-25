@@ -1,7 +1,6 @@
 import os
 import sys
 import uuid
-import shutil
 import logging
 import asyncio
 import json
@@ -12,15 +11,16 @@ if current_dir not in sys.path:
     sys.path.append(current_dir)
 
 from manager.database_manager import Database, get_kb_id_by_name, get_kb_ids_by_names
-from manager.document_manager import DocumentManager, import_document as _import_document
+from manager.document_manager import DocumentManager
 from common.config import get_default_top_k, get_github_enabled, get_github_default_online_top_k
-from common.sqlite import KnowledgeBase, Document, Chunk
+from sqlite.kb_sqlite import KnowledgeBase, Document, Chunk
 from search.weighted_keyword_and_vector_search import weighted_keyword_and_vector_search
 from search.online_search import search_github_online
 from schema import (
     BaseResponse,
     CreateKnowledgeBaseData, DeleteKnowledgeBaseData, ListKnowledgeBasesData, KnowledgeBaseInfo,
     ImportDocumentData, ImportFileSuccess, ImportFileFailed,
+    ImportTaskData, TaskStatusData, CancelTaskData,
     ListDocumentsData, DocumentInfo,
     DeleteDocumentData,
     SearchData, SearchChunk, GitHubSearchResult, GitHubIssue, GitHubCommit,
@@ -213,93 +213,99 @@ def list_knowledge_bases(keyword: Optional[str] = None) -> Dict[str, Any]:
         return create_error_response("获取知识库列表失败").model_dump()
 
 
-async def import_document(file_paths: List[str], kb_name: str, chunk_size: Optional[int] = None) -> Dict[str, Any]:
+async def create_import_task(file_paths: List[str], kb_name: str, chunk_size: Optional[int] = None) -> Dict[str, Any]:
     """
-    上传文档到指定知识库（异步，支持多文件并发导入）
-    
-    :param file_paths: 文件路径列表（绝对路径），支持1~n个文件
-    :param kb_name: 知识库名称
-    :param chunk_size: chunk 大小（token 数，可选，默认使用知识库的chunk_size）
-    :return: 导入结果
+    创建文档导入任务，立即返回 task_id，后台异步导入
     """
     try:
+        from manager.task_manager import TaskManager
+        from manager.database_manager import get_kb_id_by_name
+        from sqlite.kb_sqlite import KnowledgeBase
+
         db = _get_db()
-        temp_result = {"success": False, "message": "", "data": {}}
-        kb_id = get_kb_id_by_name(db, kb_name, temp_result)
+        temp = {"success": False, "message": ""}
+        kb_id = get_kb_id_by_name(db, kb_name, temp)
         if not kb_id:
-            return create_error_response(temp_result["message"]).model_dump()
-        
+            return create_error_response(temp["message"]).model_dump()
+
         if not file_paths:
             return create_error_response("文件路径列表为空").model_dump()
-        
-        # 验证文件路径是否存在
-        invalid_paths = [path for path in file_paths if not os.path.exists(path)]
-        if invalid_paths:
-            return create_error_response(f"以下文件路径不存在: {', '.join(invalid_paths)}").model_dump()
-        
-        # 先获取知识库信息
+
+        invalid = [p for p in file_paths if not os.path.exists(p)]
+        if invalid:
+            return create_error_response(f"文件路径不存在: {', '.join(invalid)}").model_dump()
+
         session = db.get_session()
         try:
             kb = session.query(KnowledgeBase).filter_by(id=kb_id).first()
             if not kb:
                 return create_error_response("知识库不存在").model_dump()
-            
             if chunk_size is None:
                 chunk_size = kb.chunk_size
         finally:
             session.close()
-        
-        # 并发处理多个文件，每个文件使用独立的 session
-        async def import_single_file(file_path: str):
-            """为单个文件创建独立的 session 并导入"""
-            file_session = db.get_session()
-            try:
-                return await _import_document(file_session, kb_id, file_path, chunk_size)
-            finally:
-                file_session.close()
-        
-        tasks = [
-            import_single_file(file_path)
-            for file_path in file_paths
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        
-        # 统计结果
-        success_count = 0
-        failed_count = 0
-        success_files = []
-        failed_files = []
-        
-        for i, res in enumerate(results):
-            file_path = file_paths[i]
-            if isinstance(res, Exception):
-                failed_count += 1
-                failed_files.append(ImportFileFailed(file_path=file_path, error=str(res)))
-                logger.exception(f"[import_document] 导入文件失败: {file_path}, 错误: {res}")
-            else:
-                success, message, data = res
-                if success:
-                    success_count += 1
-                    success_files.append(ImportFileSuccess(
-                        file_path=file_path,
-                        doc_name=data.get("doc_name") if data else os.path.basename(file_path),
-                        chunk_count=data.get("chunk_count", 0) if data else 0
-                    ))
-                else:
-                    failed_count += 1
-                    failed_files.append(ImportFileFailed(file_path=file_path, error=message))
-        
-        data = ImportDocumentData(
-            total=len(file_paths),
-            success_count=success_count,
-            failed_count=failed_count,
-            success_files=success_files,
-            failed_files=failed_files
-        )
-        return create_success_response(data=data, message=f"成功导入 {success_count} 个文档，失败 {failed_count} 个").model_dump()
+
+        task_id = str(uuid.uuid4())
+        params = json.dumps({"file_paths": file_paths, "kb_name": kb_name, "chunk_size": chunk_size})
+        task_name = f"document_import - {len(file_paths)} files"
+        ok = await TaskManager.create_task(task_id, task_name, params)
+        if not ok:
+            return create_error_response("创建任务失败").model_dump()
+
+        data = ImportTaskData(task_id=task_id, file_count=len(file_paths), message="任务已创建，后台导入中")
+        return create_success_response(data=data, message="导入任务已创建").model_dump()
     except Exception as e:
-        logger.exception(f"[import_document] 导入文档失败: {e}")
-        return create_error_response(f"导入文档失败: {str(e)}").model_dump()
+        logger.exception("[create_import_task] %s", e)
+        return create_error_response(f"创建导入任务失败: {str(e)}").model_dump()
+
+
+async def get_import_task_status(task_id: str) -> Dict[str, Any]:
+    """查询导入任务状态"""
+    try:
+        from manager.task_manager import TaskManager
+        task = await TaskManager.get_task_by_id(task_id)
+        if not task:
+            return create_error_response("任务不存在").model_dump()
+        summary = {}
+        if task.get("result_summary"):
+            summary = json.loads(task["result_summary"])
+        success_files = [ImportFileSuccess(**f) for f in summary.get("success_files", [])]
+        failed_files = [ImportFileFailed(**f) for f in summary.get("failed_files", [])]
+        data = TaskStatusData(
+            task_id=task["task_id"],
+            status=task["status"],
+            completion_precent=task.get("completion_precent", 0.0) or 0.0,
+            success_count=len(success_files),
+            failed_count=len(failed_files),
+            success_files=success_files,
+            failed_files=failed_files,
+        )
+        return create_success_response(data=data, message="查询成功").model_dump()
+    except Exception as e:
+        logger.exception("[get_import_task_status] %s", e)
+        return create_error_response(f"查询失败: {str(e)}").model_dump()
+
+
+async def cancel_import_task(task_id: str) -> Dict[str, Any]:
+    """取消导入任务"""
+    try:
+        from enums.task import TaskStatusEnum
+        from manager.task_manager import TaskManager
+        from common.task import remove_task
+
+        task = await TaskManager.get_task_by_id(task_id)
+        if not task:
+            return create_error_response("任务不存在").model_dump()
+        status = task.get("status", "")
+        if status not in (TaskStatusEnum.PENDING.value, TaskStatusEnum.RUNNING.value):
+            return create_error_response(f"任务状态为 {status}，无法取消").model_dump()
+        await remove_task(task_id)
+        await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCELED.value})
+        data = CancelTaskData(task_id=task_id, canceled=True, message="任务已取消")
+        return create_success_response(data=data, message="任务已取消").model_dump()
+    except Exception as e:
+        logger.exception("[cancel_import_task] %s", e)
+        return create_error_response(f"取消失败: {str(e)}").model_dump()
 
 
 async def search(query: str, kb_names: List[str], top_k: Optional[int] = None, keyword_weight: Optional[float] = None, banned_chunk_ids: Optional[List[str]] = None, online: bool = False, online_top_k: Optional[int] = None) -> Dict[str, Any]:
@@ -596,27 +602,28 @@ async def document_manager(
     file_paths: Optional[List[str]] = None,
     kb_name: Optional[str] = None,
     chunk_size: Optional[int] = None,
-    doc_name: Optional[str] = None
+    doc_name: Optional[str] = None,
+    task_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    文档管理器，支持导入文档和获取文档解析结果
-    
-    :param action: 操作类型，"add" 表示导入文档，"getchunks" 表示获取文档解析结果
-    :param file_paths: 文件路径列表（导入时必填）
-    :param kb_name: 知识库名称（必填）
-    :param chunk_size: chunk 大小（导入时可选，默认使用知识库的chunk_size）
-    :param doc_name: 文档名称（获取解析结果时必填）
-    :return: 操作结果
+    文档管理器：add 创建导入任务，getstatus 查询状态，cancel 取消，getchunks 获取解析结果
     """
     if action == "add":
         if not file_paths or not kb_name:
-            return create_error_response("导入文档时，file_paths 和 kb_name 必填").model_dump()
-        return await import_document(file_paths, kb_name, chunk_size)
-    elif action == "getchunks":
+            return create_error_response("导入文档时 file_paths 和 kb_name 必填").model_dump()
+        return await create_import_task(file_paths, kb_name, chunk_size)
+    if action == "getstatus":
+        if not task_id:
+            return create_error_response("查询状态时 task_id 必填").model_dump()
+        return await get_import_task_status(task_id)
+    if action == "cancel":
+        if not task_id:
+            return create_error_response("取消任务时 task_id 必填").model_dump()
+        return await cancel_import_task(task_id)
+    if action == "getchunks":
         if not doc_name or not kb_name:
-            return create_error_response("获取文档解析结果时，doc_name 和 kb_name 必填").model_dump()
+            return create_error_response("获取解析结果时 doc_name 和 kb_name 必填").model_dump()
         return get_document_chunks(doc_name, kb_name)
-    else:
-        return create_error_response(f"不支持的操作类型: {action}，支持的操作: 'add', 'getchunks'").model_dump()
+    return create_error_response(f"不支持的操作: {action}，支持: add, getstatus, cancel, getchunks").model_dump()
 
 

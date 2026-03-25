@@ -1,6 +1,11 @@
 # RAG MCP 本地配置
 language = "zh"
 
+# 任务配置（独立 task.db）
+[task]
+db_path = "database/task.db"
+cpu_use_limit = 4
+
 # Token相关配置
 [token]
 model = "gpt-4"
@@ -14,8 +19,8 @@ max_top_k = 100
 
 # GitHub线上检索配置
 [github]
-enabled = false
-token = ""
+enabled = true
+token = "REDACTED"
 issue_repos = ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"]
 commit_repo = "torvalds/linux"
 default_online_top_k = 5
@@ -26,8 +31,9 @@ rate_limit_delay = 1
 # 向量化服务配置
 [embedding]
 type = "openai"
-api_key = ""
-endpoint = ""
-model_name = "text-embedding-ada-002"
+api_key = "sk-73dfc8ac9d414f9eaa8a67294eda7dae"
+endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings"
+model_name = "text-embedding-v4"
 timeout = 30
 vector_dimension = 1024
+embedding_batch_size = 8

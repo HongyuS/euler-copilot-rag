@@ -45,46 +45,41 @@ tools:
         - data: Dictionary containing knowledge base list (knowledge_bases, count, keyword)
   document_manager:
     zh: |
-      文档管理器，支持导入文档和获取文档解析结果。通过 action 参数控制具体操作。
+      文档管理器，通过 action 控制操作：add 创建导入任务（立即返回 task_id），getstatus 查询任务状态，cancel 取消任务，getchunks 获取文档解析结果。
       
       参数说明：
-      - action：操作类型（必填），"add" 表示导入文档，"getchunks" 表示获取文档解析结果
-      - file_paths：文件路径列表（绝对路径），导入时必填，支持1~n个文件
-      - kb_name：知识库名称（必填）
-      - chunk_size：chunk大小，单位token（导入时可选，默认使用知识库的chunk_size）
-      - doc_name：文档名称（获取解析结果时必填）
+      - action：操作类型（必填）。"add" 创建导入任务；"getstatus" 查询任务状态；"cancel" 取消任务；"getchunks" 获取解析结果
+      - file_paths：文件路径列表（绝对路径），add 时必填
+      - kb_name：知识库名称，add 和 getchunks 时必填
+      - chunk_size：chunk 大小（token），add 时可选，默认使用知识库配置
+      - task_id：任务 ID，getstatus 和 cancel 时必填
+      - doc_name：文档名称，getchunks 时必填
       
       返回值：
-      - 当 action="add" 时，返回导入结果：
-        - success：布尔值，表示是否成功（只要有文件成功导入即为true）
-        - message：字符串，描述操作结果（包含成功和失败的数量）
-        - data：字典，包含导入结果（total、success_count、failed_count、success_files、failed_files）
-      - 当 action="getchunks" 时，返回文档解析结果：
-        - success：布尔值，表示是否成功
-        - message：字符串，描述操作结果
-        - data：字典，包含文档解析结果（doc_id、doc_name、kb_name、chunks、count）
+      - action="add"：立即返回 task_id、file_count，任务在后台导入，不阻塞
+      - action="getstatus"：返回 status、completion_precent、success_count、failed_count、success_files、failed_files
+      - action="cancel"：返回 canceled、message
+      - action="getchunks"：返回 doc_id、doc_name、chunks、count
     en: |
-      Document manager, supports importing documents and getting document parsing results. Use action parameter to control the specific operation.
+      Document manager. Use action: "add" to create import task (returns task_id immediately), "getstatus" to query task status, "cancel" to cancel task, "getchunks" to get document parsing results.
       
       Parameters:
-      - action: Operation type (required), "add" for importing documents, "getchunks" for getting document parsing results
-      - file_paths: List of file paths (absolute paths), required when importing, supports 1~n files
-      - kb_name: Knowledge base name (required)
-      - chunk_size: Chunk size in tokens (optional when importing, defaults to knowledge base's chunk_size)
-      - doc_name: Document name (required when getting parsing results)
+      - action: Operation type (required). "add" create import task; "getstatus" query status; "cancel" cancel task; "getchunks" get parsing results
+      - file_paths: List of file paths (absolute), required for add
+      - kb_name: Knowledge base name, required for add and getchunks
+      - chunk_size: Chunk size in tokens, optional for add
+      - task_id: Task ID, required for getstatus and cancel
+      - doc_name: Document name, required for getchunks
       
       Return value:
-      - When action="add", returns import result:
-        - success: Boolean, indicating whether the operation was successful (true if any file was successfully imported)
-        - message: String, describing the operation result (includes counts of successful and failed imports)
-        - data: Dictionary containing import results (total, success_count, failed_count, success_files, failed_files)
-      - When action="getchunks", returns document parsing results:
-        - success: Boolean, indicating whether the operation was successful
-        - message: String, describing the operation result
-        - data: Dictionary containing document parsing results (doc_id, doc_name, kb_name, chunks, count)
+      - action="add": Returns task_id, file_count immediately; import runs in background
+      - action="getstatus": Returns status, completion_precent, success_count, failed_count, success_files, failed_files
+      - action="cancel": Returns canceled, message
+      - action="getchunks": Returns doc_id, doc_name, chunks, count
   search:
     zh: |
       在指定知识库列表中进行混合检索。结合关键词检索（FTS5）和向量检索（sqlite-vec），使用加权方式合并结果，去重后使用Jaccard相似度重排序，返回最相关的top-k个结果。可以在多个知识库中同时搜索。
+      并且search可以进行线上的github仓库内的检索，在没有找到本地知识库中的结果时，可以进行线上的github仓库内的检索，得到更加精确的解决方案。
       文档中可以存在故障案例，若需要对故障案例进行分析以及报告生成，可以搜索其中文档，得到更加精确的解决方案。
 
       参数说明：
