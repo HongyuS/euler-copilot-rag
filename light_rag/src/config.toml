@@ -20,7 +20,7 @@ max_top_k = 100
 # GitHub线上检索配置
 [github]
 enabled = true
-token = "REDACTED"
+token = ""
 issue_repos = ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"]
 commit_repo = "torvalds/linux"
 default_online_top_k = 5
@@ -31,8 +31,8 @@ rate_limit_delay = 1
 # 向量化服务配置
 [embedding]
 type = "openai"
-api_key = "sk-73dfc8ac9d414f9eaa8a67294eda7dae"
-endpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/embeddings"
+api_key = ""
+endpoint = ""
 model_name = "text-embedding-v4"
 timeout = 30
 vector_dimension = 1024
