@@ -1,0 +1,548 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.11, pytest-9.0.2, pluggy-1.6.0 -- /root/miniconda3/envs/zjq_3116_env/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.11.11', 'Platform': 'Linux-5.15.0-112-generic-x86_64-with-glibc2.35', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'metadata': '3.1.1', 'anyio': '4.9.0', 'asyncio': '1.3.0', 'html': '4.2.0'}}
+rootdir: /home/zjq/euler-copilot-rag/data_chain/test
+configfile: pytest.ini
+plugins: metadata-3.1.1, anyio-4.9.0, asyncio-1.3.0, html-4.2.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... 
+----------------------------- live log collection ------------------------------
+2026-03-28 11:27:50 [    INFO] NumExpr defaulting to 8 threads. (utils.py:164)
+collected 133 items
+
+parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_valid_parser PASSED [  0%]
+parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_invalid_parser PASSED [  1%]
+parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_case_sensitivity PASSED [  2%]
+parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_linking PASSED [  3%]
+parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_with_no_text PASSED [  3%]
+parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_valid_method PASSED [  4%]
+parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_invalid_method PASSED [  5%]
+parser/test_base_parser.py::TestBaseParserIntegration::test_parser_error_propagation PASSED [  6%]
+parser/test_base_parser.py::TestParserRegistration::test_all_parsers_registered SKIPPED [  6%]
+parser/test_base_parser.py::TestParserRegistration::test_parser_name_attribute PASSED [  7%]
+parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_with_image PASSED [  8%]
+parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_without_image PASSED [  9%]
+parser/test_docx_parser.py::TestDocxParserBasic::test_get_imageparts_from_run PASSED [  9%]
+parser/test_docx_parser.py::TestDocxParserBasic::test_extract_table_to_array PASSED [ 10%]
+parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_basic PASSED [ 11%]
+parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_with_table PASSED [ 12%]
+parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_empty_document PASSED [ 12%]
+parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_nonexistent_file PASSED [ 13%]
+parser/test_docx_parser.py::TestDocxParserNodeStructure::test_node_properties PASSED [ 14%]
+parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_special_characters PASSED [ 15%]
+parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_long_paragraph PASSED [ 15%]
+parser/test_json_parser.py::TestJsonParserBasic::test_parse_simple_object PASSED [ 16%]
+parser/test_json_parser.py::TestJsonParserBasic::test_parse_nested_object PASSED [ 17%]
+parser/test_json_parser.py::TestJsonParserBasic::test_parse_array PASSED [ 18%]
+parser/test_json_parser.py::TestJsonParserBasic::test_parse_complex_structure PASSED [ 18%]
+parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_string_values PASSED [ 19%]
+parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_numeric_values PASSED [ 20%]
+parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_boolean_values PASSED [ 21%]
+parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_null_values PASSED [ 21%]
+parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_invalid_json PASSED [ 22%]
+parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_incomplete_json PASSED [ 23%]
+parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_object PASSED [ 24%]
+parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_array PASSED [ 24%]
+parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_nonexistent_file PASSED [ 25%]
+parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_large_array PASSED [ 26%]
+parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_deeply_nested PASSED [ 27%]
+parser/test_json_parser.py::TestJsonParserNodeStructure::test_node_properties PASSED [ 27%]
+parser/test_md_parser.py::TestMdParserHeaders::test_parse_single_header PASSED [ 28%]
+parser/test_md_parser.py::TestMdParserHeaders::test_parse_multiple_headers PASSED [ 29%]
+parser/test_md_parser.py::TestMdParserHeaders::test_header_hierarchy PASSED [ 30%]
+parser/test_md_parser.py::TestMdParserContent::test_parse_paragraphs PASSED [ 30%]
+parser/test_md_parser.py::TestMdParserContent::test_parse_lists PASSED   [ 31%]
+parser/test_md_parser.py::TestMdParserContent::test_parse_code_block PASSED [ 32%]
+parser/test_md_parser.py::TestMdParserContent::test_parse_inline_code PASSED [ 33%]
+parser/test_md_parser.py::TestMdParserTables::test_parse_simple_table PASSED [ 33%]
+parser/test_md_parser.py::TestMdParserTables::test_extract_table_to_array PASSED [ 34%]
+parser/test_md_parser.py::TestMdParserImages::test_parse_image_reference PASSED [ 35%]
+parser/test_md_parser.py::TestMdParserImages::test_get_image_blob_with_invalid_url PASSED [ 36%]
+parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_empty_html PASSED [ 36%]
+parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_simple_html PASSED [ 37%]
+parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_headers PASSED [ 38%]
+parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_simple_tree PASSED [ 39%]
+parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_deep_tree PASSED [ 39%]
+parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_empty_file PASSED [ 40%]
+parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_special_characters PASSED [ 41%]
+parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_large_document PASSED [ 42%]
+parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_simple PASSED [ 42%]
+parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_chinese PASSED [ 43%]
+parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_empty PASSED [ 44%]
+parser/test_token_tool.py::TestTokenToolBasic::test_split_words_simple PASSED [ 45%]
+parser/test_token_tool.py::TestTokenToolBasic::test_split_words_english PASSED [ 45%]
+parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords PASSED [ 46%]
+parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords_and_weights PASSED [ 47%]
+parser/test_token_tool.py::TestTokenToolKeywords::test_filter_stopwords PASSED [ 48%]
+parser/test_token_tool.py::TestTokenToolCompression::test_compress_tokens_simple PASSED [ 48%]
+parser/test_token_tool.py::TestTokenToolCompression::test_get_k_tokens_words_from_content PASSED [ 49%]
+parser/test_token_tool.py::TestTokenToolCompression::test_get_leave_tokens_from_content_len PASSED [ 50%]
+parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_simple PASSED [ 51%]
+parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_quotes PASSED [ 51%]
+parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_abbreviations PASSED [ 52%]
+parser/test_token_tool.py::TestTokenToolSentences::test_get_top_k_keysentence PASSED [ 53%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_similar PASSED [ 54%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_identical PASSED [ 54%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_different PASSED [ 55%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_empty PASSED [ 56%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_lcs PASSED  [ 57%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_leve PASSED [ 57%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_numpy PASSED [ 58%]
+parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_orthogonal PASSED [ 59%]
+parser/test_token_tool.py::TestTokenToolJsonRepair::test_repair_json_string_valid PASSED [ 60%]
+parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_valid PASSED [ 60%]
+parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_invalid_then_repair PASSED [ 61%]
+parser/test_token_tool.py::TestTokenToolUtility::test_fullwidth_to_halfwidth PASSED [ 62%]
+parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_from_string PASSED [ 63%]
+parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_no_number PASSED [ 63%]
+parser/test_token_tool.py::TestTokenToolUtility::test_split_str_with_slide_window PASSED [ 64%]
+parser/test_token_tool.py::TestTokenToolGrade::test_grade_creation PASSED [ 65%]
+parser/test_token_tool.py::TestTokenToolAsync::test_cal_semantic_similarity PASSED [ 66%]
+parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_utf8 PASSED [ 66%]
+parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_gbk PASSED [ 67%]
+parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_empty_file PASSED [ 68%]
+parser/test_txt_parser.py::TestTxtParserContent::test_parse_simple_text PASSED [ 69%]
+parser/test_txt_parser.py::TestTxtParserContent::test_parse_multiline_text PASSED [ 69%]
+parser/test_txt_parser.py::TestTxtParserContent::test_parse_special_characters PASSED [ 70%]
+parser/test_txt_parser.py::TestTxtParserContent::test_parse_unicode_content PASSED [ 71%]
+parser/test_txt_parser.py::TestTxtParserAccuracy::test_content_integrity PASSED [ 72%]
+parser/test_txt_parser.py::TestTxtParserAccuracy::test_node_structure PASSED [ 72%]
+parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_empty_file PASSED [ 73%]
+parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_whitespace_only PASSED [ 74%]
+parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_very_long_line PASSED [ 75%]
+parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_large_file PASSED [ 75%]
+parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_nonexistent_file PASSED [ 76%]
+parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_small SKIPPED [ 77%]
+parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_large PASSED [ 78%]
+parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_success PASSED [ 78%]
+parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_failure PASSED [ 79%]
+parser/test_xlsx_parser.py::TestXlsxParserBasic::test_extract_table_to_array PASSED [ 80%]
+parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_xlsx PASSED [ 81%]
+parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_csv SKIPPED [ 81%]
+parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_multiple_sheets PASSED [ 82%]
+parser/test_xlsx_parser.py::TestXlsxParserNodeStructure::test_node_type PASSED [ 83%]
+parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_empty_file PASSED [ 84%]
+parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_large_file PASSED [ 84%]
+parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_nonexistent_file PASSED [ 85%]
+parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_simple_mapping PASSED [ 86%]
+parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_nested_structure PASSED [ 87%]
+parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_list PASSED  [ 87%]
+parser/test_yaml_parser.py::TestYamlParserDataTypes::test_parse_various_types PASSED [ 88%]
+parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_invalid_yaml PASSED [ 89%]
+parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_nonexistent_file PASSED [ 90%]
+parser/test_yaml_parser.py::TestYamlParserNodeStructure::test_node_properties PASSED [ 90%]
+parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_ansible_style PASSED [ 91%]
+parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_docker_compose PASSED [ 92%]
+performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_small_file_performance PASSED [ 93%]
+performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_medium_file_performance PASSED [ 93%]
+performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_large_file_performance PASSED [ 94%]
+performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_small_object_performance PASSED [ 95%]
+performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_large_array_performance PASSED [ 96%]
+performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_simple_performance PASSED [ 96%]
+performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_complex_performance PASSED [ 97%]
+performance/test_parser_performance.py::TestParserMemoryUsage::test_txt_parser_memory_efficiency PASSED [ 98%]
+performance/test_parser_performance.py::TestParserConcurrency::test_concurrent_txt_parsing PASSED [ 99%]
+performance/test_parser_performance.py::TestParserThroughput::test_parser_throughput FAILED [100%]
+
+============================== slowest durations ===============================
+2.36s call     parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_large
+1.99s call     parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_large_file
+1.69s call     parser/test_token_tool.py::TestTokenToolBasic::test_split_words_simple
+1.26s call     performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_large_file_performance
+1.10s call     performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_medium_file_performance
+0.58s call     parser/test_md_parser.py::TestMdParserImages::test_parse_image_reference
+0.43s call     performance/test_parser_performance.py::TestParserThroughput::test_parser_throughput
+0.33s call     performance/test_parser_performance.py::TestParserMemoryUsage::test_txt_parser_memory_efficiency
+0.29s call     parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_simple
+0.24s call     performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_complex_performance
+0.22s call     parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_success
+0.20s call     performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_simple_performance
+0.20s call     parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_large_file
+0.10s call     performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_small_file_performance
+0.08s call     parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_large_document
+0.06s call     parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_long_paragraph
+0.06s call     performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_large_array_performance
+0.05s call     parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_basic
+0.04s call     performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_small_object_performance
+0.04s call     parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_empty_document
+0.04s call     parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_with_table
+0.04s call     parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_special_characters
+0.03s call     parser/test_docx_parser.py::TestDocxParserNodeStructure::test_node_properties
+0.03s call     parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_multiple_sheets
+0.02s call     parser/test_md_parser.py::TestMdParserHeaders::test_parse_single_header
+0.02s call     parser/test_xlsx_parser.py::TestXlsxParserNodeStructure::test_node_type
+0.02s call     parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_xlsx
+0.02s call     performance/test_parser_performance.py::TestParserConcurrency::test_concurrent_txt_parsing
+0.01s call     parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_empty_file
+0.01s call     parser/test_md_parser.py::TestMdParserContent::test_parse_code_block
+0.01s call     parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_large_array
+0.01s call     parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_very_long_line
+0.01s call     parser/test_md_parser.py::TestMdParserImages::test_get_image_blob_with_invalid_url
+0.00s call     parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords
+0.00s call     parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_with_image
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_empty
+0.00s setup    parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_invalid_then_repair
+0.00s teardown parser/test_token_tool.py::TestTokenToolUtility::test_split_str_with_slide_window
+0.00s call     parser/test_md_parser.py::TestMdParserHeaders::test_parse_multiple_headers
+0.00s call     parser/test_md_parser.py::TestMdParserHeaders::test_header_hierarchy
+0.00s call     parser/test_token_tool.py::TestTokenToolUtility::test_split_str_with_slide_window
+0.00s call     parser/test_md_parser.py::TestMdParserTables::test_parse_simple_table
+0.00s call     parser/test_md_parser.py::TestMdParserContent::test_parse_lists
+0.00s call     parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_special_characters
+0.00s call     parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_invalid_yaml
+0.00s call     parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_nested_structure
+0.00s call     parser/test_txt_parser.py::TestTxtParserAccuracy::test_node_structure
+0.00s call     parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_gbk
+0.00s call     parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_ansible_style
+0.00s call     parser/test_token_tool.py::TestTokenToolAsync::test_cal_semantic_similarity
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_large_file
+0.00s setup    parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_valid_method
+0.00s call     parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_valid_method
+0.00s call     parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_simple_mapping
+0.00s call     parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_docker_compose
+0.00s call     parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_whitespace_only
+0.00s call     parser/test_md_parser.py::TestMdParserContent::test_parse_paragraphs
+0.00s call     parser/test_yaml_parser.py::TestYamlParserDataTypes::test_parse_various_types
+0.00s call     parser/test_md_parser.py::TestMdParserContent::test_parse_inline_code
+0.00s call     parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_list
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserBasic::test_extract_table_to_array
+0.00s call     parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_headers
+0.00s call     parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_nonexistent_file
+0.00s call     parser/test_base_parser.py::TestBaseParserIntegration::test_parser_error_propagation
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_gbk
+0.00s call     parser/test_token_tool.py::TestTokenToolSentences::test_get_top_k_keysentence
+0.00s setup    performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_complex_performance
+0.00s call     parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_simple
+0.00s setup    performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_small_file_performance
+0.00s setup    performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_simple_performance
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserNodeStructure::test_node_type
+0.00s call     parser/test_docx_parser.py::TestDocxParserBasic::test_get_imageparts_from_run
+0.00s setup    performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_small_object_performance
+0.00s call     parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_invalid_json
+0.00s teardown performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_large_file_performance
+0.00s setup    performance/test_parser_performance.py::TestParserMemoryUsage::test_txt_parser_memory_efficiency
+0.00s teardown parser/test_txt_parser.py::TestTxtParserContent::test_parse_multiline_text
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_utf8
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_empty_file
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_empty_file
+0.00s setup    performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_large_file_performance
+0.00s call     parser/test_md_parser.py::TestMdParserTables::test_extract_table_to_array
+0.00s call     parser/test_xlsx_parser.py::TestXlsxParserBasic::test_extract_table_to_array
+0.00s teardown performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_large_array_performance
+0.00s teardown parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_large
+0.00s setup    performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_medium_file_performance
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_nested_structure
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_multiple_sheets
+0.00s setup    parser/test_json_parser.py::TestJsonParserBasic::test_parse_simple_object
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_large_file
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_list
+0.00s setup    parser/test_md_parser.py::TestMdParserContent::test_parse_inline_code
+0.00s setup    parser/test_md_parser.py::TestMdParserHeaders::test_parse_multiple_headers
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_xlsx
+0.00s call     parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_incomplete_json
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserDataTypes::test_parse_various_types
+0.00s setup    performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_large_array_performance
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_invalid_yaml
+0.00s call     parser/test_docx_parser.py::TestDocxParserBasic::test_extract_table_to_array
+0.00s setup    parser/test_md_parser.py::TestMdParserContent::test_parse_lists
+0.00s setup    parser/test_md_parser.py::TestMdParserContent::test_parse_paragraphs
+0.00s setup    parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_empty_file
+0.00s setup    parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_large
+0.00s setup    parser/test_md_parser.py::TestMdParserHeaders::test_header_hierarchy
+0.00s setup    parser/test_json_parser.py::TestJsonParserBasic::test_parse_nested_object
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_simple_mapping
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_whitespace_only
+0.00s call     parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_without_image
+0.00s setup    parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_special_characters
+0.00s setup    parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_large_document
+0.00s call     parser/test_txt_parser.py::TestTxtParserContent::test_parse_unicode_content
+0.00s call     parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_failure
+0.00s setup    parser/test_md_parser.py::TestMdParserImages::test_parse_image_reference
+0.00s setup    parser/test_md_parser.py::TestMdParserTables::test_parse_simple_table
+0.00s setup    parser/test_json_parser.py::TestJsonParserBasic::test_parse_complex_structure
+0.00s call     parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_utf8
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserNodeStructure::test_node_properties
+0.00s setup    parser/test_md_parser.py::TestMdParserHeaders::test_parse_single_header
+0.00s setup    parser/test_md_parser.py::TestMdParserContent::test_parse_code_block
+0.00s teardown parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_valid_method
+0.00s setup    parser/test_json_parser.py::TestJsonParserNodeStructure::test_node_properties
+0.00s setup    parser/test_json_parser.py::TestJsonParserBasic::test_parse_array
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_docker_compose
+0.00s setup    parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_large_array
+0.00s setup    parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_numeric_values
+0.00s setup    parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_deeply_nested
+0.00s setup    parser/test_txt_parser.py::TestTxtParserAccuracy::test_node_structure
+0.00s setup    parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_invalid_json
+0.00s setup    parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_array
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_nonexistent_file
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_nonexistent_file
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_very_long_line
+0.00s setup    parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_string_values
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_ansible_style
+0.00s setup    parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_null_values
+0.00s call     parser/test_txt_parser.py::TestTxtParserContent::test_parse_special_characters
+0.00s setup    parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_incomplete_json
+0.00s setup    parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_object
+0.00s call     parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_empty_file
+0.00s setup    parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_invalid_method
+0.00s setup    parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_boolean_values
+0.00s setup    performance/test_parser_performance.py::TestParserConcurrency::test_concurrent_txt_parsing
+0.00s setup    parser/test_md_parser.py::TestMdParserImages::test_get_image_blob_with_invalid_url
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_empty_file
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserBasic::test_extract_table_to_array
+0.00s teardown performance/test_parser_performance.py::TestParserConcurrency::test_concurrent_txt_parsing
+0.00s teardown performance/test_parser_performance.py::TestParserThroughput::test_parser_throughput
+0.00s setup    parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_empty_file
+0.00s call     parser/test_txt_parser.py::TestTxtParserContent::test_parse_multiline_text
+0.00s setup    parser/test_txt_parser.py::TestTxtParserContent::test_parse_special_characters
+0.00s setup    parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_empty_html
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_failure
+0.00s setup    parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_nonexistent_file
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_large_file
+0.00s call     parser/test_yaml_parser.py::TestYamlParserNodeStructure::test_node_properties
+0.00s teardown performance/test_parser_performance.py::TestParserMemoryUsage::test_txt_parser_memory_efficiency
+0.00s setup    parser/test_token_tool.py::TestTokenToolUtility::test_split_str_with_slide_window
+0.00s setup    parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_simple_html
+0.00s teardown performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_simple_performance
+0.00s teardown parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_large_document
+0.00s setup    parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_basic
+0.00s setup    parser/test_token_tool.py::TestTokenToolAsync::test_cal_semantic_similarity
+0.00s setup    parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_special_characters
+0.00s setup    parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_headers
+0.00s teardown performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_medium_file_performance
+0.00s setup    parser/test_txt_parser.py::TestTxtParserContent::test_parse_simple_text
+0.00s setup    parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_valid_parser
+0.00s setup    parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_long_paragraph
+0.00s setup    parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_nonexistent_file
+0.00s setup    parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_with_table
+0.00s teardown performance/test_parser_performance.py::TestMarkdownParserPerformance::test_md_parser_complex_performance
+0.00s call     parser/test_txt_parser.py::TestTxtParserContent::test_parse_simple_text
+0.00s setup    parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_empty_document
+0.00s teardown parser/test_md_parser.py::TestMdParserImages::test_parse_image_reference
+0.00s setup    parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_simple_tree
+0.00s call     parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_nonexistent_file
+0.00s setup    parser/test_txt_parser.py::TestTxtParserContent::test_parse_multiline_text
+0.00s teardown parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_long_paragraph
+0.00s setup    parser/test_base_parser.py::TestBaseParserIntegration::test_parser_error_propagation
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_multiple_sheets
+0.00s teardown parser/test_md_parser.py::TestMdParserHeaders::test_parse_multiple_headers
+0.00s setup    parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_deep_tree
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_success
+0.00s setup    parser/test_md_parser.py::TestMdParserTables::test_extract_table_to_array
+0.00s teardown performance/test_parser_performance.py::TestParserPerformanceBenchmark::test_txt_parser_small_file_performance
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_very_long_line
+0.00s teardown performance/test_parser_performance.py::TestJsonParserPerformance::test_json_parser_small_object_performance
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserNodeStructure::test_node_type
+0.00s teardown parser/test_md_parser.py::TestMdParserContent::test_parse_code_block
+0.00s call     parser/test_txt_parser.py::TestTxtParserAccuracy::test_content_integrity
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_large_file
+0.00s call     parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_simple_html
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_empty_file
+0.00s call     parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_nonexistent_file
+0.00s teardown parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_basic
+0.00s setup    parser/test_docx_parser.py::TestDocxParserNodeStructure::test_node_properties
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_nested_structure
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_xlsx
+0.00s setup    parser/test_txt_parser.py::TestTxtParserAccuracy::test_content_integrity
+0.00s teardown parser/test_md_parser.py::TestMdParserHeaders::test_parse_single_header
+0.00s setup    performance/test_parser_performance.py::TestParserThroughput::test_parser_throughput
+0.00s setup    parser/test_txt_parser.py::TestTxtParserContent::test_parse_unicode_content
+0.00s call     parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_deeply_nested
+0.00s call     parser/test_json_parser.py::TestJsonParserBasic::test_parse_simple_object
+0.00s setup    parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_without_image
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_utf8
+0.00s call     parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_invalid_method
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_invalid_yaml
+0.00s call     parser/test_json_parser.py::TestJsonParserBasic::test_parse_nested_object
+0.00s setup    parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_nonexistent_file
+0.00s teardown parser/test_md_parser.py::TestMdParserContent::test_parse_lists
+0.00s setup    parser/test_docx_parser.py::TestDocxParserBasic::test_extract_table_to_array
+0.00s teardown parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_special_characters
+0.00s teardown parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_large_array
+0.00s call     parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_invalid_then_repair
+0.00s teardown parser/test_md_parser.py::TestMdParserEdgeCases::test_parse_empty_file
+0.00s setup    parser/test_docx_parser.py::TestDocxParserBasic::test_get_imageparts_from_run
+0.00s teardown parser/test_md_parser.py::TestMdParserContent::test_parse_inline_code
+0.00s call     parser/test_json_parser.py::TestJsonParserBasic::test_parse_complex_structure
+0.00s setup    parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_simple
+0.00s teardown parser/test_json_parser.py::TestJsonParserBasic::test_parse_simple_object
+0.00s setup    parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_chinese
+0.00s setup    parser/test_token_tool.py::TestTokenToolGrade::test_grade_creation
+0.00s call     parser/test_json_parser.py::TestJsonParserBasic::test_parse_array
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserDataTypes::test_parse_various_types
+0.00s teardown parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_invalid_json
+0.00s teardown parser/test_md_parser.py::TestMdParserTables::test_parse_simple_table
+0.00s teardown parser/test_md_parser.py::TestMdParserHeaders::test_header_hierarchy
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_whitespace_only
+0.00s teardown parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_boolean_values
+0.00s teardown parser/test_json_parser.py::TestJsonParserBasic::test_parse_complex_structure
+0.00s teardown parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_string_values
+0.00s teardown parser/test_docx_parser.py::TestDocxParserNodeStructure::test_node_properties
+0.00s teardown parser/test_md_parser.py::TestMdParserContent::test_parse_paragraphs
+0.00s teardown parser/test_json_parser.py::TestJsonParserBasic::test_parse_nested_object
+0.00s teardown parser/test_json_parser.py::TestJsonParserLargeFiles::test_parse_deeply_nested
+0.00s teardown parser/test_base_parser.py::TestBaseParserIntegration::test_parser_error_propagation
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_ansible_style
+0.00s setup    parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_quotes
+0.00s teardown parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_null_values
+0.00s call     parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_numeric_values
+0.00s teardown parser/test_json_parser.py::TestJsonParserNodeStructure::test_node_properties
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_simple_mapping
+0.00s teardown parser/test_txt_parser.py::TestTxtParserAccuracy::test_content_integrity
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserBasic::test_parse_list
+0.00s teardown parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_incomplete_json
+0.00s teardown parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_numeric_values
+0.00s call     parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_null_values
+0.00s teardown parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_object
+0.00s teardown parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_array
+0.00s setup    parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_linking
+0.00s setup    parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_with_image
+0.00s call     parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_boolean_values
+0.00s teardown parser/test_txt_parser.py::TestTxtParserAccuracy::test_node_structure
+0.00s setup    parser/test_token_tool.py::TestTokenToolBasic::test_split_words_english
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_gbk
+0.00s teardown parser/test_docx_parser.py::TestDocxParserEdgeCases::test_parser_special_characters
+0.00s setup    parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_empty
+0.00s call     parser/test_json_parser.py::TestJsonParserNodeStructure::test_node_properties
+0.00s teardown parser/test_json_parser.py::TestJsonParserBasic::test_parse_array
+0.00s setup    parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_case_sensitivity
+0.00s call     parser/test_json_parser.py::TestJsonParserDataTypes::test_parse_string_values
+0.00s call     parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_object
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserComplexStructures::test_parse_docker_compose
+0.00s teardown parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_empty_document
+0.00s call     parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_simple_tree
+0.00s call     parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_empty_file
+0.00s setup    parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords
+0.00s teardown parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_with_table
+0.00s call     parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_empty_json_array
+0.00s setup    parser/test_token_tool.py::TestTokenToolSentences::test_get_top_k_keysentence
+0.00s setup    parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords_and_weights
+0.00s setup    parser/test_token_tool.py::TestTokenToolUtility::test_fullwidth_to_halfwidth
+0.00s call     parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_empty_html
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_empty_file
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_success
+0.00s call     parser/test_token_tool.py::TestTokenToolCompression::test_compress_tokens_simple
+0.00s setup    parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_abbreviations
+0.00s setup    parser/test_token_tool.py::TestTokenToolBasic::test_split_words_simple
+0.00s setup    parser/test_token_tool.py::TestTokenToolKeywords::test_filter_stopwords
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserErrorHandling::test_parse_nonexistent_file
+0.00s teardown parser/test_token_tool.py::TestTokenToolAsync::test_cal_semantic_similarity
+0.00s teardown parser/test_yaml_parser.py::TestYamlParserNodeStructure::test_node_properties
+0.00s setup    parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_from_string
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_orthogonal
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_similar
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_leve
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_lcs
+0.00s teardown parser/test_txt_parser.py::TestTxtParserContent::test_parse_simple_text
+0.00s setup    parser/test_base_parser.py::TestParserRegistration::test_all_parsers_registered
+0.00s setup    parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_valid
+0.00s setup    parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_no_number
+0.00s teardown parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_simple_html
+0.00s teardown parser/test_md_parser.py::TestMdParserImages::test_get_image_blob_with_invalid_url
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_leve
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_numpy
+0.00s setup    parser/test_token_tool.py::TestTokenToolCompression::test_get_leave_tokens_from_content_len
+0.00s teardown parser/test_txt_parser.py::TestTxtParserContent::test_parse_unicode_content
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_identical
+0.00s setup    parser/test_token_tool.py::TestTokenToolCompression::test_compress_tokens_simple
+0.00s teardown parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_nonexistent_file
+0.00s setup    parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_invalid_parser
+0.00s teardown parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_deep_tree
+0.00s setup    parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_simple
+0.00s setup    parser/test_token_tool.py::TestTokenToolCompression::test_get_k_tokens_words_from_content
+0.00s setup    parser/test_token_tool.py::TestTokenToolJsonRepair::test_repair_json_string_valid
+0.00s call     parser/test_txt_parser.py::TestTxtParserEdgeCases::test_parse_nonexistent_file
+0.00s teardown parser/test_txt_parser.py::TestTxtParserContent::test_parse_special_characters
+0.00s setup    parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_different
+0.00s teardown parser/test_json_parser.py::TestJsonParserErrorHandling::test_parse_nonexistent_file
+0.00s call     parser/test_txt_parser.py::TestTxtParserEncoding::test_detect_encoding_empty_file
+0.00s setup    parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_with_no_text
+0.00s teardown parser/test_md_parser.py::TestMdParserTables::test_extract_table_to_array
+0.00s teardown parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_simple_tree
+0.00s teardown parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_with_image
+0.00s call     parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_abbreviations
+0.00s teardown parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_headers
+0.00s call     parser/test_md_parser.py::TestMdParserFlattenTree::test_flatten_deep_tree
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserEdgeCases::test_parser_nonexistent_file
+0.00s call     parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_quotes
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_lcs
+0.00s call     parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords_and_weights
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserBasic::test_read_xlsx_failure
+0.00s teardown parser/test_md_parser.py::TestMdParserBuildSubtree::test_build_subtree_with_empty_html
+0.00s call     parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_from_string
+0.00s teardown parser/test_docx_parser.py::TestDocxParserBasic::test_get_imageparts_from_run
+0.00s teardown parser/test_docx_parser.py::TestDocxParserBasic::test_extract_table_to_array
+0.00s call     parser/test_token_tool.py::TestTokenToolKeywords::test_filter_stopwords
+0.00s teardown parser/test_docx_parser.py::TestDocxParserBasic::test_is_image_without_image
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_similar
+0.00s call     parser/test_token_tool.py::TestTokenToolCompression::test_get_k_tokens_words_from_content
+0.00s teardown parser/test_base_parser.py::TestBaseParserIntegration::test_parser_with_invalid_method
+0.00s call     parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_chinese
+0.00s call     parser/test_token_tool.py::TestTokenToolBasic::test_split_words_english
+0.00s setup    parser/test_base_parser.py::TestParserRegistration::test_parser_name_attribute
+0.00s call     parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_nonexistent_file
+0.00s teardown parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_simple
+0.00s teardown parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_simple
+0.00s call     parser/test_token_tool.py::TestTokenToolCompression::test_get_leave_tokens_from_content_len
+0.00s teardown parser/test_docx_parser.py::TestDocxParserIntegration::test_parser_nonexistent_file
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_identical
+0.00s call     parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_linking
+0.00s teardown parser/test_token_tool.py::TestTokenToolBasic::test_split_words_simple
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_numpy
+0.00s call     parser/test_token_tool.py::TestTokenToolJsonRepair::test_repair_json_string_valid
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_different
+0.00s call     parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_empty
+0.00s call     parser/test_base_parser.py::TestParserRegistration::test_all_parsers_registered
+0.00s teardown parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_orthogonal
+0.00s teardown parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_quotes
+0.00s teardown parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_empty
+0.00s teardown parser/test_token_tool.py::TestTokenToolBasic::test_get_tokens_chinese
+0.00s teardown parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_linking
+0.00s teardown parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_invalid_then_repair
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_lcs
+0.00s teardown parser/test_token_tool.py::TestTokenToolSentences::test_content_to_sentences_with_abbreviations
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_numpy
+0.00s call     parser/test_token_tool.py::TestTokenToolGrade::test_grade_creation
+0.00s teardown parser/test_token_tool.py::TestTokenToolCompression::test_get_leave_tokens_from_content_len
+0.00s teardown parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_valid_parser
+0.00s teardown parser/test_token_tool.py::TestTokenToolBasic::test_split_words_english
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cosine_distance_orthogonal
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_empty
+0.00s teardown parser/test_token_tool.py::TestTokenToolKeywords::test_get_top_k_keywords_and_weights
+0.00s teardown parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_no_number
+0.00s call     parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_valid
+0.00s call     parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_empty
+0.00s teardown parser/test_token_tool.py::TestTokenToolGrade::test_grade_creation
+0.00s teardown parser/test_token_tool.py::TestTokenToolJsonRepair::test_repair_json_string_valid
+0.00s teardown parser/test_token_tool.py::TestTokenToolSentences::test_get_top_k_keysentence
+0.00s teardown parser/test_token_tool.py::TestTokenToolJsonRepair::test_loads_json_string_valid
+0.00s teardown parser/test_token_tool.py::TestTokenToolKeywords::test_filter_stopwords
+0.00s teardown parser/test_token_tool.py::TestTokenToolCompression::test_compress_tokens_simple
+0.00s teardown parser/test_token_tool.py::TestTokenToolUtility::test_fullwidth_to_halfwidth
+0.00s setup    parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_small
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_leve
+0.00s call     parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_case_sensitivity
+0.00s teardown parser/test_token_tool.py::TestTokenToolCompression::test_get_k_tokens_words_from_content
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_identical
+0.00s teardown parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_invalid_parser
+0.00s setup    parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_csv
+0.00s teardown parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_from_string
+0.00s call     parser/test_token_tool.py::TestTokenToolUtility::test_fullwidth_to_halfwidth
+0.00s call     parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_with_no_text
+0.00s call     parser/test_token_tool.py::TestTokenToolUtility::test_extract_number_no_number
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_similar
+0.00s teardown parser/test_token_tool.py::TestTokenToolSimilarity::test_cal_jac_different
+0.00s teardown parser/test_txt_parser.py::TestTxtParserPerformance::test_parse_performance_small
+0.00s call     parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_valid_parser
+0.00s teardown parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_case_sensitivity
+0.00s teardown parser/test_xlsx_parser.py::TestXlsxParserIntegration::test_parser_csv
+0.00s call     parser/test_base_parser.py::TestBaseParserFactory::test_find_worker_class_with_invalid_parser
+0.00s teardown parser/test_base_parser.py::TestImageRelatedNodeInLinkNodes::test_image_related_node_with_no_text
+0.00s call     parser/test_base_parser.py::TestParserRegistration::test_parser_name_attribute
+0.00s teardown parser/test_base_parser.py::TestParserRegistration::test_all_parsers_registered
+0.00s teardown parser/test_base_parser.py::TestParserRegistration::test_parser_name_attribute
+=========================== short test summary info ============================
+FAILED performance/test_parser_performance.py::TestParserThroughput::test_parser_throughput - assert 0.9063952201814561 > 1.0
+================== 1 failed, 129 passed, 3 skipped in 15.51s ===================

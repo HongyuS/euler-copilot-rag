@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.11, pytest-9.0.2, pluggy-1.6.0 -- /root/miniconda3/envs/zjq_3116_env/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.11.11', 'Platform': 'Linux-5.15.0-112-generic-x86_64-with-glibc2.35', 'Packages': {'pytest': '9.0.2', 'pluggy': '1.6.0'}, 'Plugins': {'metadata': '3.1.1', 'anyio': '4.9.0', 'asyncio': '1.3.0', 'html': '4.2.0'}}
+rootdir: /home/zjq/euler-copilot-rag/data_chain/test
+configfile: pytest.ini
+testpaths: .
+plugins: metadata-3.1.1, anyio-4.9.0, asyncio-1.3.0, html-4.2.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... 
+----------------------------- live log collection ------------------------------
+2026-03-28 11:27:34 [    INFO] NumExpr defaulting to 8 threads. (utils.py:164)
+collected 150 items / 11 errors
+
+=========================== short test summary info ============================
+ERROR performance/test_rag_performance.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_base_searcher.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_doc2chunk_bfs_searcher.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_doc2chunk_searcher.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_dynamic_searchers.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_keyword_and_vector_searcher.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_keyword_searcher.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_llm_enhanced_searchers.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_rag_accuracy.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_rag_stability.py - TypeError: quote_from_bytes() expected bytes
+ERROR rag/test_vector_searcher.py - TypeError: quote_from_bytes() expected bytes
+!!!!!!!!!!!!!!!!!!! Interrupted: 11 errors during collection !!!!!!!!!!!!!!!!!!!
+============================== 11 errors in 5.83s ==============================

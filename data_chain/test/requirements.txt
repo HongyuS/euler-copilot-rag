@@ -1,0 +1,13 @@
+# 测试依赖
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+
+# 性能测试
+psutil>=5.9.0
+
+# 可选：并行测试
+# pytest-xdist>=3.0.0
+
+# 项目依赖（从项目根目录 requirements.txt 同步）
+numpy>=1.26.0
