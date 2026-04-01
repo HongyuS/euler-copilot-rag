@@ -6,6 +6,7 @@ class TaskTypeEnum(str, Enum):
     LOG_DETECTION_BASE_ON_KEYWORDS = "log_detection_base_on_keywords"
     LOG_DETECTION_BASE_ON_CLUSTERING = "log_detection_base_on_clustering"
     LOG_DETECTION_BASE_ON_LLM = "log_detection_base_on_llm"
+    LOG_DETECTION_BASE_ON_EMBEDDING_KEYWORDS = "log_detection_base_on_embedding_keywords"
 
 
 class TaskStatusEnum(str, Enum):

@@ -1,10 +1,8 @@
 import asyncio
 import json
-from faiss import IndexFlatL2
-import numpy as np
-import jieba
-import re
 from datetime import datetime
+from typing import Tuple, List, Any
+
 from src.prompt.log_detection import DETECT_LOG_PROMPT
 from src.worker.base import BaseWorker
 from src.service.embedding import Embedding
@@ -28,7 +26,8 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
         """处理单个日志模型的逻辑"""
         log_content = log_model.content
         prompt = DETECT_LOG_PROMPT.format(query=query, log_content=log_content)
-        llm_response = await llm.nostream([], prompt, "请直接返回JSON格式的字符串，包含anomaly_score（异常分数，0-100）和anomaly_reason（异常原因）两个字段", st_str="{", en_str="}")
+        llm_response = await llm.nostream(
+            [], prompt, "请直接返回JSON格式的字符串，包含anomaly_score（异常分数，0-100）和anomaly_reason（异常原因）两个字段", st_str="{", en_str="}")
         try:
             response_dict = json.loads(llm_response)
             log_model.anomaly_score = response_dict.get("anomaly_score", 0.0)
@@ -38,10 +37,18 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
             log_model.anomaly_reason = "LLM返回的结果无法解析"
 
     @staticmethod
-    async def handle_single_log_file(file_path: str, max_anomaly_log_count: int, query: str, llm: LLMService, time_start: str, time_end: str) -> list[LogModel]:
+    async def handle_single_log_file(
+            file_path: str,
+            max_anomaly_log_count: int,
+            query: str,
+            llm: LLMService,
+            time_start: str,
+            time_end: str
+    ) -> tuple[list[Any], list[Any]]:
         """处理单个日志文件的逻辑"""
         # 这里实现处理单个日志文件的具体逻辑
-        log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, time_start=time_start, time_end=time_end, chunk_size=min(8192, llm.max_tokens//3*2))
+        log_models: list[LogModel] = await LogParser.parse_log_file(
+            file_path=file_path, time_start=time_start, time_end=time_end, chunk_size=min(8192, llm.max_tokens//3*2))
         for i in range(0, len(log_models), llm.batch_size):
             batch_log_models = log_models[i:i + llm.batch_size]
             handle_tasks = []
@@ -86,15 +93,22 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
             log_models = []
             candidate_unnormal_log_models: list[LogModel] = []
             batch_size = 8
-            llm = LLMService(openai_api_key=Config().get_config().llm_model.api_key, openai_api_base=Config().get_config().llm_model.end_point, model_name=Config(
-            ).get_config().llm_model.model_name, max_tokens=Config().get_config().llm_model.max_tokens, batch_size=Config().get_config().llm_model.batch_size)
+            llm = LLMService(
+                openai_api_key=Config().get_config().llm_model.api_key, 
+                openai_api_base=Config().get_config().llm_model.end_point, 
+                model_name=Config().get_config().llm_model.model_name, 
+                max_tokens=Config().get_config().llm_model.max_tokens, 
+                batch_size=Config().get_config().llm_model.batch_size
+                )
             file_path_list = await BaseWorker.get_files_from_file_path_list(file_path_list)
             for i in range(0, len(file_path_list), batch_size):
                 batch_file_path_list = file_path_list[i:i + batch_size]
                 handle_tasks = []
                 for file_path in batch_file_path_list:
-                    handle_tasks.append(LogDetectionBasedOnLLMWorker.handle_single_log_file(
-                        file_path, max_anomaly_log_count, query, llm, time_start, time_end))
+                    handle_tasks.append(
+                        LogDetectionBasedOnLLMWorker.handle_single_log_file(
+                        file_path, max_anomaly_log_count, query, llm, time_start, time_end)
+                        )
                 batch_results = await asyncio.gather(*handle_tasks)
                 for log_model_list, candidate_unnormal_log_model_list in batch_results:
                     log_models.extend(log_model_list)

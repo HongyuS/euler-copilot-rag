@@ -9,11 +9,9 @@ from datetime import datetime
 from src.worker.base import BaseWorker
 from src.service.embedding import Embedding
 from src.service.cluster import ClusterService
-from src.service.convert import ConvertService
 from src.parser.parser import LogParser
-from src.parser.log_feature import log_feature_class_mapping
+from src.parser.log_feature_loader import log_feature_class_mapping
 from src.sqlite.manager.task import TaskManager
-from src.sqlite.manager.log_parse_result import LogParseResultManager
 from src.schemas.task import TaskRelatedParamsModel
 from src.schemas.cluster import ClusterModel
 from src.enum.log import LogTypeEnum
@@ -94,6 +92,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
+        """计算日志的情感分数"""
         log_class = log_feature_class_mapping.get(log_type, None)
         if log_class is None:
             return 0.0
@@ -185,6 +184,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                 task_related_params_js["time_end"] = None
             task_related_params_model = TaskRelatedParamsModel(
                 **task_related_params_js)
+                
             query = task_related_params_model.query
             query_embedding = await Embedding.get_embedding(query)
             file_path_list = task_related_params_model.file_path_list

@@ -1,0 +1,46 @@
+keywords_regex_and_scores:
+  normal:
+    java.lang.: 1.8  # Java核心包
+    javax.: 1.7  # Java扩展包
+    org.springframework.: 1.7  # Spring框架
+    com.: 1.7  # 企业包名前缀
+    java: 1.6  # java关键字
+    jvm: 1.6  # JVM标识
+
+  anomalous:
+    'Exception in thread': 2.0  # Java线程异常（最高权重）
+    '(\\w+)Exception: ': 1.9  # Java异常类型
+    # 堆栈跟踪行
+    'at (\\w+\\.)+\\w+<span data-type="inline-math" data-value="Lis6XGQr"></span>': 1.9
+    'Caused by: ': 1.8  # 异常原因
+    'class file for .+ not found': 1.5  # 类未找到
+
+mandatory:
+  # Java异常头
+  'Exception in thread':
+    # 堆栈跟踪行
+    - 'at (\\w+\\.)+\\w+<span data-type="inline-math" data-value="Lis6XGQr"></span>'
+    - 'Caused by: '  # 异常原因
+    - '(\\w+)Exception: .+'  # 异常描述
+    - '^\\s+'  # 缩进的堆栈行
+    - 'java.lang.(\\w+)Exception'  # 核心异常类型
+
+  # 异常原因
+  'Caused by: ':
+    # 堆栈跟踪行
+    - 'at (\\w+\\.)+\\w+<span data-type="inline-math" data-value="Lis6XGQr"></span>'
+    - '(\\w+)Exception: .+'  # 异常描述
+    - '^\\s+'  # 缩进行
+    - 'Also caused by: '  # 多重原因
+
+  java:
+    - "\\b\\d+\\.\\d+\\.\\d+\\b"  # Java版本号
+    - 'OutOfMemoryError'  # 内存溢出
+    - 'NullPointerException'  # 空指针异常
+    - 'ClassNotFoundException'  # 类未找到
+
+capture_patterns:
+  timestamp: "\\b(?:\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2},\\s+\\d{4}\\s+\\d{2}:\\d{2}:\\d{2})\\b"  # 新增美式时间
+  # 新增Java特有的级别
+  level: "\\b(?:TRACE|DEBUG|INFO|WARN|WARNING|ERROR|FATAL|CRITICAL|SEVERE|INFO|CONFIG|FINE|FINER|FINEST|UNKNOWN)\\b"
+  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"

@@ -2,7 +2,7 @@ import asyncio
 import re
 from datetime import datetime, timedelta
 from src.service.embedding import Embedding
-from src.parser.log_feature import log_feature_class_mapping
+from src.parser.log_feature_loader import log_feature_class_mapping
 from src.enum.log import LogTypeEnum, LogValueEnum
 from src.schemas.log import LogModel
 from src.service.ocr import OcrTool
@@ -40,11 +40,11 @@ class LogParser:
         if all(score == 0 for score in score_dict.values()):
             return LogTypeEnum.UNKNOWN
         # 获取得分最高的日志类型
-        best_log_type = max(score_dict, key=score_dict.get)
+        best_log_type = max(score_dict.items(), key=lambda x: x[1])[0]
         return best_log_type
 
     @staticmethod
-    def read_log_file(file_path: str) -> list[str]:
+    def read_log_file(file_path: str) -> list[str] | str:
         """
         读取日志文件，返回日志模型列表
         """
@@ -53,10 +53,11 @@ class LogParser:
         text_end = re.compile(r".*\.(log|txt|md|json|xml|csv)$", re.IGNORECASE)
         if re.match(image_end, file_path):
             log_lines = asyncio.run(OcrTool.image_to_text_list(file_path))
-        if re.match(text_end, file_path):
+        elif re.match(text_end, file_path):
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                 for line in f:
                     log_lines.append(line.strip())
+                    
         return log_lines
 
     @staticmethod
@@ -64,7 +65,7 @@ class LogParser:
         """对日志内容进行脱敏处理"""
         # 这里实现日志内容脱敏的具体逻辑
         log_content = log_model.content
-        log_type: LogTypeEnum = log_model.log_type
+        log_type: LogTypeEnum = log_model.log_type or LogTypeEnum.UNKNOWN
         value_and_value_mask = [
             (LogValueEnum.IP, "<ip>"),
             (LogValueEnum.TIMESTAMP, "<timestamp>"),
@@ -114,7 +115,7 @@ class LogParser:
         for log_model in log_models:
             start_time = None
             end_time = None
-            log_type: LogTypeEnum = log_model.log_type
+            log_type: LogTypeEnum = log_model.log_type or LogTypeEnum.UNKNOWN
             tiemstamp_regex = log_feature_class_mapping[log_type].capture_patterns.get(
                 LogValueEnum.TIMESTAMP.value, None
             )
@@ -182,12 +183,14 @@ class LogParser:
             if (
                 time_start is not None
                 and start_time is not None
+                and time_end is not None
                 and start_time > time_end + delta
             ):
                 continue
             if (
                 time_end is not None
                 and end_time is not None
+                and time_start is not None
                 and end_time < time_start - delta
             ):
                 continue

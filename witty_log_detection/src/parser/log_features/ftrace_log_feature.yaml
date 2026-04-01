@@ -1,0 +1,43 @@
+keywords_regex_and_scores:
+  normal:
+    '# tracer:': 2.0  # Ftrace跟踪器标识
+    'ftrace::': 1.9  # ftrace关键字头
+    '^\\[\\|-\\]+ ': 1.8  # Ftrace函数调用图符号
+    'function_graph::': 1.8  # 函数图跟踪器
+    '^\\[\\d\\.\\]+\\s+\\d+\\s+\\d+\\s+': 1.7  # Ftrace时间戳+PID+CPU格式
+    '^<idle>-0\\s+': 1.7  # 空闲进程跟踪
+    '^swapper/\\d+-\\d+\\s+': 1.7  # 交换进程跟踪
+    'ftrace:': 1.5  # ftrace关键字
+
+  anomalous:
+    'latency_top::': 1.6  # 延迟跟踪（异常指标）
+    'irqsoff::': 1.6  # 中断关闭跟踪（异常指标）
+    'preemptoff::': 1.6  # 抢占关闭跟踪（异常指标）
+
+mandatory:
+  # 函数图跟踪器头
+  'function_graph::':
+    - '^\\[\\|-\\]+ \\w+\\+0x\\[0-9a-f\\]+'  # 函数调用图+偏移
+    - '^\\[\\|-\\]+ \\w+\\(\\)'  # 函数调用
+    - '^\\s*\\d+us\\s+'  # 耗时统计
+    - '^\\+ \\d+\\.\\d+us'  # 函数执行时间
+    - '^\\[\\|-\\]+$'  # 调用图结束符
+
+  # Ftrace跟踪器配置头
+  '# tracer:':
+    - '#\\s+entries:\\s+\\d+'  # 条目数
+    - '#\\s+buf_size:\\s+\\d+'  # 缓冲区大小
+    - '#\\s+CPU:\\s+\\d+'  # CPU编号
+    - '#\\s+print-parent:\\s+\\w+'  # 打印父函数
+    - '^#\\s+\\w+:\\s+.+'  # 配置项
+
+  ftrace:
+    - "^\\d+\\.\\d+\\s+\\d+\\s+\\d+\\s+"  # Ftrace时间戳+PID+CPU
+    - "\\bCPU\\[:=\\]?\\s*\\d+\\b"  # CPU编号
+    - "\\bPID\\[:=\\]?\\s*\\d+\\b"  # PID
+    - "\\bus\\b|\\bms\\b|\\bs\\b"  # 时间单位
+
+capture_patterns:
+  timestamp: "\\b(?:\\d+\\.\\d+|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|\\d{10,13}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\b"
+  level: "\\b(?:emerg|alert|crit|err|warning|notice|info|debug|TRACE|VERBOSE|DEBUG|INFO|WARNING|ERROR|CRITICAL|UNKNOWN)\\b"
+  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"

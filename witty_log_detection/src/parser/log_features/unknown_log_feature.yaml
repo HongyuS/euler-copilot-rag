@@ -1,0 +1,32 @@
+keywords_regex_and_scores:
+  normal:
+    '^\\w+ \\[\\d+\\]:': 1.0  # 通用进程日志格式
+    '^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}': 0.9  # 通用时间戳
+    INFO:: 0.8  # INFO级别
+    '\\[INFO\\]': 0.8  # 括号包裹的INFO级别
+    '^LOG:': 0.7  # LOG前缀
+
+  anomalous:
+    WARN|ERROR|DEBUG:: 0.8  # 警告/错误/调试级别
+    '\\[ERROR\\]|\\[WARN\\]': 0.8  # 括号包裹的错误/警告级别
+    '^WARNING:': 0.7  # WARNING前缀
+    '^ERROR:': 0.7  # ERROR前缀
+
+mandatory:
+  # 通用日志头
+  '^\\d{4}-\\d{2}-\\d{2}':
+    - "\\d{2}:\\d{2}:\\d{2}"  # 时间戳后半部分
+    - "\\b(DEBUG|INFO|WARNING|ERROR)\\b"  # 日志级别
+    - "^\\s+"  # 缩进的日志内容
+    - "\\|\\s+\\w+"  # 分隔符+内容
+
+  # 通用级别头
+  'INFO|WARN|ERROR|DEBUG:':
+    - "^\\s+"  # 缩进的内容
+    - "\\b\\w+\\b"  # 任意单词
+    - "\\d+"  # 任意数字
+
+capture_patterns:
+  timestamp: "\\b(?:\\[\\s*\\d+\\.\\d+\\]|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}|\\d+\\.\\d+|\\d{10,13})\\b"
+  level: "\\b(?:emerg|alert|crit|err|warning|notice|info|debug|DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|PANIC|panic|VERBOSE|LOG|crash|fault|sudo|auth|NOTSET|SEVERE|CONFIG|FINE|FINER|FINEST|LOG_ERR|LOG_INFO|LOG_WARNING)\\b"
+  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"

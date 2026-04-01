@@ -1,0 +1,43 @@
+keywords_regex_and_scores:
+  normal:
+    javascript: 1.7  # javascript关键字
+    js: 1.7  # js关键字
+    node: 1.6  # node.js标识
+    v8:: 1.6  # V8引擎标识
+
+  anomalous:
+    'Error: .+\\n\\s+at .+:\\d+:\\d+': 2.0  # JS错误栈（最高权重）
+    'Uncaught (\\w+)Error: ': 1.9  # 未捕获异常
+    # 堆栈跟踪行
+    '^\\s+at (\\w+ )?<span data-type="inline-math" data-value="Lis6XGQrOlxkKw=="></span>': 1.9
+    'ReferenceError: ': 1.8  # 引用错误
+    'TypeError: ': 1.8  # 类型错误
+    'SyntaxError: ': 1.8  # 语法错误
+
+mandatory:
+  # JS错误头
+  'Error: ':
+    # 堆栈行
+    - '^\\s+at (\\w+ )?<span data-type="inline-math" data-value="Lis6XGQrOlxkKw=="></span>'
+    - 'Uncaught '   # 未捕获标记
+    - '^\\s+'  # 缩进的堆栈行
+    - '<span data-type="inline-math" data-value="Lis6XGQrOlxkKw=="></span>'  # 文件位置
+
+  # Node.js错误
+  'node:':
+    # 堆栈行
+    - '^\\s+at (\\w+ )?<span data-type="inline-math" data-value="Lis6XGQrOlxkKw=="></span>'
+    - 'Error: |(\\w+)Error:'  # 错误类型
+    - '^\\s+'  # 缩进行
+
+  js:
+    - "\\b\\d+\\.\\d+\\.\\d+\\b"  # Node版本号
+    - "require<span data-type=\"inline-math\" data-value=\"Jy4rJw == \"></span>"  # 模块导入
+    - 'module.exports'  # 模块导出
+    - 'import |export '  # ES6模块
+
+capture_patterns:
+  timestamp: "\\b(?:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|\\d{10,13}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\b"
+  # 新增LOG
+  level: "\\b(?:DEBUG|INFO|WARN|WARNING|ERROR|FATAL|TRACE|LOG|VERBOSE|UNKNOWN)\\b"
+  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"

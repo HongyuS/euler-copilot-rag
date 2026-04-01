@@ -1,0 +1,68 @@
+keywords_regex_and_scores:
+  normal:
+    'localhost kernel:': 2.0  # 经典syslog格式dmesg头（最高权重）
+    'localhost \\w+:': 1.9  # 反向格式syslog头
+    '\\[ *\\d+\\.\\d+\\] \\w+:': 1.8  # dmesg标准时间戳+子系统
+    'kernel: \\[ *\\d+\\.\\d+\\]': 1.8  # 反向格式syslog
+    '\\[\\<\\[0-9a-fA-F\\]+\\>\\]': 1.6  # x86架构栈地址格式
+    'pc : |lr : |elr_el1:': 1.6  # ARM/ARM64架构寄存器标识
+    'kernel::': 1.5  # 基础kernel标识
+    'dmesg': 1.2  # dmesg关键字
+    "\\b\\w+\\[\\d+\\]:": 0.8  # 通用进程日志格式（低权重）
+
+  anomalous:
+    '\\[ *\\d+\\.\\d+\\]\\s*Call Trace:': 1.9  # 带时间戳的核心栈头
+    '\\[ *\\d+\\.\\d+\\]\\s*Oops:': 1.9  # 带时间戳的Oops崩溃
+    '\\[ *\\d+\\.\\d+\\]\\s*panic:': 1.9  # 带时间戳的panic崩溃
+    'CPU: \\d+ PID: \\d+ Comm:': 1.7  # dmesg崩溃核心上下文
+    'Backtrace:\\s*$': 1.7  # 嵌入式内核回溯头
+    '\\+\\+\\+ killed by KASAN \\+\\+\\+': 1.7  # KASAN内存检测崩溃标识
+
+mandatory:
+  # 内核最核心栈头，后续是完整调用栈帧
+  'Call Trace:':
+    - '\\+[0-9a-fx]+/[0-9a-fx]+'  # 模块符号+偏移/总长度
+    - '\\[\\[a-zA-Z0-9_\\]+\\]\\s*$'  # 行尾模块名标识
+    - '</?(IRQ|NMI|SOFTIRQ|HARDIRQ)>'  # 中断上下文标记
+    - '^\\s+'  # 栈帧缩进行
+    - '^\\? '  # 符号解析失败的?开头行
+    - '\\[\\<\\[0-9a-fA-F\\]+\\>\\]'  # x86架构地址[<xxxx>]格式
+    - 'pc : \\w+'  # ARM/ARM64 PC寄存器行
+    - 'lr : \\w+'  # ARM/ARM64 LR寄存器行
+    - '\\s+[0-9a-fx]+\\s+'  # 栈地址/偏移数值
+
+  # 嵌入式/ARM架构通用回溯头
+  'Backtrace:\\s*$':
+    - '\\+[0-9a-fx]+/[0-9a-fx]+'
+    - '\\[\\[a-zA-Z0-9_\\]+\\]\\s*$'
+    - '^\\s+'
+    - '^\\? '
+    - 'pc : \\w+'
+    - 'lr : \\w+'
+
+  # 内核Oops轻崩溃头
+  'Oops: \\w+, \\[\\#\\d+\\]':
+    - 'CPU: \\d+ PID: \\d+ Comm: \\w+'  # 崩溃CPU/PID/进程信息
+    - 'Call Trace:'  # 后续关联核心栈头
+    - 'pc is at \\w+\\+0x\\[0-9a-fx\\]+'  # 故障PC地址
+    - 'lr is at \\w+\\+0x\\[0-9a-fx\\]+'  # 故障LR地址
+
+  # 内核panic致命崩溃头
+  'panic: .+':
+    - 'CPU: \\d+ PID: \\d+ Comm: \\w+'
+    - 'Call Trace:'
+    - 'Kernel panic - not syncing:'
+    - 'Pid: \\d+, comm: \\w+'
+
+  # KASAN内存检测崩溃头
+  '\\+\\+\\+ killed by KASAN \\+\\+\\+':
+    - 'Call Trace:'
+    - '^\\s+'
+    - '\\+[0-9a-fx]+/[0-9a-fx]+'
+    - '\\[\\[a-zA-Z0-9_\\]+\\]\\s*$'
+
+capture_patterns:
+  timestamp: "\\b(?:\\[\\s*\\d+\\.\\d+\\]|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\b"
+  level: "\\b(?:emerg|alert|crit|err|warning|notice|info|debug|DEBUG|INFO|WARNING|ERROR|CRITICAL|TRACE|UNKNOWN|FATAL|PANIC|panic)\\b"
+  # 核心优化：同时匹配 纯IP 和 IP+端口 格式
+  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?\\b"

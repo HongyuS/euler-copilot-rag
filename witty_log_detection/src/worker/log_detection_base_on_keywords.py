@@ -1,20 +1,13 @@
 import asyncio
 import json
-from faiss import IndexFlatL2
-import numpy as np
 import jieba
 import re
 from datetime import datetime
 from src.worker.base import BaseWorker
-from src.service.embedding import Embedding
-from src.service.cluster import ClusterService
-from src.service.convert import ConvertService
 from src.parser.parser import LogParser
-from src.parser.log_feature import log_feature_class_mapping
+from src.parser.log_feature_loader import log_feature_class_mapping
 from src.sqlite.manager.task import TaskManager
-from src.sqlite.manager.log_parse_result import LogParseResultManager
 from src.schemas.task import TaskRelatedParamsModel
-from src.schemas.cluster import ClusterModel
 from src.enum.log import LogTypeEnum
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.schemas.log import LogModel
@@ -40,6 +33,7 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
+        """计算日志的情感分数"""
         log_class = log_feature_class_mapping.get(log_type, None)
         if log_class is None:
             return 0.0
@@ -54,7 +48,6 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
     @staticmethod
     async def handle_single_log_file(file_path: str, max_anomaly_log_count: int, anomaly_keywords: list[str], time_start: str, time_end: str) -> list[LogModel]:
         """处理单个日志文件的逻辑"""
-        # 这里实现处理单个日志文件的具体逻辑
         log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, need_split_by_regex=True, time_start=time_start, time_end=time_end)
         for log_model in log_models:
             log_type = log_model.log_type
