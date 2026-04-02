@@ -6,7 +6,8 @@ from src.parser.log_feature_loader import log_feature_class_mapping
 from src.enum.log import LogTypeEnum, LogValueEnum
 from src.schemas.log import LogModel
 from src.service.ocr import OcrTool
-
+import logging
+logger = logging.getLogger(__name__)
 
 class LogParser:
     """
@@ -28,12 +29,12 @@ class LogParser:
                 for keyword_regex, keyword_score in keywrods_regex_and_scores[
                     "normal"
                 ].items():
-                    if re.search(keyword_regex, log_line):
+                    if re.search(re.escape(keyword_regex), log_line):
                         score += keyword_score
                 for keyword_regex, keyword_score in keywrods_regex_and_scores[
                     "anomalous"
                 ].items():
-                    if re.search(keyword_regex, log_line):
+                    if re.search(re.escape(keyword_regex), log_line):
                         score += keyword_score
                 score_dict[log_type] = score
         # 如果所有的日志类型得分都为0，则默认为unknown类型
@@ -86,9 +87,11 @@ class LogParser:
     ) -> None:
         """获取日志模板"""
         # 这里实现获取日志模板的具体逻辑
+        logger.info(f"开始获取{len(log_models)}个日志模板")
         log_templates = []
         for i in range(0, len(log_models), batch_size):
             batch_log_models = log_models[i : i + batch_size]
+            logger.info(f"开始处理第{i+1}个批次，包含{len(batch_log_models)}个日志模型")
             masked_contents = await asyncio.gather(
                 *[
                     LogParser.mask_log_content(log_model)
@@ -97,12 +100,16 @@ class LogParser:
             )
             log_templates += masked_contents
         if need_embedding:
+            # 过滤空字符串、空白文本
+            log_templates = [t for t in log_templates if t and t.strip()]
+            logger.info(f"开始对{len(log_templates)}个日志模板进行嵌入向量化")
             log_template_embeddings = await Embedding.vectorize_embedding(log_templates)
         for i in range(len(log_models)):
+            logger.info(f"开始处理第{i+1}个日志模型")
             log_models[i].template = log_templates[i]
             if need_embedding:
                 log_models[i].template_vector = log_template_embeddings[i]
-
+        logger.info(f"获取到{len(log_models)}个日志模板")
     @staticmethod
     async def filter_log_models_not_in_time_range(
         log_models: list[LogModel],
@@ -215,6 +222,7 @@ class LogParser:
         if need_split_by_regex:
             index = 0
             while index < len(log_lines):
+                logger.info(f"当前处理索引: {index}")
                 log_line = log_lines[index]
                 # 提取时间戳
                 log_type = LogParser.get_log_line_type(log_line)

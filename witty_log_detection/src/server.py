@@ -90,7 +90,7 @@ async def create_log_parse_task(
     """,
 )
 async def get_task_status(
-    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
 ) -> str:
     task_model = await LogTaskHandleService.get_task_message(task_id)
     if task_model is None:
@@ -102,7 +102,7 @@ async def get_task_status(
     name="stop_task",
     description="""
     这是停止任务的工具函数，前端会调用这个接口来停止正在执行的任务。参数包括：
-    - task_id: 任务ID，uuid4格式
+    - task_id: 任务ID，uuid4格式的字符串
     这个函数会返回一个布尔值，表示是否成功停止了任务。返回格式如下：
     {
         "success": true // 如果成功停止了任务，则为true；如果没有成功停止任务（例如任务已经完成或者不存在），则为false
@@ -110,7 +110,7 @@ async def get_task_status(
 """,
 )
 async def stop_task(
-    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
 ) -> str:
     success = await LogTaskHandleService.stop_task(task_id)
     return json.dumps({"success": success})
@@ -120,7 +120,7 @@ async def stop_task(
     name="get_task_result",
     description="""
     这是获取任务结果的工具函数，前端会调用这个接口来获取任务的执行结果。参数包括：
-- task_id: 任务ID，uuid4格式
+- task_id: 任务ID，uuid4格式的字符串
 - offset: 偏移量，整数类型，表示从第几条结果开始返回，用于分页查询
 - limit: 返回结果的数量，整数类型，表示一次返回多少条结果，用于分页查询
 - is_anomalous: 是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志
@@ -143,7 +143,7 @@ async def stop_task(
 )
 #加关键字匹配
 async def get_task_result(
-    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
     offset: int | None = Field(
         default=None,
         description="偏移量，整数类型，表示从第几条结果开始返回，用于分页查询",
@@ -167,6 +167,24 @@ async def get_task_result(
             for log_parse_result_model in log_parse_result_models
         ],
     })
+
+
+@mcp.tool(
+    name="delete_task",
+    description="""
+    这是删除任务的工具函数，前端会调用这个接口来删除指定的任务。参数包括：
+    - task_id: 任务ID，uuid4格式的字符串
+    这个函数会先尝试停止正在运行的任务（如果任务正在运行），然后从数据库中删除任务记录。函数会返回一个布尔值，表示是否成功删除了任务。返回格式如下：
+    {
+        "success": true // 如果成功删除了任务，则为true；如果没有成功删除任务（例如任务不存在），则为false
+    }
+    """,
+)
+async def delete_task(
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
+) -> str:
+    success = await LogTaskHandleService.delete_task(task_id)
+    return json.dumps({"success": success})
 
 
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
