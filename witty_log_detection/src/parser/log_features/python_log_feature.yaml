@@ -1,44 +1,33 @@
 keywords_regex_and_scores:
   normal:
-    '^>>> ': 1.7  # Python交互提示符
-    python: 1.6  # python关键字
-    py:: 1.5  # py后缀标识
-    'import |from ': 1.4  # 导入语句
-    'def \\w+': 1.4  # 函数定义
-
+    '^>>> ': 1.7
+    python: 1.6
+    'py:': 1.5
+    'import |from ': 1.4
+    def \\w+: 1.4
   anomalous:
-    'Traceback <span data-type="inline-math" data-value="bW9zdCByZWNlbnQgY2FsbCBsYXN0"></span>:': 2.0  # Python回溯头（最高权重）
-    'File ".+", line \\d+, in \\w+': 1.9  # 文件行号信息
-    # 函数调用行
-    '^\\s+(\\w+\\.)*\\w+<span data-type="inline-math" data-value="Lio="></span>)?': 1.8
-    '(\\w+)Error: ': 1.8  # 各类Python异常
-    'Exception in thread': 1.8  # 线程异常
-
+    'Traceback :': 2.0
+    File ".+", line \\d+, in \\w+: 1.9
+    ^\\s+(\\w+\\.)*\\w+()?: 1.8
+    '(\\w+)Error: ': 1.8
+    Exception in thread: 1.8
 mandatory:
-  # Python回溯头
-  'Traceback <span data-type="inline-math" data-value="bW9zdCByZWNlbnQgY2FsbCBsYXN0"></span>:':
-    - 'File ".+", line \\d+, in \\w+'  # 文件行号信息
-    # 函数调用行
-    - '^\\s+(\\w+\\.)*\\w+<span data-type="inline-math" data-value="Lio="></span>)?'
-    - '(\\w+)Error: .+'  # 异常类型+描述
-    - '^\\s+'  # 缩进的回溯行
-    - 'AttributeError|TypeError|ValueError|KeyError|IndexError'  # 常见异常
-
-  # Python线程异常
-  'Exception in thread':
-    - 'Traceback <span data-type="inline-math" data-value="bW9zdCByZWNlbnQgY2FsbCBsYXN0"></span>:'  # 关联回溯
-    - 'File ".+", line \\d+, in \\w+'  # 文件行号
-    - '(\\w+)Error: .+'  # 异常信息
-
+  'Traceback :':
+  - File ".+", line \\d+, in \\w+
+  - ^\\s+(\\w+\\.)*\\w+()?
+  - '(\\w+)Error: .+'
+  - ^\\s+
+  - AttributeError|TypeError|ValueError|KeyError|IndexError
+  Exception in thread:
+  - 'Traceback :'
+  - File ".+", line \\d+, in \\w+
+  - '(\\w+)Error: .+'
   python:
-    - "\\b\\d+\\.\\d+\\.\\d+\\b"  # Python版本号
-    - "module '(\\w+)' has no attribute"  # 模块属性错误
-    - "no module named '(\\w+)'"  # 模块未找到
-    - 'SyntaxError:'  # 语法错误
-
+  - \\b\\d+\\.\\d+\\.\\d+\\b
+  - module '(\\w+)' has no attribute
+  - no module named '(\\w+)'
+  - 'SyntaxError:'
 capture_patterns:
-  # 新增ISO8601/毫秒
-  timestamp: "\\b(?:\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\b"
-  # 新增WARN/NOTSET
-  level: "\\b(?:DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL|TRACE|VERBOSE|NOTSET|unknown|UNKNOWN)\\b"
-  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"
+  timestamp: \\b(?:\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?|\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2})\\b
+  level: \\b(?:DEBUG|INFO|WARNING|WARN|ERROR|CRITICAL|FATAL|TRACE|VERBOSE|NOTSET|unknown|UNKNOWN)\\b
+  ip: \\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b

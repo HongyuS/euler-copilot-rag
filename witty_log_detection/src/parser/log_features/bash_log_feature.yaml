@@ -1,47 +1,37 @@
 keywords_regex_and_scores:
   normal:
-    '^\\#!/bin/(ba|k)?sh': 2.0  # Shebang标识（最高权重）
-    '^set -\\[xe\\]': 1.8  # Shell调试模式
-    '^\\+ \\w+': 1.8  # Shell执行跟踪
-    bash: 1.5  # bash关键字
-    sh: 1.4  # sh关键字
-    shell: 1.3  # shell关键字
-
+    ^\\#!/bin/(ba|k)?sh: 2.0
+    ^set -[xe]: 1.8
+    ^\\+ \\w+: 1.8
+    bash: 1.5
+    sh: 1.4
+    shell: 1.3
   anomalous:
-    # 脚本错误
     'line \\d+: (syntax error|command not found|unbound variable)': 1.9
-    'bash: \\w+: No such file or directory': 1.8  # 文件不存在
-    'sh: \\d+: \\w+: not found': 1.8  # 命令未找到
-    'bash: .+: Permission denied': 1.8  # 权限拒绝
-    '/bin/sh: .+ not found': 1.8  # Shell命令未找到
-    'segmentation fault \\(core dumped\\)': 1.7  # 段错误
-
+    '\\bbash: \\w+: No such file or directory': 1.8
+    '\\bsh: \\d+: \\w+: not found': 1.8
+    '\\bbash: .+: Permission denied': 1.8
+    '\\/bin\\/sh: .+ not found': 1.8
+    segmentation fault \\(core dumped\\): 1.7
 mandatory:
-  # Shell错误行
   'line \\d+:':
-    - 'syntax error near unexpected token'  # 语法错误
-    - 'command substitution: line \\d+:'  # 命令替换错误
-    - '^\\s+'  # 缩进的错误详情
-    - "'\\`\\w+\\''"  # 出错的命令
-    - 'No such file or directory'  # 文件不存在
-
-  # Shebang头
-  '^\\#!/bin/(ba|k)?sh':
-    - '^#'  # 注释行
-    - '^export \\w+='  # 环境变量设置
-    - '^alias \\w+='  # 别名设置
-    - '^function \\w+'  # 函数定义
-    - '^\\w+\\(\\) \\{'  # 函数声明
-
-  # Shell调试输出
-  '^\\+ \\w+':
-    - '^\\+ \\w+'  # 连续的执行跟踪行
-    - '^\\+\\[\\['  # 条件判断
-    - '^\\+if |^\\+for |^\\+while'  # 循环/条件语句
-    - '^\\+echo |^\\+printf'  # 输出命令
-
+  - syntax error near unexpected token
+  - 'command substitution: line \\d+:'
+  - ^\\s+
+  - \\`\\w+\\'
+  - No such file or directory
+  ^\\#!/bin/(ba|k)?sh:
+  - ^#
+  - ^export \\w+=
+  - ^alias \\w+=
+  - ^function \\w+
+  - ^\\w+\\(\\) \\{
+  ^\\+ \\w+:
+  - ^\\+ \\w+
+  - ^\\+\\[\\[
+  - ^\\+if |^\\+for |^\\+while
+  - ^\\+echo |^\\+printf
 capture_patterns:
-  timestamp: "\\b(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|\\d{10,13})\\b"
-  # 新增sudo/auth
-  level: "\\b(?:emerg|alert|crit|err|warning|notice|info|debug|sudo|auth|error|INFO|WARNING|UNKNOWN)\\b"
-  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"
+  timestamp: \\b(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}\\s+\\d{2}:\\d{2}:\\d{2}|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|\\d{10,13})\\b
+  level: \\b(?:emerg|alert|crit|err|warning|notice|info|debug|sudo|auth|error|INFO|WARNING|UNKNOWN)\\b
+  ip: \\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b

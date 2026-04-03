@@ -1,42 +1,33 @@
 keywords_regex_and_scores:
   normal:
-    go: 1.7  # go关键字
-    Golang: 1.7  # Golang标识
-    'go routine': 1.6  # 协程描述
-
+    go: 1.7
+    Golang: 1.7
+    go routine: 1.6
   anomalous:
-    # Go协程（最高权重）
-    'goroutine \\d+ \\[(running|sleeping|waiting)': 2.0
-    '^goroutine \\d+:$': 1.9  # 协程头
-    'created by (\\w+\\.)+\\w+ in .+:\\d+': 1.9  # 协程创建信息
-    'at (\\w+\\.)+\\w+(.+:\\d+)': 1.8  # 堆栈行
-    'panic: ': 1.8  # Go panic
-    'runtime error: ': 1.8  # 运行时错误
-    'interface conversion: ': 1.6  # 接口转换错误
-
+    goroutine \\d+ \\[(running|sleeping|waiting)\\]: 2.0
+    ^goroutine \\d+:$: 1.9
+    created by (\\w+\\.)+\\w+ in .+:\\d+: 1.9
+    at (\\w+\\.)+\\w+(.+:\\d+): 1.8
+    'panic: ': 1.8
+    'runtime error: ': 1.8
+    'interface conversion: ': 1.6
 mandatory:
-  # Go协程头
   'goroutine \\d+ ':
-    - '^\\s+at (\\w+\\.)+\\w+(.+:\\d+)'  # 堆栈行
-    - '^\\s+created by (\\w+\\.)+\\w+'  # 创建信息
-    - '^\\s+'  # 缩进的堆栈行
-    - '<span data-type="inline-math" data-value="Lio="></span>$'  # 函数参数
-
-  # Go Panic
+  - ^\\s+at (\\w+\\.)+\\w+(.+:\\d+)
+  - ^\\s+created by (\\w+\\.)+\\w+
+  - ^\\s+
+  - $
   'panic: ':
-    - 'goroutine \\d+ '   # 关联协程
-    - 'runtime error: '  # 运行时错误
-    - 'at (\\w+\\.)+\\w+(.+:\\d+)'  # 堆栈行
-    - '^\\s+'  # 缩进行
-
+  - 'goroutine \\d+ '
+  - 'runtime error: '
+  - at (\\w+\\.)+\\w+(.+:\\d+)
+  - ^\\s+
   go:
-    - "\\b\\d+\\.\\d+\\.\\d+\\b"  # Go版本号
-    - 'deadlock'  # 死锁
-    - 'nil pointer dereference'  # 空指针解引用
-    - 'index out of range'  # 索引越界
-
+  - \\b\\d+\\.\\d+\\.\\d+\\b
+  - deadlock
+  - nil pointer dereference
+  - index out of range
 capture_patterns:
-  # 新增Unix时间戳
-  timestamp: "\\b(?:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|\\d{10,13})\\b"
-  level: "\\b(?:DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC|panic|CRITICAL|TRACE|UNKNOWN)\\b"
-  ip: "\\b(?:(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)\\.){3}(?:25\\[0-5\\]|2\\[0-4\\]\\d|\\[01\\]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b"
+  timestamp: \\b(?:\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z?|\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:\\d{2}:\\d{2}|\\d{10,13})\\b
+  level: \\b(?:DEBUG|INFO|WARN|WARNING|ERROR|FATAL|PANIC|panic|CRITICAL|TRACE|UNKNOWN)\\b
+  ip: \\b(?:(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d\\d?)(?::\\d{1,5})?(?:\\/\\d{1,2})?\\b

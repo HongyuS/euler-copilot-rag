@@ -29,12 +29,12 @@ class LogParser:
                 for keyword_regex, keyword_score in keywrods_regex_and_scores[
                     "normal"
                 ].items():
-                    if re.search(re.escape(keyword_regex), log_line):
+                    if re.search(keyword_regex, log_line):
                         score += keyword_score
                 for keyword_regex, keyword_score in keywrods_regex_and_scores[
                     "anomalous"
                 ].items():
-                    if re.search(re.escape(keyword_regex), log_line):
+                    if re.search(keyword_regex, log_line):
                         score += keyword_score
                 score_dict[log_type] = score
         # 如果所有的日志类型得分都为0，则默认为unknown类型
