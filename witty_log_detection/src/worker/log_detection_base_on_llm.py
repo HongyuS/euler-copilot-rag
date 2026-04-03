@@ -155,7 +155,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
                     # 更新进度
                     current_progress = 5.0 + processed_weight * 90.0
                     logger.info(f"[进度更新] task_id={task_id}, progress={current_progress:.1f}%")
-                    await TaskManager.update_task_by_id(task_id, {"completion_precent": min(current_progress, 99.9)})
+                    await TaskManager.update_task_by_id(task_id, {"completion_precent": min(current_progress, 95)})
             
             # 阶段3：最终处理 (5%)
             candidate_unnormal_log_models.sort(
@@ -169,7 +169,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
             
             progress = 100.0
             logger.info(f"[进度更新] task_id={task_id}, progress={progress:.1f}%")
-            await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 99.9)})
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": progress})
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
         except Exception as e:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})

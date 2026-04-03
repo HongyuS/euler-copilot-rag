@@ -73,7 +73,6 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         """计算余弦相似度"""
         vec1_np = np.array(vec1)
         vec2_np = np.array(vec2)
-        vec2_np = vec2_np.squeeze()
         if np.linalg.norm(vec1_np) == 0 or np.linalg.norm(vec2_np) == 0:
             return 0.0
         cosine_similarity = np.dot(
@@ -190,6 +189,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                 
             query = task_related_params_model.query
             query_embedding = await Embedding.get_embedding(query)
+            query_embedding = query_embedding[0]
             file_path_list = task_related_params_model.file_path_list
             max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
             anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
@@ -219,7 +219,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                         candidate_unnormal_log_model_list)
                 processed_files += len(batch_file_path_list)
                 # 更新任务进度
-                progress = (processed_files / total_files) * 100
+                progress = (processed_files / total_files) * 95
                 logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
                 await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
             # 通过query embedding（余弦距离 30%） 、 异常关键词（50%）和情感模型（20%）来对候选的异常日志进行排序，选出最终的异常日志列表返回

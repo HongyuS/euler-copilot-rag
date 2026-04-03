@@ -116,7 +116,7 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
                         candidate_unnormal_log_model_list)
                 processed_files += len(batch_file_path_list)
                 # 更新任务进度
-                progress = (processed_files / total_files) * 100
+                progress = (processed_files / total_files) * 95
                 _logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
                 await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
             candidate_unnormal_log_models.sort(
