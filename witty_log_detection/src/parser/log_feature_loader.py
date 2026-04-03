@@ -1,8 +1,10 @@
 import os
 import yaml
 from src.enum.log import LogTypeEnum
-from src.config.config import Config
+from src.config.config import Config, ConfigModel
 
+feature_directory = os.path.join(os.path.dirname(__file__), 'log_features')
+config = Config().get_config()
 
 class BaseLogFeature:
     """基础日志特征类"""
@@ -17,7 +19,7 @@ class LogFeatureLoader:
     """日志特征加载器"""
 
     @staticmethod
-    def load_from_directory(directory: str):
+    def load(config: ConfigModel = config, directory: str = feature_directory):
         """
         从指定目录加载日志特征
 
@@ -28,7 +30,6 @@ class LogFeatureLoader:
             日志类型到特征对象的映射
         """
         log_feature_mapping = {}
-        config = Config().get_config()
         log_types_to_load = config.log_parse_config.log_types_to_load
 
         if not log_types_to_load:
@@ -60,5 +61,4 @@ class LogFeatureLoader:
 
 
 # 动态加载日志特征配置
-config_directory = os.path.join(os.path.dirname(__file__), 'log_features')
-log_feature_class_mapping = LogFeatureLoader.load_from_directory(config_directory)
+log_feature_class_mapping = LogFeatureLoader.load()
