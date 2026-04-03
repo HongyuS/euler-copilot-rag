@@ -27,27 +27,6 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
     name = TaskTypeEnum.LOG_DETECTION_BASE_ON_LLM.value
 
     @staticmethod
-    def _calculate_file_weights(file_path_list: list[str]) -> dict[str, float]:
-        """计算每个文件的权重，基于文件大小"""
-        file_sizes = {}
-        total_size = 0
-        for file_path in file_path_list:
-            try:
-                size = os.path.getsize(file_path)
-                file_sizes[file_path] = size
-                total_size += size
-            except Exception:
-                file_sizes[file_path] = 1
-                total_size += 1
-        
-        weights = {}
-        for file_path in file_path_list:
-            weights[file_path] = file_sizes[file_path] / total_size if total_size > 0 else 1 / len(file_path_list)
-        return weights
-    
-
-
-    @staticmethod
     async def handle_single_log_model(query: str, log_model: LogModel, llm: LLMService) -> LogModel:
         """处理单个日志模型的逻辑"""
         log_content = log_model.content
@@ -69,11 +48,20 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
             query: str,
             llm: LLMService,
             time_start: str,
-            time_end: str
+            time_end: str,
+            task_id: str,
+            base_progress: float,
+            phase_progress: float
     ) -> tuple[list[Any], list[Any]]:
-        """处理单个日志文件的逻辑"""
+        """处理单个日志文件的逻辑，带进度更新"""
+        # 阶段1：解析日志文件
         log_models: list[LogModel] = await LogParser.parse_log_file(
             file_path=file_path, time_start=time_start, time_end=time_end, chunk_size=min(8192, llm.max_tokens//3*2))
+        progress = base_progress + phase_progress * 1
+        logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+        await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
+        
+        # 阶段2：处理日志模型，调用LLM进行分析
         for i in range(0, len(log_models), llm.batch_size):
             batch_log_models = log_models[i:i + llm.batch_size]
             handle_tasks = []
@@ -81,8 +69,18 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
                 handle_tasks.append(
                     LogDetectionBasedOnLLMWorker.handle_single_log_model(query, log_model, llm))
             await asyncio.gather(*handle_tasks)
+        
+        progress = base_progress + phase_progress * 2
+        logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+        await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
+        
         candidate_unnormal_log_models = sorted(
             log_models, key=lambda x: x.anomaly_score, reverse=True)[:max_anomaly_log_count]
+        
+        progress = base_progress + phase_progress * 3
+        logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+        await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
+        
         return log_models, candidate_unnormal_log_models
 
     @staticmethod
@@ -119,15 +117,7 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
             log_models = []
             candidate_unnormal_log_models: list[LogModel] = []
             file_path_list = await BaseWorker.get_files_from_file_path_list(file_path_list)
-            progress = 2.5
-            logger.info(f"[进度更新] task_id={task_id}, progress={progress:.1f}%")
-            await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 99.9)})
-            
-            # 计算文件权重
-            file_weights = LogDetectionBasedOnLLMWorker._calculate_file_weights(file_path_list)
-            progress = 5.0
-            logger.info(f"[进度更新] task_id={task_id}, progress={progress:.1f}%")
-            await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 99.9)})
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": 5.0})
             
             # 阶段2：处理文件 (90%)
             batch_size = 8
@@ -139,38 +129,33 @@ class LogDetectionBasedOnLLMWorker(BaseWorker):
                 batch_size=Config().get_config().llm_model.batch_size
                 )
             
-            processed_weight = 0.0
+            n_files = len(file_path_list)
+            # 每个文件分为3个阶段，总共有90%的进度用于文件处理
+            total_file_process_percent = 90.0
+            phase_progress = total_file_process_percent / (n_files * 3) if n_files > 0 else 0
+            
             for i in range(0, len(file_path_list), batch_size):
                 batch_file_path_list = file_path_list[i:i + batch_size]
                 
-                # 串行处理每个文件以更新进度
-                for file_path in batch_file_path_list:
+                # 批量处理文件
+                for file_idx, file_path in enumerate(batch_file_path_list):
+                    file_base_progress = 5.0 + (i + file_idx) * 3 * phase_progress
                     log_model_list, candidate_unnormal_log_model_list = await LogDetectionBasedOnLLMWorker.handle_single_log_file(
-                        file_path, max_anomaly_log_count, query, llm, time_start, time_end
+                        file_path, max_anomaly_log_count, query, llm, time_start, time_end, task_id, file_base_progress, phase_progress
                     )
                     log_models.extend(log_model_list)
                     candidate_unnormal_log_models.extend(candidate_unnormal_log_model_list)
-                    processed_weight += file_weights[file_path]
-                    
-                    # 更新进度
-                    current_progress = 5.0 + processed_weight * 90.0
-                    logger.info(f"[进度更新] task_id={task_id}, progress={current_progress:.1f}%")
-                    await TaskManager.update_task_by_id(task_id, {"completion_precent": min(current_progress, 95)})
             
             # 阶段3：最终处理 (5%)
             candidate_unnormal_log_models.sort(
                 key=lambda x: x.anomaly_score, reverse=True)
             candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
-            progress = 97.5
-            logger.info(f"[进度更新] task_id={task_id}, progress={progress:.1f}%")
-            await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 99.9)})
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": 97.5})
             
             await LogDetectionBasedOnLLMWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
             
-            progress = 100.0
-            logger.info(f"[进度更新] task_id={task_id}, progress={progress:.1f}%")
-            await TaskManager.update_task_by_id(task_id, {"completion_precent": progress})
-            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": 100.0, "status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
+            logger.info(f"[进度更新] task_id={task_id}, total=100.0%")
         except Exception as e:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})
             raise e
