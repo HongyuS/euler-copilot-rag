@@ -1,25 +1,19 @@
 import asyncio
 import json
-from faiss import IndexFlatL2
-import numpy as np
 import jieba
 import re
 from datetime import datetime
 from src.worker.base import BaseWorker
-from src.service.embedding import Embedding
-from src.service.cluster import ClusterService
-from src.service.convert import ConvertService
 from src.parser.parser import LogParser
-from src.parser.log_feature import log_feature_class_mapping
+from src.parser.log_feature_loader import log_feature_class_mapping
 from src.sqlite.manager.task import TaskManager
-from src.sqlite.manager.log_parse_result import LogParseResultManager
 from src.schemas.task import TaskRelatedParamsModel
-from src.schemas.cluster import ClusterModel
 from src.enum.log import LogTypeEnum
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.schemas.log import LogModel
+import logging
 
-
+_logger = logging.getLogger(__name__)
 class LogDetectionBasedOnKeywordsWorker(BaseWorker):
     """
     基于关键词的日志检测Worker
@@ -40,6 +34,7 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
+        """计算日志的情感分数"""
         log_class = log_feature_class_mapping.get(log_type, None)
         if log_class is None:
             return 0.0
@@ -47,14 +42,13 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
         score = 0.0
         for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"].items():
             sum += _
-            if re.search(anomalous_keywords, log_content):
+            if re.search(re.escape(anomalous_keywords), log_content):
                 score += _
         return score/sum * 100 if sum > 0 else 0.0
 
     @staticmethod
     async def handle_single_log_file(file_path: str, max_anomaly_log_count: int, anomaly_keywords: list[str], time_start: str, time_end: str) -> list[LogModel]:
         """处理单个日志文件的逻辑"""
-        # 这里实现处理单个日志文件的具体逻辑
         log_models: list[LogModel] = await LogParser.parse_log_file(file_path=file_path, need_split_by_regex=True, time_start=time_start, time_end=time_end)
         for log_model in log_models:
             log_type = log_model.log_type
@@ -89,6 +83,8 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
                 task_related_params_js["time_end"] = None
             task_related_params_model = TaskRelatedParamsModel(
                 **task_related_params_js)
+            _logger.info(f"任务 {task_id} 相关参数: {task_related_params_model}")
+            
             query = task_related_params_model.query
             file_path_list = task_related_params_model.file_path_list
             max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
@@ -100,6 +96,13 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
             candidate_unnormal_log_models: list[LogModel] = []
             batch_size = 8
             file_path_list = await BaseWorker.get_files_from_file_path_list(file_path_list)
+            _logger.info(f"任务 {task_id} 处理文件路径列表: {file_path_list}")
+            total_files = len(file_path_list)
+            processed_files = 0
+            # 更新任务进度为0%
+            progress = 0.0
+            _logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": progress})
             for i in range(0, len(file_path_list), batch_size):
                 batch_file_path_list = file_path_list[i:i + batch_size]
                 handle_tasks = []
@@ -111,11 +114,19 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
                     log_models.extend(log_model_list)
                     candidate_unnormal_log_models.extend(
                         candidate_unnormal_log_model_list)
+                processed_files += len(batch_file_path_list)
+                # 更新任务进度
+                progress = (processed_files / total_files) * 95
+                _logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+                await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
             candidate_unnormal_log_models.sort(
                 key=lambda x: x.anomaly_score, reverse=True)
             candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
             await LogDetectionBasedOnKeywordsWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
-            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
+            # 任务完成，更新进度为100%
+            progress = 100.0
+            _logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": progress, "status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
         except Exception as e:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})
             raise e

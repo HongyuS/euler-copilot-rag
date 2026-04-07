@@ -1,14 +1,12 @@
 import uuid
 import json
-from pydantic import BaseModel, Field
+from pydantic import Field
 import asyncio
 from mcp.server import FastMCP
-import uuid
 from src.config.config import Config
 from src.service.log import LogTaskHandleService
 from src.enum.task import TaskTypeEnum
 from src.sqlite.sqlite import AsyncSQLiteSingleton
-from src.sqlite.manager.task import TaskManager
 from src.service.task import TaskService
 
 host = Config().get_config().run_config.host
@@ -20,7 +18,7 @@ mcp = FastMCP("Log Detect MCP Server", host=host, port=port)
     name="create_log_parse_task",
     description="""
     这是创建日志解析任务的工具函数，前端会调用这个接口来创建日志解析任务。参数包括：
-    - task_type: 任务类型，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）,也可以者不传，默认为配置文件中设置的日志解析方法
+    - task_type: 任务类型，枚举值包括：base（基础版本，直接返回日志内容，不进行异常检测）、log_detection_base_on_keywords（基于关键词的日志检测）、log_detection_base_on_clustering（基于聚类的日志检测）、log_detection_base_on_llm（基于LLM的日志检测）,log_detection_base_on_embedding_keywords(基于embedding和关键字的日志检测),也可以者不传，默认为配置文件中设置的日志解析方法
     - query: 查询语句，用于描述当前的异常现象或者需要关注的日志内容，基于这个查询语句，日志检测Worker会进行日志异常检测
     - file_path_list: 日志文件路径列表，包含需要进行日志检测的日志文件的路径
     - max_anomaly_log_count: 最大异常日志数量，日志检测Worker会根据这个数量来限制返回的异常日志的数量，确保不会返回过多的异常日志
@@ -92,7 +90,7 @@ async def create_log_parse_task(
     """,
 )
 async def get_task_status(
-    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
 ) -> str:
     task_model = await LogTaskHandleService.get_task_message(task_id)
     if task_model is None:
@@ -104,7 +102,7 @@ async def get_task_status(
     name="stop_task",
     description="""
     这是停止任务的工具函数，前端会调用这个接口来停止正在执行的任务。参数包括：
-    - task_id: 任务ID，uuid4格式
+    - task_id: 任务ID，uuid4格式的字符串
     这个函数会返回一个布尔值，表示是否成功停止了任务。返回格式如下：
     {
         "success": true // 如果成功停止了任务，则为true；如果没有成功停止任务（例如任务已经完成或者不存在），则为false
@@ -112,7 +110,7 @@ async def get_task_status(
 """,
 )
 async def stop_task(
-    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
 ) -> str:
     success = await LogTaskHandleService.stop_task(task_id)
     return json.dumps({"success": success})
@@ -122,7 +120,7 @@ async def stop_task(
     name="get_task_result",
     description="""
     这是获取任务结果的工具函数，前端会调用这个接口来获取任务的执行结果。参数包括：
-- task_id: 任务ID，uuid4格式
+- task_id: 任务ID，uuid4格式的字符串
 - offset: 偏移量，整数类型，表示从第几条结果开始返回，用于分页查询
 - limit: 返回结果的数量，整数类型，表示一次返回多少条结果，用于分页查询
 - is_anomalous: 是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志
@@ -143,8 +141,9 @@ async def stop_task(
     ]
 """,
 )
+#加关键字匹配
 async def get_task_result(
-    task_id: uuid.UUID = Field(description="任务ID，uuid4格式"),
+    task_id: str = Field(description="任务ID，uuid4格式的字符串"),
     offset: int | None = Field(
         default=None,
         description="偏移量，整数类型，表示从第几条结果开始返回，用于分页查询",
@@ -169,7 +168,6 @@ async def get_task_result(
         ],
     })
 
-
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
 
 
@@ -189,5 +187,6 @@ if __name__ == "__main__":
         import os
         import signal
         print(f"任务监听进程ID：{listener.pid}")
-        os.kill(listener.pid, signal.SIGKILL)
+        if listener.pid is not None:
+            os.kill(listener.pid, signal.SIGKILL)
         print(f"任务监听进程ID：{listener.pid} 已被终止")

@@ -31,3 +31,9 @@ RUN_PORT = 12144
 [OCR_CONFIG]
 OCR_METHOD = "offline" # 可选值：offline、online
 OCR_API_URL = ""
+
+# 日志解析特征配置
+[LOG_PARSE_CONFIG]
+# 要加载的日志类型，留空表示加载所有类型
+# 可用类型：dmesg、kdump、ftrace、bash、python、java、go、javascript、c、cpp、unknown
+LOG_TYPES_TO_LOAD = []

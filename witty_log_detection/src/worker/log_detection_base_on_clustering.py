@@ -1,26 +1,26 @@
 import asyncio
 import math
 import json
+import logging
 from faiss import IndexFlatL2
 import numpy as np
 import jieba
 import re
 from datetime import datetime
+
 from src.worker.base import BaseWorker
 from src.service.embedding import Embedding
 from src.service.cluster import ClusterService
-from src.service.convert import ConvertService
 from src.parser.parser import LogParser
-from src.parser.log_feature import log_feature_class_mapping
+from src.parser.log_feature_loader import log_feature_class_mapping
 from src.sqlite.manager.task import TaskManager
-from src.sqlite.manager.log_parse_result import LogParseResultManager
 from src.schemas.task import TaskRelatedParamsModel
 from src.schemas.cluster import ClusterModel
 from src.enum.log import LogTypeEnum
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.schemas.log import LogModel
 
-
+logger = logging.getLogger(__name__)
 class LogDetectionBasedOnClusteringWorker(BaseWorker):
     name = TaskTypeEnum.LOG_DETECTION_BASE_ON_CLUSTERING.value
 
@@ -94,6 +94,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
+        """计算日志的情感分数"""
         log_class = log_feature_class_mapping.get(log_type, None)
         if log_class is None:
             return 0.0
@@ -185,8 +186,10 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                 task_related_params_js["time_end"] = None
             task_related_params_model = TaskRelatedParamsModel(
                 **task_related_params_js)
+                
             query = task_related_params_model.query
             query_embedding = await Embedding.get_embedding(query)
+            query_embedding = query_embedding[0]
             file_path_list = task_related_params_model.file_path_list
             max_anomaly_log_count = task_related_params_model.max_anomaly_log_count
             anomaly_keywords: list[str] = task_related_params_model.anomaly_keywords
@@ -197,6 +200,12 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
             candidate_unnormal_log_models: list[LogModel] = []
             batch_size = 8
             file_path_list = await BaseWorker.get_files_from_file_path_list(file_path_list)
+            total_files = len(file_path_list)
+            processed_files = 0
+            # 更新任务进度为0%
+            progress = 0.0
+            logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": progress})
             for i in range(0, len(file_path_list), batch_size):
                 batch_file_path_list = file_path_list[i:i + batch_size]
                 handle_tasks = []
@@ -208,6 +217,11 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
                     log_models.extend(log_model_list)
                     candidate_unnormal_log_models.extend(
                         candidate_unnormal_log_model_list)
+                processed_files += len(batch_file_path_list)
+                # 更新任务进度
+                progress = (processed_files / total_files) * 95
+                logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+                await TaskManager.update_task_by_id(task_id, {"completion_precent": min(progress, 95)})
             # 通过query embedding（余弦距离 30%） 、 异常关键词（50%）和情感模型（20%）来对候选的异常日志进行排序，选出最终的异常日志列表返回
             for log_model in candidate_unnormal_log_models:
                 cosine_similarity = await LogDetectionBasedOnClusteringWorker.cal_cosine_similarity(log_model.template_vector, query_embedding)
@@ -222,7 +236,10 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
             candidate_unnormal_log_models = candidate_unnormal_log_models[:max_anomaly_log_count]
             await LogDetectionBasedOnClusteringWorker.add_log_parse_results(candidate_unnormal_log_models, log_models, task_id)
 
-            await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
+            # 任务完成，更新进度为100%
+            progress = 100.0
+            logger.info(f"[进度更新] task_id={task_id}, total={progress:.1f}%")
+            await TaskManager.update_task_by_id(task_id, {"completion_precent": progress, "status": TaskStatusEnum.SUCCESSFUL_PENDING_REMOVE.value})
         except Exception as e:
             await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.FAILED_PENDING_REMOVE.value})
             raise e
