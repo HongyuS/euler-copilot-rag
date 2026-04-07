@@ -2,6 +2,7 @@
 MCP Server for RAG Knowledge Base Management
 基于 SSE 传输的 RAG 知识库 MCP 服务
 """
+import asyncio
 import os
 import sys
 import yaml
@@ -21,7 +22,10 @@ from tool import (
 )
 
 # 导入本地配置
-from common.config import get_language
+from common.config import get_language, get_task_db_path
+from sqlite.task_sqlite import init_task_db
+from manager.task_manager import TaskManager
+from common.task import run_task_listener_in_process
 
 # 加载 prompt 配置
 config_path = os.path.join(current_dir, "prompt.yaml")
@@ -71,10 +75,11 @@ async def mcp_document_manager(
     file_paths: Optional[List[str]] = None,
     kb_name: Optional[str] = None,
     chunk_size: Optional[int] = None,
-    doc_name: Optional[str] = None
+    doc_name: Optional[str] = None,
+    task_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """文档管理器"""
-    return await document_manager(action, file_paths, kb_name, chunk_size, doc_name)
+    return await document_manager(action, file_paths, kb_name, chunk_size, doc_name, task_id)
 
 
 @mcp.tool(
@@ -95,4 +100,7 @@ async def mcp_search(
 
 
 if __name__ == "__main__":
+    init_task_db(get_task_db_path())
+    asyncio.run(TaskManager.update_running_tasks_to_pending_tasks())
+    run_task_listener_in_process()
     mcp.run(transport='sse')

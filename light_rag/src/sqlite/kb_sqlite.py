@@ -1,5 +1,5 @@
 """
-SQLite 数据库模型和连接池
+知识库数据库 - kb.db ORM 模型和连接池
 """
 from sqlalchemy import (
     Column, String, Integer, Text, DateTime, ForeignKey, 
@@ -109,43 +109,29 @@ class DatabaseConnectionManager:
     def init_database(self, db_path: str):
         """
         初始化数据库连接池
-        
         :param db_path: 数据库文件路径
         """
         abs_db_path = os.path.abspath(db_path)
-        
         if abs_db_path in self._engines:
             return
-        
         db_dir = os.path.dirname(abs_db_path)
         if db_dir and not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
-        
-        # 创建引擎
         engine = create_engine(
             f'sqlite:///{abs_db_path}',
             echo=False,
             connect_args={'check_same_thread': False}
         )
-        
-        # 创建会话工厂
         session_factory = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-        
-        # 存储引擎和会话工厂
         self._engines[abs_db_path] = engine
         self._session_factories[abs_db_path] = session_factory
-        
         self._init_database_tables(engine)
     
     def _init_database_tables(self, engine):
         """初始化数据库表结构"""
         try:
-            # 创建所有表
             Base.metadata.create_all(engine)
-            
-            # 加载 sqlite-vec 扩展并创建 FTS5 和 vec_index 表
             with engine.begin() as conn:
-                # 创建 FTS5 虚拟表（需要使用原生 SQL）
                 conn.execute(text("""
                     CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
                         id UNINDEXED,
@@ -153,8 +139,6 @@ class DatabaseConnectionManager:
                         content_rowid=id
                     )
                 """))
-                
-                # 加载 sqlite-vec 扩展
                 try:
                     raw_conn = conn.connection.dbapi_connection
                     raw_conn.enable_load_extension(True)
@@ -162,8 +146,6 @@ class DatabaseConnectionManager:
                     raw_conn.enable_load_extension(False)
                 except Exception as e:
                     logger.warning(f"加载 sqlite-vec 扩展失败: {e}")
-                
-                # 创建 vec_index 虚拟表
                 try:
                     vector_dim = get_embedding_vector_dimension()
                     conn.execute(text(f"""
@@ -174,76 +156,43 @@ class DatabaseConnectionManager:
                 except Exception as e:
                     logger.warning(f"创建 vec_index 表失败: {e}")
         except Exception as e:
-            logger.exception(f"[sqlite] 初始化数据库失败: {e}")
+            logger.exception(f"[kb_sqlite] 初始化数据库失败: {e}")
             raise e
     
     def get_engine(self, db_path: str = None):
-        """
-        获取数据库引擎
-        
-        :param db_path: 数据库文件路径（可选，如果为None则返回第一个初始化的引擎）
-        :return: 数据库引擎
-        """
         if db_path is None:
-            # 如果没有指定路径，返回第一个引擎（通常是主数据库）
             if not self._engines:
                 raise RuntimeError("数据库引擎未初始化，请先调用 init_database()")
             return next(iter(self._engines.values()))
-        
         abs_db_path = os.path.abspath(db_path)
         if abs_db_path not in self._engines:
             raise RuntimeError(f"数据库引擎未初始化，请先调用 init_database('{db_path}')")
         return self._engines[abs_db_path]
     
     def get_session(self, db_path: str = None) -> Session:
-        """
-        获取数据库会话
-        
-        :param db_path: 数据库文件路径（可选，如果为None则使用第一个初始化的数据库）
-        :return: 数据库会话
-        """
         if db_path is None:
-            # 如果没有指定路径，使用第一个会话工厂（通常是主数据库）
             if not self._session_factories:
                 raise RuntimeError("数据库会话工厂未初始化，请先调用 init_database()")
             return next(iter(self._session_factories.values()))()
-        
         abs_db_path = os.path.abspath(db_path)
         if abs_db_path not in self._session_factories:
             raise RuntimeError(f"数据库会话工厂未初始化，请先调用 init_database('{db_path}')")
         return self._session_factories[abs_db_path]()
 
 
-# 创建单例实例
 _db_manager = DatabaseConnectionManager()
 
 
-# 保留原有函数接口，向后兼容
 def init_database(db_path: str):
-    """
-    初始化数据库连接池
-    
-    :param db_path: 数据库文件路径
-    """
+    """初始化数据库连接池"""
     return _db_manager.init_database(db_path)
 
 
 def get_engine(db_path: str = None):
-    """
-    获取数据库引擎
-    
-    :param db_path: 数据库文件路径（可选，如果为None则返回第一个初始化的引擎）
-    :return: 数据库引擎
-    """
+    """获取数据库引擎"""
     return _db_manager.get_engine(db_path)
 
 
 def get_session(db_path: str = None) -> Session:
-    """
-    获取数据库会话
-    
-    :param db_path: 数据库文件路径（可选，如果为None则使用第一个初始化的数据库）
-    :return: 数据库会话
-    """
+    """获取数据库会话"""
     return _db_manager.get_session(db_path)
-

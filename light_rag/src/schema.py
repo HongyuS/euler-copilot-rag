@@ -82,6 +82,31 @@ class ImportDocumentData(BaseModel):
     failed_files: List[ImportFileFailed] = Field(default_factory=list, description="失败的文件列表")
 
 
+class ImportTaskData(BaseModel):
+    """创建导入任务的响应数据"""
+    task_id: str = Field(..., description="任务ID")
+    file_count: int = Field(..., description="文件数量")
+    message: str = Field(..., description="提示信息")
+
+
+class TaskStatusData(BaseModel):
+    """任务状态响应数据"""
+    task_id: str = Field(..., description="任务ID")
+    status: str = Field(..., description="任务状态")
+    completion_precent: float = Field(0.0, description="完成百分比")
+    success_count: int = Field(0, description="成功数")
+    failed_count: int = Field(0, description="失败数")
+    success_files: List[ImportFileSuccess] = Field(default_factory=list, description="成功文件列表")
+    failed_files: List[ImportFileFailed] = Field(default_factory=list, description="失败文件列表")
+
+
+class CancelTaskData(BaseModel):
+    """取消任务响应数据"""
+    task_id: str = Field(..., description="任务ID")
+    canceled: bool = Field(..., description="是否已取消")
+    message: str = Field(..., description="提示信息")
+
+
 class ListDocumentsData(BaseModel):
     """列出文档的响应数据"""
     documents: List[DocumentInfo] = Field(default_factory=list, description="文档信息列表")

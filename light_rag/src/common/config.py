@@ -35,6 +35,7 @@ def _load_config() -> Dict[str, Any]:
                 "model_name": "text-embedding-ada-002",
                 "timeout": 30,
                 "vector_dimension": 1024,
+                "embedding_batch_size": 8,
             },
             "token": {
                 "model": "gpt-4",
@@ -67,6 +68,7 @@ def _load_config() -> Dict[str, Any]:
             "model_name": config_data.get("embedding", {}).get("model_name", "text-embedding-ada-002"),
             "timeout": config_data.get("embedding", {}).get("timeout", 30),
             "vector_dimension": config_data.get("embedding", {}).get("vector_dimension", 1024),
+            "embedding_batch_size": config_data.get("embedding", {}).get("embedding_batch_size", 8),
         },
         "token": {
             "model": config_data.get("token", {}).get("model", "gpt-4"),
@@ -120,6 +122,15 @@ def get_embedding_vector_dimension() -> int:
     return _cfg()["embedding"]["vector_dimension"]
 
 
+def get_embedding_batch_size() -> int:
+    """单次 embedding 请求包含的文本条数（OpenAI 兼容接口 input 数组长度）。"""
+    n = _cfg()["embedding"].get("embedding_batch_size", 8)
+    try:
+        return max(1, int(n))
+    except (TypeError, ValueError):
+        return 8
+
+
 def get_token_model() -> str:
     return _cfg()["token"]["model"]
 
@@ -166,6 +177,41 @@ def get_github_request_timeout() -> int:
 
 def get_github_rate_limit_delay() -> int:
     return _cfg()["github"]["rate_limit_delay"]
+
+
+def get_task_db_path() -> str:
+    """获取任务数据库路径"""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # src/common -> src，task.db 与 kb.db 同目录
+    src_dir = os.path.dirname(current_dir)
+    default_path = os.path.join(src_dir, "database", "task.db")
+    try:
+        import toml
+        config_path = _get_config_path()
+        if os.path.exists(config_path):
+            data = toml.load(config_path)
+            rel = (data.get("task") or {}).get("db_path", "")
+            if rel:
+                base = os.path.dirname(os.path.abspath(config_path))
+                return os.path.abspath(os.path.join(base, rel))
+    except Exception:
+        pass
+    return default_path
+
+
+def get_task_cpu_limit() -> int:
+    """获取任务并发 CPU 限制"""
+    try:
+        import toml
+        config_path = _get_config_path()
+        if os.path.exists(config_path):
+            data = toml.load(config_path)
+            n = (data.get("task") or {}).get("cpu_use_limit")
+            if n is not None:
+                return max(1, min(int(n), (os.cpu_count() or 4) // 2))
+    except Exception:
+        pass
+    return max(1, (os.cpu_count() or 4) // 2)
 
 
 def get_language() -> str:

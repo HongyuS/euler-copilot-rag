@@ -7,7 +7,7 @@ from datetime import datetime
 import logging
 from sqlalchemy.exc import SQLAlchemyError
 
-from common.sqlite import (
+from sqlite.kb_sqlite import (
     Base, KnowledgeBase, Document,
     init_database, get_engine, get_session
 )

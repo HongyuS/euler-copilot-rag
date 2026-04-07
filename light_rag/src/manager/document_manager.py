@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple
 
 import jieba
 from common.embedding import Embedding
-from common.sqlite import Chunk, Document
+from sqlite.kb_sqlite import Chunk, Document
 from common.token_tool import TokenTool
 from parser.parser import Parser
 from sqlalchemy import text
