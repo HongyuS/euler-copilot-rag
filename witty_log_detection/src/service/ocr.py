@@ -1,5 +1,4 @@
-from PIL import Image, ImageEnhance
-import yaml
+# Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
 import cv2
 import numpy as np
 import requests
@@ -29,7 +28,7 @@ class OcrTool:
         model = None
 
     @staticmethod
-    async def ocr_from_image_path(image_path: str) -> list:
+    async def ocr_from_image_path(image_path: str) -> list | None:
         try:
             # 打开图片
             if Config().get_config().ocr_config.method == OcrMethodEnum.ONLINE and Config().get_config().ocr_config.api_url:
@@ -49,10 +48,14 @@ class OcrTool:
             return None
 
     @staticmethod
-    async def ocr_from_image(image: np.ndarray) -> list:
+    async def ocr_from_image(image: np.ndarray) -> list | None:
         try:
 
             # 尝试OCR识别
+            if OcrTool.model is None:
+                err = "[OCRTool] 当前机器不支持 AVX-512，无法进行OCR识别"
+                logging.error(err)
+                return None
             ocr_result = OcrTool.model.ocr(image)
             return ocr_result
         except Exception as e:
@@ -61,10 +64,10 @@ class OcrTool:
             return None
 
     @staticmethod
-    async def merge_text_from_ocr_result(ocr_result: list) -> str:
+    async def merge_text_from_ocr_result(ocr_result: list | None) -> list[str] | str:
         text_list = []
         try:
-            if ocr_result[0] is None or len(ocr_result[0]) == 0:
+            if ocr_result is None or ocr_result[0] is None or len(ocr_result[0]) == 0:
                 return ""
             # 先根据x坐标对文本行进行排序，再根据y坐标对文本行进行排序，最后合并文本行
             ocr_result[0].sort(key=lambda x: (x[0][0][0], x[0][0][1]))
@@ -93,7 +96,7 @@ class OcrTool:
 
     @staticmethod
     async def image_to_text_list(
-            image_file_path: str) -> list[str]:
+            image_file_path: str) -> list[str] | str:
         try:
             ocr_result = await OcrTool.ocr_from_image_path(image_file_path)
             text_list = await OcrTool.merge_text_from_ocr_result(ocr_result)

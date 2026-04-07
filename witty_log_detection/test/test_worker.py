@@ -120,7 +120,7 @@ class TestBaseWorker:
     @pytest.mark.asyncio
     async def test_get_worker_name(self, test_task):
         """测试获取worker名称"""
-        worker_name = await BaseWorker.get_worker_name(uuid.UUID(test_task))
+        worker_name = await BaseWorker.get_worker_name(test_task)
         assert worker_name == TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value
 
     @pytest.mark.asyncio
@@ -128,7 +128,7 @@ class TestBaseWorker:
         """测试获取不存在任务的worker名称"""
         non_existent_id = str(uuid.uuid4())
         with pytest.raises(ValueError):
-            await BaseWorker.get_worker_name(uuid.UUID(non_existent_id))
+            await BaseWorker.get_worker_name(non_existent_id)
 
     @pytest.mark.asyncio
     async def test_get_files_from_file_path_list_single_file(self, temp_log_file):
@@ -1009,13 +1009,13 @@ class TestIntegration:
         """测试worker运行和停止"""
         task_id = test_task
 
-        result = await BaseWorker.run(uuid.UUID(task_id))
+        result = await BaseWorker.run(task_id)
         assert result is True
 
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.RUNNING.value
 
-        result = await BaseWorker.stop(uuid.UUID(task_id))
+        result = await BaseWorker.stop(task_id)
         assert result is True
 
         task = await TaskManager.get_task_by_id(task_id)

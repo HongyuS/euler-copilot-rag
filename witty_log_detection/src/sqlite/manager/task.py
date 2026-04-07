@@ -31,9 +31,7 @@ class TaskManager:
             WHERE task_id IN ({placeholders})
         """
         results = await AsyncSQLiteSingleton().execute_query(sql_str, tuple(task_ids))
-        for i in range(len(results)):
-            results[i] = TaskModel(**results[i])
-        return results
+        return [TaskModel(**result) for result in results]
 
     @staticmethod
     async def get_tasks_by_status(status: list[TaskStatusEnum]) -> list[TaskModel]:
@@ -48,9 +46,7 @@ class TaskManager:
         """
         tmp_tuple = tuple(s.value for s in status)
         results = await AsyncSQLiteSingleton().execute_query(sql_str, tmp_tuple)
-        for i in range(len(results)):
-            results[i] = TaskModel(**results[i])
-        return results
+        return [TaskModel(**result) for result in results]
 
     @staticmethod
     async def update_task_by_id(task_id: str, update_data: dict) -> bool:
