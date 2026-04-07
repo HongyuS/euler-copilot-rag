@@ -6,7 +6,7 @@ import signal
 
 from enums.task import TaskStatusEnum
 from manager.task_manager import TaskManager
-from manager.document_manager import run_document_import_task
+from worker.document_import_worker import run as run_document_import
 
 logger = logging.getLogger(__name__)
 _mp_ctx = __import__("multiprocessing").get_context("spawn")
@@ -79,7 +79,7 @@ async def _process_pending_tasks() -> None:
     tasks = await TaskManager.get_tasks_by_status([TaskStatusEnum.PENDING])
     for t in tasks:
         await TaskManager.update_task_by_id(t["task_id"], {"status": TaskStatusEnum.RUNNING.value})
-        ok = await _add_task(t["task_id"], run_document_import_task, t["task_id"])
+        ok = await _add_task(t["task_id"], run_document_import, t["task_id"])
         if not ok:
             await TaskManager.update_task_by_id(t["task_id"], {"status": TaskStatusEnum.PENDING.value})
 
