@@ -70,9 +70,9 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         """识别query意图类型"""
         query_lower = query.lower()
         
-        # 特定类型问题关键词
+        # 特定类型问题关键词 - 避免与异常排查关键词重叠，只保留明确的问题类型关键词
         specific_type_keywords = {
-            "oom": ["内存溢出", "oom", "out of memory", "内存不足", "OOM", "内存泄漏"],
+            "oom": ["内存溢出", "oom", "out of memory", "内存不足", "内存泄漏"],
             "timeout": ["超时", "timeout", "time out", "连接超时", "请求超时", "read timeout", "write timeout"],
             "crash": ["崩溃", "crash", "宕机", "挂了", "退出", "重启", "core dump", "段错误", "segment fault"],
             "network": ["网络", "连接失败", "断开", "丢包", "延迟高", "ping不通", "端口不通", "网络抖动", "丢包率高"],
@@ -81,28 +81,45 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
             "resource": ["磁盘满", "磁盘不足", "空间不足", "inode满", "文件句柄", "端口耗尽", "资源不足", "fd不够"],
             "disk": ["磁盘坏道", "io错误", "磁盘只读", "挂载失败", "raid故障", "磁盘告警"],
             "config": ["配置错误", "参数不对", "配置不生效", "配置加载失败", "配置文件错误"],
-            "service": ["服务异常", "进程不存在", "服务起不来", "启动失败", "停止失败", "状态异常"]
+            "service": ["进程不存在", "服务起不来", "启动失败", "停止失败", "状态异常"]
         }
         
         # 异常排查类关键词
         anomaly_keywords = [
-            "分析", "排查", "看看", "检查", "有没有问题", "是否正常",
+            "分析", "排查", "看看", "检查", "有没有问题", "正常",
             "异常", "错误", "故障", "问题", "帮忙看", "帮我看看",
             "什么原因", "为啥", "怎么回事", "原因是什么", "为什么"
         ]
         
-        # 先判断是否是特定类型查询
+        # 精确检索特征模式
+        precise_patterns = [
+            r'\d+\.\d+\.\d+\.\d+',  # IP地址
+            r'0x[0-9a-fA-F]+',      # 十六进制错误码
+            r'[A-Z]+-\d+',          # 错误码格式如ERR-123
+            r'错误码\s*\d+',         # 错误码XXX格式
+            r'端口\s*\d+',           # 端口XXX格式
+            r'\d{5,}',              # 5位以上数字（端口号、错误码等）
+            r'([a-zA-Z0-9_-]+)\.[a-zA-Z]{2,}',  # 域名
+        ]
+        
+        # 决策逻辑：精确检索 > 特定问题 > 异常排查
+        # 1. 先判断是否是精确检索（包含具体特征）
+        for pattern in precise_patterns:
+            if re.search(pattern, query):
+                return "precise_search"
+        
+        # 2. 再判断是否是特定问题
         for type_, keywords in specific_type_keywords.items():
             for kw in keywords:
                 if kw in query_lower:
                     return "specific_type"
         
-        # 再判断是否是异常排查类
+        # 3. 最后判断是否是异常排查
         for kw in anomaly_keywords:
             if kw in query_lower:
                 return "anomaly_detection"
         
-        # 其他情况属于精确检索
+        # 4. 兜底为精确检索
         return "precise_search"
     
     @staticmethod
