@@ -72,17 +72,23 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         
         # 特定类型问题关键词
         specific_type_keywords = {
-            "oom": ["内存溢出", "oom", "out of memory", "内存不足"],
-            "timeout": ["超时", "timeout", "time out", "连接超时", "请求超时"],
-            "crash": ["崩溃", "crash", "宕机", "挂了", "退出", "重启"],
-            "network": ["网络", "连接失败", "断开", "丢包", "延迟高"],
-            "error": ["错误", "error", "exception", "fail", "failed"]
+            "oom": ["内存溢出", "oom", "out of memory", "内存不足", "OOM", "内存泄漏"],
+            "timeout": ["超时", "timeout", "time out", "连接超时", "请求超时", "read timeout", "write timeout"],
+            "crash": ["崩溃", "crash", "宕机", "挂了", "退出", "重启", "core dump", "段错误", "segment fault"],
+            "network": ["网络", "连接失败", "断开", "丢包", "延迟高", "ping不通", "端口不通", "网络抖动", "丢包率高"],
+            "error": ["错误", "error", "exception", "fail", "failed", "ERROR", "Exception"],
+            "performance": ["CPU高", "cpu使用率", "内存高", "内存使用率", "负载高", "load高", "IO高", "磁盘慢", "响应慢"],
+            "resource": ["磁盘满", "磁盘不足", "空间不足", "inode满", "文件句柄", "端口耗尽", "资源不足", "fd不够"],
+            "disk": ["磁盘坏道", "io错误", "磁盘只读", "挂载失败", "raid故障", "磁盘告警"],
+            "config": ["配置错误", "参数不对", "配置不生效", "配置加载失败", "配置文件错误"],
+            "service": ["服务异常", "进程不存在", "服务起不来", "启动失败", "停止失败", "状态异常"]
         }
         
         # 异常排查类关键词
         anomaly_keywords = [
             "分析", "排查", "看看", "检查", "有没有问题", "是否正常",
-            "异常", "错误", "故障", "问题", "帮忙看", "帮我看看"
+            "异常", "错误", "故障", "问题", "帮忙看", "帮我看看",
+            "什么原因", "为啥", "怎么回事", "原因是什么", "为什么"
         ]
         
         # 先判断是否是特定类型查询
@@ -136,18 +142,32 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         if len(log_models) == 0:
             return log_models, []
         
-        # 获取日志模板和 embedding
-        await LogParser.get_log_templates(log_models=log_models, need_embedding=True)
-        
-        # 多维度评分
-        candidate_unnormal_log_models: list[LogModel] = []
-        for log_model in log_models:
-            # 1. 计算语义相似度
-            semantic_similarity = 0.0
-            if log_model.template_vector:
-                semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
-                    log_model.template_vector, query_vector
-                )
+        # 获取日志特征和embedding
+        if enable_template:
+            # 使用模板模式：生成日志模板并向量化
+            await LogParser.get_log_templates(log_models=log_models, need_embedding=True)
+            # 多维度评分
+            candidate_unnormal_log_models: list[LogModel] = []
+            for log_model in log_models:
+                # 1. 计算语义相似度（使用模板向量）
+                semantic_similarity = 0.0
+                if log_model.template_vector:
+                    semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
+                        log_model.template_vector, query_vector
+                    )
+        else:
+            # 不使用模板：直接对原始日志内容向量化
+            log_contents = [log.content for log in log_models]
+            content_vectors = await Embedding.vectorize_embedding(log_contents)
+            # 多维度评分
+            candidate_unnormal_log_models: list[LogModel] = []
+            for i, log_model in enumerate(log_models):
+                # 1. 计算语义相似度（使用原始内容向量）
+                semantic_similarity = 0.0
+                if content_vectors[i] is not None:
+                    semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
+                        content_vectors[i], query_vector
+                    )
             
             # 2. 计算关键字相似度
             keyword_similarity = await LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(
