@@ -118,3 +118,7 @@ class ConfigModel(BaseModel):
         default=OcrConfig(), 
         description="OCR配置", 
         alias="OCR_CONFIG")
+    embedding_worker_batch_size: int = Field(
+        default=8, 
+        description="基于嵌入的日志检测worker处理文件时的批大小", 
+        alias="EMBEDDING_WORKER_BATCH_SIZE")

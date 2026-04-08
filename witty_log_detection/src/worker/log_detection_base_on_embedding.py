@@ -15,6 +15,8 @@ from src.enum.log import LogTypeEnum
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.schemas.log import LogModel
 from src.service.embedding import Embedding
+from src.config.config import Config
+from src.enum.pattern import PreciseSearchPatternEnum, QueryIntentEnum
 
 logger = logging.getLogger(__name__)
 
@@ -26,16 +28,47 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
     name = TaskTypeEnum.LOG_DETECTION_BASE_ON_EMBEDDING.value
 
     @staticmethod
-    async def cal_keyword_similarity(str1: str, keywords: list[str]) -> float:
-        """计算jaccard相似度"""
-        words = list(jieba.cut(str1))
-        new_keywords = []
-        for keyword in keywords:
-            new_keywords.extend(jieba.cut(keyword)) 
-        keywords = set(new_keywords)
-        words_set = set(words)
-        intersection = words_set & keywords
-        return (len(intersection) / len(keywords) if len(keywords) > 0 else 0.0)*100
+    def cal_keyword_similarity(
+        log_words: list[str],
+        word_vector_dict: dict[str, list[float]],
+        keyword_vectors: list[list[float]],
+        query_word_vectors: list[list[float]]
+    ) -> float:
+        """计算基于embedding的关键字相似度：
+        1. 使用预计算的词向量字典
+        2. 计算每个词与keywords和query词的余弦相似度
+        3. 取平均值"""
+        if not keyword_vectors and not query_word_vectors:
+            return 0.0
+        
+        if not log_words:
+            return 0.0
+        
+        total_similarity = 0.0
+        count = 0
+        
+        for word in log_words:
+            log_vec = word_vector_dict.get(word)
+            if log_vec is None:
+                continue
+            
+            max_keyword_sim = 0.0
+            for kw_vec in keyword_vectors:
+                sim = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(log_vec, kw_vec)
+                if sim > max_keyword_sim:
+                    max_keyword_sim = sim
+            
+            max_query_sim = 0.0
+            for qw_vec in query_word_vectors:
+                sim = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(log_vec, qw_vec)
+                if sim > max_query_sim:
+                    max_query_sim = sim
+            
+            word_sim = max(max_keyword_sim, max_query_sim)
+            total_similarity += word_sim
+            count += 1
+        
+        return total_similarity / count if count > 0 else 0.0
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:
@@ -76,8 +109,7 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
             "timeout": ["超时", "timeout", "time out", "连接超时", "请求超时", "read timeout", "write timeout"],
             "crash": ["崩溃", "crash", "宕机", "挂了", "退出", "重启", "core dump", "段错误", "segment fault"],
             "network": ["网络", "连接失败", "断开", "丢包", "延迟高", "ping不通", "端口不通", "网络抖动", "丢包率高"],
-            "error": ["错误", "error", "exception", "fail", "failed", "ERROR", "Exception"],
-            "performance": ["CPU高", "cpu使用率", "内存高", "内存使用率", "负载高", "load高", "IO高", "磁盘慢", "响应慢"],
+            "performance": ["cpu高", "cpu使用率", "内存高", "内存使用率", "负载高", "load高", "io高", "磁盘慢", "响应慢"],
             "resource": ["磁盘满", "磁盘不足", "空间不足", "inode满", "文件句柄", "端口耗尽", "资源不足", "fd不够"],
             "disk": ["磁盘坏道", "io错误", "磁盘只读", "挂载失败", "raid故障", "磁盘告警"],
             "config": ["配置错误", "参数不对", "配置不生效", "配置加载失败", "配置文件错误"],
@@ -92,65 +124,40 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         ]
         
         # 精确检索特征模式
-        precise_patterns = [
-            r'\d+\.\d+\.\d+\.\d+',  # IP地址
-            r'0x[0-9a-fA-F]+',      # 十六进制错误码
-            r'[A-Z]+-\d+',          # 错误码格式如ERR-123
-            r'错误码\s*\d+',         # 错误码XXX格式
-            r'端口\s*\d+',           # 端口XXX格式
-            r'\d{5,}',              # 5位以上数字（端口号、错误码等）
-            r'([a-zA-Z0-9_-]+)\.[a-zA-Z]{2,}',  # 域名
-        ]
+        precise_patterns = PreciseSearchPatternEnum.get_all_patterns()
         
         # 决策逻辑：精确检索 > 特定问题 > 异常排查
         # 1. 先判断是否是精确检索（包含具体特征）
         for pattern in precise_patterns:
             if re.search(pattern, query):
-                return "precise_search"
+                return QueryIntentEnum.PRECISE_SEARCH
         
         # 2. 再判断是否是特定问题
         for type_, keywords in specific_type_keywords.items():
             for kw in keywords:
                 if kw in query_lower:
-                    return "specific_type"
+                    return QueryIntentEnum.SPECIFIC_TYPE
         
         # 3. 最后判断是否是异常排查
         for kw in anomaly_keywords:
             if kw in query_lower:
-                return "anomaly_detection"
+                return QueryIntentEnum.ANOMALY_DETECTION
         
         # 4. 兜底为精确检索
-        return "precise_search"
+        return QueryIntentEnum.PRECISE_SEARCH
     
-    @staticmethod
-    def smart_decide_template_usage(query: str) -> bool:
-        """根据query内容智能判断是否需要开启模板生成"""
-        # 包含具体特征关键词，说明要搜索具体内容，关闭模板
-        concrete_patterns = [
-            r'\d+\.\d+\.\d+\.\d+',  # IP地址
-            r'0x[0-9a-fA-F]+',      # 十六进制错误码
-            r'[A-Z]+-\d+',          # 错误码格式如ERR-123
-            r'\d{4,}',              # 4位以上数字（端口号、错误码等）
-            r'([a-zA-Z0-9_-]+)\.[a-zA-Z]{2,}',  # 域名
-        ]
-        
-        for pattern in concrete_patterns:
-            if re.search(pattern, query):
-                return False
-        
-        # 其他情况默认开启模板，匹配语义模式
-        return True
+
 
     @staticmethod
     async def handle_single_log_file(
         file_path: str, 
         max_anomaly_log_count: int, 
-        anomaly_keywords: list[str], 
+        keyword_vectors: list[list[float]],
+        query_word_vectors: list[list[float]],
         time_start: str, 
         time_end: str,
         query_vector: list[float],
-        intent: str,
-        enable_template: bool
+        intent: str
     ) -> tuple[list[LogModel], list[LogModel]]:
         """处理单个日志文件的逻辑：直接计算embedding相似度和关键字匹配"""
         # 解析日志文件
@@ -159,36 +166,40 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         if len(log_models) == 0:
             return log_models, []
         
-        # 获取日志特征和embedding
-        if enable_template:
-            # 使用模板模式：生成日志模板并向量化
-            await LogParser.get_log_templates(log_models=log_models, need_embedding=True)
-            # 多维度评分
-            candidate_unnormal_log_models: list[LogModel] = []
-            for log_model in log_models:
-                # 1. 计算语义相似度（使用模板向量）
-                semantic_similarity = 0.0
-                if log_model.template_vector:
-                    semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
-                        log_model.template_vector, query_vector
-                    )
-        else:
-            # 不使用模板：直接对原始日志内容向量化
-            log_contents = [log.content for log in log_models]
-            content_vectors = await Embedding.vectorize_embedding(log_contents)
-            # 多维度评分
-            candidate_unnormal_log_models: list[LogModel] = []
-            for i, log_model in enumerate(log_models):
-                # 1. 计算语义相似度（使用原始内容向量）
-                semantic_similarity = 0.0
-                if content_vectors[i] is not None:
-                    semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
-                        content_vectors[i], query_vector
-                    )
+        # 不使用模板：直接对原始日志内容向量化
+        log_contents = [log.content for log in log_models]
+        content_vectors = await Embedding.vectorize_embedding(log_contents)
+        
+        # 批量收集所有日志的分词，去重后一次性向量化
+        all_words_set = set()
+        log_words_list = []
+        for log_model in log_models:
+            log_words = list(jieba.cut(log_model.content))
+            log_words_list.append(log_words)
+            all_words_set.update(log_words)
+        
+        # 一次性向量化所有唯一词
+        all_words = list(all_words_set)
+        word_vector_dict = {}
+        if all_words:
+            all_word_vectors = await Embedding.vectorize_embedding(all_words)
+            for word, vec in zip(all_words, all_word_vectors):
+                if vec is not None:
+                    word_vector_dict[word] = vec
+        
+        # 多维度评分
+        candidate_unnormal_log_models: list[LogModel] = []
+        for log_model, content_vector, log_words in zip(log_models, content_vectors, log_words_list):
+            # 1. 计算语义相似度（使用原始内容向量）
+            semantic_similarity = 0.0
+            if content_vector is not None:
+                semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
+                    content_vector, query_vector
+                )
             
-            # 2. 计算关键字相似度
-            keyword_similarity = await LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(
-                log_model.content, anomaly_keywords
+            # 2. 计算关键字相似度（使用预计算的词向量字典）
+            keyword_similarity = LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(
+                log_words, word_vector_dict, keyword_vectors, query_word_vectors
             )
             
             # 3. 计算情感分数
@@ -196,11 +207,11 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
                 log_model.log_type, log_model.content
             )
             
-            # 动态权重调整
-            if intent == "precise_search":
+            # 意图识别的动态权重调整
+            if intent == QueryIntentEnum.PRECISE_SEARCH:
                 # 精确检索：语义相似度权重最高
                 final_score = semantic_similarity * 0.6 + keyword_similarity * 0.3 + sentiment_score * 0.1
-            elif intent == "anomaly_detection":
+            elif intent == QueryIntentEnum.ANOMALY_DETECTION:
                 # 异常排查：异常分数权重最高
                 final_score = sentiment_score * 0.5 + keyword_similarity * 0.3 + semantic_similarity * 0.2
             else:  # specific_type
@@ -252,13 +263,26 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
             time_start = task_related_params_model.time_start
             time_end = task_related_params_model.time_end
             
-            # 前置处理：query向量化和意图识别（只执行一次）
+            # 前置处理：query向量化、意图识别和关键词向量化（只执行一次）
             logger.info(f"[任务准备] 开始处理query: {query}")
             query_vectors = await Embedding.vectorize_embedding([query])
             query_vector = query_vectors[0]
             intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
-            enable_template = LogDetectionBasedOnEmbeddingWorker.smart_decide_template_usage(query)
-            logger.info(f"[任务准备] query意图识别结果: {intent}, 是否启用模板: {enable_template}")
+            logger.info(f"[任务准备] query意图识别结果: {intent}")
+            
+            # 对query分词并向量化
+            query_words = list(jieba.cut(query))
+            query_word_vectors = []
+            if query_words:
+                query_word_vectors = await Embedding.vectorize_embedding(query_words)
+                query_word_vectors = [vec for vec in query_word_vectors if vec is not None]
+            
+            # 对关键词向量化
+            keyword_vectors = []
+            if anomaly_keywords:
+                keyword_vectors = await Embedding.vectorize_embedding(anomaly_keywords)
+                keyword_vectors = [vec for vec in keyword_vectors if vec is not None]
+            logger.info(f"[任务准备] 关键词向量化完成: {len(keyword_vectors)}个关键词向量")
             
             # 准备工作
             log_models = []
@@ -273,7 +297,7 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
             await TaskManager.update_task_by_id(task_id, {"completion_precent": progress})
             
             # 批量处理文件
-            batch_size = 8
+            batch_size = Config().get_config().embedding_worker_batch_size
             for i in range(0, len(file_path_list), batch_size):
                 batch_file_path_list = file_path_list[i:i + batch_size]
                 
@@ -281,15 +305,15 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
                 handle_tasks = []
                 for file_path in batch_file_path_list:
                     handle_tasks.append(LogDetectionBasedOnEmbeddingWorker.handle_single_log_file(
-                        file_path, 
-                        max_anomaly_log_count, 
-                        anomaly_keywords, 
-                        time_start, 
-                        time_end,
-                        query_vector,
-                        intent,
-                        enable_template
-                    ))
+                    file_path, 
+                    max_anomaly_log_count, 
+                    keyword_vectors,
+                    query_word_vectors,
+                    time_start, 
+                    time_end,
+                    query_vector,
+                    intent
+                ))
                 
                 batch_results = await asyncio.gather(*handle_tasks)
                 

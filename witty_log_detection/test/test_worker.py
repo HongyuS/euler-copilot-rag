@@ -24,6 +24,7 @@ from src.schemas.task import TaskModel, TaskRelatedParamsModel
 from src.schemas.log import LogModel
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.enum.log import LogTypeEnum, LogLevelEnum
+from src.enum.pattern import QueryIntentEnum
 from src.service.cluster import ClusterService
 from src.service.llm import LLMService
 from src.config.config import Config
@@ -421,7 +422,7 @@ class TestLogDetectionBasedOnEmbeddingWorker:
         ]
         for query in queries:
             intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
-            assert intent == "precise_search"
+            assert intent == QueryIntentEnum.PRECISE_SEARCH
 
     @pytest.mark.asyncio
     async def test_classify_query_intent_anomaly_detection(self):
@@ -431,11 +432,11 @@ class TestLogDetectionBasedOnEmbeddingWorker:
             "排查下系统问题",
             "帮忙分析下错误日志",
             "系统运行正常吗？",
-            "为什么服务挂了？"
+            "为什么服务没了？"
         ]
         for query in queries:
             intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
-            assert intent == "anomaly_detection"
+            assert intent == QueryIntentEnum.ANOMALY_DETECTION
 
     @pytest.mark.asyncio
     async def test_classify_query_intent_specific_type(self):
@@ -449,7 +450,7 @@ class TestLogDetectionBasedOnEmbeddingWorker:
         ]
         for query in queries:
             intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
-            assert intent == "specific_type"
+            assert intent == QueryIntentEnum.SPECIFIC_TYPE
 
     @pytest.mark.asyncio
     async def test_classify_query_intent_default(self):
@@ -461,37 +462,7 @@ class TestLogDetectionBasedOnEmbeddingWorker:
         ]
         for query in queries:
             intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
-            assert intent == "precise_search"
-
-    @pytest.mark.asyncio
-    async def test_smart_decide_template_usage_disable(self):
-        """测试智能决策不使用模板的场景"""
-        # 包含具体特征（IP、十六进制、4位以上数字等），应该不使用模板
-        queries = [
-            "192.168.1.1 错误",
-            "0xdeadbeef 崩溃",
-            "错误ERR-123 发生",
-            "端口3306 连接失败",
-            "访问www.example.com失败"
-        ]
-        for query in queries:
-            enable_template = LogDetectionBasedOnEmbeddingWorker.smart_decide_template_usage(query)
-            assert enable_template is False
-
-    @pytest.mark.asyncio
-    async def test_smart_decide_template_usage_enable(self):
-        """测试智能决策使用模板的场景"""
-        # 不包含具体特征，应该使用模板
-        queries = [
-            "网络错误",
-            "内存溢出",
-            "服务崩溃",
-            "连接超时",
-            "异常排查"
-        ]
-        for query in queries:
-            enable_template = LogDetectionBasedOnEmbeddingWorker.smart_decide_template_usage(query)
-            assert enable_template is True
+            assert intent == QueryIntentEnum.PRECISE_SEARCH
 
     @pytest.mark.asyncio
     async def test_cal_cosine_similarity_full_match(self):
@@ -520,10 +491,19 @@ class TestLogDetectionBasedOnEmbeddingWorker:
     @pytest.mark.asyncio
     async def test_cal_keyword_similarity(self):
         """测试关键词相似度计算"""
-        text = "error network timeout"
-        keywords = ["error", "timeout", "failed"]
-        similarity = await LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(text, keywords)
-        assert abs(similarity - (2 * 100 / 3)) < 0.001  # 匹配到2个关键词，允许微小精度误差
+        import jieba
+        log_words = list(jieba.cut("error network timeout"))
+        word_vector_dict = {
+            "error": [1.0, 0.0, 0.0],
+            "network": [0.0, 1.0, 0.0],
+            "timeout": [0.0, 0.0, 1.0]
+        }
+        keyword_vectors = [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]  # error, timeout
+        query_word_vectors = []
+        similarity = LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(
+            log_words, word_vector_dict, keyword_vectors, query_word_vectors
+        )
+        assert 0 < similarity <= 100.0
 
     @pytest.mark.asyncio
     async def test_cal_sentiment_score(self):

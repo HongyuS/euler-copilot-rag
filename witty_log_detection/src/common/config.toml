@@ -5,6 +5,9 @@ LOG_PARSE_METHOD = "log_detection_base_on_llm"
 # SQLite数据库文件路径
 SQL_LITE_DB_PATH = "log_detection_multi_process.db"
 
+# 基于嵌入的日志检测worker处理文件时的批大小
+EMBEDDING_WORKER_BATCH_SIZE = 8
+
 # Embedding模型配置
 [EMBEDDING_MODEL]
 EMBEDDING_PROVIDER = "openai"
