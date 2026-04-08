@@ -1,0 +1,33 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "agent": {
+        "已知问题分析Agent": {
+          "description": "对故障日志进行分析，使用witty_log_detection工具进行分析，使用light_rag工具进行检索，生成分析报告",
+          "prompt": "{file:/usr/share/witty/opencode/agents/known-issue-agent/known-issue-agent.md}",
+          "color": "#00AFFF",
+          "light_rag_*": "allow",
+          "witty_log_detection_*": "allow",
+          "edit": "allow",
+          "bash": {
+            "*": "allow"
+          },
+          "read": {
+            "*": "allow",
+            "*.env": "ask",
+            "*.env.*": "ask"
+          }
+        }
+    },
+    "mcp": {
+      "light_rag": {
+        "type": "remote",
+        "url": "http://localhost:12311/sse",
+        "enabled": true
+      },
+      "witty_log_detection": {
+        "type": "remote",
+        "url": "http://localhost:12144/sse",
+        "enabled": true
+      }
+    }
+}
