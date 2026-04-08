@@ -3,7 +3,6 @@
     "agent": {
         "已知问题分析Agent": {
           "description": "对故障日志进行分析，使用witty_log_detection工具进行分析，使用light_rag工具进行检索，生成分析报告",
-          "mode": "subagent",
           "prompt": "{file:/usr/share/witty/opencode/agents/known-issue-agent/known-issue-agent.md}",
           "color": "#00AFFF",
           "light_rag_*": "allow",
