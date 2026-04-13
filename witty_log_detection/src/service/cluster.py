@@ -77,7 +77,7 @@ class ClusterService:
         clusters = []
         for log in log_models:
             cluster = ClusterModel(
-                cluster_center=log.template_vector,
+                cluster_center=log.template_vector or [],
                 log_models=[log]
             )
             clusters.append(cluster)
@@ -160,7 +160,7 @@ class ClusterService:
         clusters = []
         for log_model in log_models:
             cluster = ClusterModel(
-                cluster_center=log_model.template_vector,
+                cluster_center=log_model.template_vector or [],
                 log_models=[log_model]
             )
             clusters.append(cluster)

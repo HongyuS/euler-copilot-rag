@@ -14,13 +14,17 @@ from src.worker.log_detection_base_on_clustering import (
     LogDetectionBasedOnClusteringWorker,
 )
 from src.worker.log_detection_base_on_llm import LogDetectionBasedOnLLMWorker
+from src.worker.log_detection_base_on_embedding import LogDetectionBasedOnEmbeddingWorker
 from src.service.task import TaskService
+from src.parser.parser import LogParser
+from src.parser.log_feature_loader import log_feature_class_mapping, BaseLogFeature
 from src.sqlite.manager.task import TaskManager
 from src.sqlite.manager.log_parse_result import LogParseResultManager
 from src.schemas.task import TaskModel, TaskRelatedParamsModel
 from src.schemas.log import LogModel
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.enum.log import LogTypeEnum, LogLevelEnum
+from src.enum.pattern import QueryIntentEnum
 from src.service.cluster import ClusterService
 from src.service.llm import LLMService
 from src.config.config import Config
@@ -116,11 +120,12 @@ class TestBaseWorker:
         assert TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value in worker_names
         assert TaskTypeEnum.LOG_DETECTION_BASE_ON_CLUSTERING.value in worker_names
         assert TaskTypeEnum.LOG_DETECTION_BASE_ON_LLM.value in worker_names
+        assert TaskTypeEnum.LOG_DETECTION_BASE_ON_EMBEDDING.value in worker_names
 
     @pytest.mark.asyncio
     async def test_get_worker_name(self, test_task):
         """测试获取worker名称"""
-        worker_name = await BaseWorker.get_worker_name(uuid.UUID(test_task))
+        worker_name = await BaseWorker.get_worker_name(test_task)
         assert worker_name == TaskTypeEnum.LOG_DETECTION_BASE_ON_KEYWORDS.value
 
     @pytest.mark.asyncio
@@ -128,7 +133,7 @@ class TestBaseWorker:
         """测试获取不存在任务的worker名称"""
         non_existent_id = str(uuid.uuid4())
         with pytest.raises(ValueError):
-            await BaseWorker.get_worker_name(uuid.UUID(non_existent_id))
+            await BaseWorker.get_worker_name(non_existent_id)
 
     @pytest.mark.asyncio
     async def test_get_files_from_file_path_list_single_file(self, temp_log_file):
@@ -399,6 +404,139 @@ class TestLogDetectionBasedOnClusteringWorker:
             vec1, vec2
         )
         assert 0 <= similarity <= 100.0
+
+
+class TestLogDetectionBasedOnEmbeddingWorker:
+    """LogDetectionBasedOnEmbeddingWorker 测试类"""
+
+    @pytest.mark.asyncio
+    async def test_classify_query_intent_precise_search(self):
+        """测试识别精确检索类查询"""
+        # 包含具体错误码、IP、端口等特征
+        queries = [
+            "查找错误码500的日志",
+            "192.168.1.100 登录失败",
+            "端口8080 连接超时",
+            "0x1234 错误",
+            "用户ID 12345 异常"
+        ]
+        for query in queries:
+            intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
+            assert intent == QueryIntentEnum.PRECISE_SEARCH
+
+    @pytest.mark.asyncio
+    async def test_classify_query_intent_anomaly_detection(self):
+        """测试识别异常排查类查询"""
+        queries = [
+            "看看有没有异常",
+            "排查下系统问题",
+            "帮忙分析下错误日志",
+            "系统运行正常吗？",
+            "为什么服务没了？"
+        ]
+        for query in queries:
+            intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
+            assert intent == QueryIntentEnum.ANOMALY_DETECTION
+
+    @pytest.mark.asyncio
+    async def test_classify_query_intent_specific_type(self):
+        """测试识别特定类型问题查询"""
+        queries = [
+            "查找内存溢出的日志",
+            "有没有超时相关的错误",
+            "排查下网络问题",
+            "看看有没有崩溃日志",
+            "CPU高的原因是什么"
+        ]
+        for query in queries:
+            intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
+            assert intent == QueryIntentEnum.SPECIFIC_TYPE
+
+    @pytest.mark.asyncio
+    async def test_classify_query_intent_default(self):
+        """测试无法识别的查询默认分类"""
+        queries = [
+            "查看日志",
+            "最近的日志",
+            "系统日志"
+        ]
+        for query in queries:
+            intent = LogDetectionBasedOnEmbeddingWorker.classify_query_intent(query)
+            assert intent == QueryIntentEnum.PRECISE_SEARCH
+
+    @pytest.mark.asyncio
+    async def test_cal_cosine_similarity_full_match(self):
+        """测试完全匹配的余弦相似度"""
+        vec1 = [1.0, 2.0, 3.0]
+        vec2 = [1.0, 2.0, 3.0]
+        similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(vec1, vec2)
+        assert similarity == 100.0
+
+    @pytest.mark.asyncio
+    async def test_cal_cosine_similarity_partial_match(self):
+        """测试部分匹配的余弦相似度"""
+        vec1 = [1.0, 1.0, 0.0]
+        vec2 = [1.0, 0.0, 0.0]
+        similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(vec1, vec2)
+        assert 50 < similarity < 100
+
+    @pytest.mark.asyncio
+    async def test_cal_cosine_similarity_zero_vector(self):
+        """测试零向量的相似度计算"""
+        vec1 = [0.0, 0.0, 0.0]
+        vec2 = [1.0, 2.0, 3.0]
+        similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(vec1, vec2)
+        assert similarity == 0.0
+
+    @pytest.mark.asyncio
+    async def test_cal_keyword_similarity(self):
+        """测试关键词相似度计算"""
+        import jieba
+        log_words = list(jieba.cut("error network timeout"))
+        word_vector_dict = {
+            "error": [1.0, 0.0, 0.0],
+            "network": [0.0, 1.0, 0.0],
+            "timeout": [0.0, 0.0, 1.0]
+        }
+        keyword_vectors = [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]  # error, timeout
+        query_word_vectors = []
+        similarity = LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(
+            log_words, word_vector_dict, keyword_vectors, query_word_vectors
+        )
+        assert 0 < similarity <= 100.0
+
+    @pytest.mark.asyncio
+    async def test_cal_sentiment_score(self):
+        """测试情感分数计算"""
+        log_type = LogTypeEnum.PYTHON
+        # 使用包含明确异常关键词的日志内容
+        log_content = "ERROR: exception occurred, connection refused, failed to connect"
+        score = await LogDetectionBasedOnEmbeddingWorker.cal_sentiment_score(log_type, log_content)
+        assert 0 <= score <= 100.0
+
+
+
+
+class TestLogFeatureLoader:
+    """日志特征加载器测试类"""
+
+    @pytest.mark.asyncio
+    async def test_log_feature_mapping_complete(self):
+        """测试所有日志类型都有对应的特征配置"""
+        # 检查枚举中的类型是否都在映射中
+        for log_type in LogTypeEnum:
+            if log_type != LogTypeEnum.UNKNOWN:
+                assert log_type in log_feature_class_mapping
+                assert isinstance(log_feature_class_mapping[log_type], BaseLogFeature)
+
+    @pytest.mark.asyncio
+    async def test_log_feature_patterns_loaded(self):
+        """测试日志特征正则表达式正确加载"""
+        for log_type, feature in log_feature_class_mapping.items():
+            assert hasattr(feature, 'keywords_regex_and_scores')
+            assert hasattr(feature, 'mandatory')
+            assert hasattr(feature, 'capture_patterns')
+            assert isinstance(feature.keywords_regex_and_scores, dict)
 
 
 class TestClusterService:
@@ -1009,13 +1147,13 @@ class TestIntegration:
         """测试worker运行和停止"""
         task_id = test_task
 
-        result = await BaseWorker.run(uuid.UUID(task_id))
+        result = await BaseWorker.run(task_id)
         assert result is True
 
         task = await TaskManager.get_task_by_id(task_id)
         assert task.status == TaskStatusEnum.RUNNING.value
 
-        result = await BaseWorker.stop(uuid.UUID(task_id))
+        result = await BaseWorker.stop(task_id)
         assert result is True
 
         task = await TaskManager.get_task_by_id(task_id)

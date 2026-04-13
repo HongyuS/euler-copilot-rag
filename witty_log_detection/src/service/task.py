@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import multiprocessing
 from src.worker.base import BaseWorker
@@ -54,26 +53,32 @@ class TaskService:
     @staticmethod
     async def listen_and_process_tasks():
         """监听并处理任务的主循环"""
-        while True:  # 修正：使用True而非1，提升代码可读性
+        logger.info("[TaskService] listen_and_process_tasks 启动")
+        while True:
             try:
                 await TaskService.process_successful_or_failed_tasks()
                 await TaskService.process_pending_tasks()
             except Exception as e:
-                logger.error(f"任务处理主循环出错: {e}")
+                logger.error(f"[TaskService] 任务处理主循环出错: {e}")
+                import traceback
+                traceback.print_exc()
             await asyncio.sleep(2)  # 每隔2秒检查一次任务
 
     @staticmethod
     def _run_async_loop():
         """独立的静态方法：启动异步事件循环（解决pickle序列化问题）"""
+        logger.info("[TaskService] _run_async_loop 启动")
         try:
             # 创建并运行异步事件循环
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             loop.run_until_complete(TaskService.listen_and_process_tasks())
         except KeyboardInterrupt:
-            logger.info("任务监听进程被手动终止")
+            logger.info("[TaskService] 任务监听进程被手动终止")
         except Exception as e:
-            logger.error(f"任务监听进程运行出错: {e}")
+            logger.error(f"[TaskService] 任务监听进程运行出错: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             # 确保事件循环正确关闭
             loop.close()
@@ -81,6 +86,7 @@ class TaskService:
     @staticmethod
     def run_task_listener_in_process():
         """在独立进程中运行任务监听循环"""
+        logger.info("[TaskService] run_task_listener_in_process 被调用")
         # 创建子进程（使用提前创建的context）
         listener_process = multiprocessing_context.Process(
             target=TaskService._run_async_loop,  # 指向类的静态方法
@@ -89,6 +95,7 @@ class TaskService:
 
         # 启动进程
         listener_process.start()
+        logger.info(f"[TaskService] 任务监听进程已启动，进程ID: {listener_process.pid}")
         print(f"任务监听进程已启动，进程ID: {listener_process.pid}")
 
         # 返回进程对象，方便外部管理

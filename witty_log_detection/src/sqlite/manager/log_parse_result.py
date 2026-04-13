@@ -18,7 +18,7 @@ class LogParseResultManager:
             FROM log_parse_result_table
             WHERE task_id = :task_id
         """
-        count_params = {"task_id": task_id}
+        count_params: dict[str, str | int | bool] = {"task_id": task_id}
 
         if is_anomalous is not None:
             count_sql += " AND is_anomalous = :is_anomalous"
@@ -44,7 +44,7 @@ class LogParseResultManager:
             FROM log_parse_result_table
             WHERE task_id = :task_id
         """
-        params = {"task_id": task_id}
+        params: dict[str, str | int | bool] = {"task_id": task_id}
 
         # 添加异常状态过滤（所有分支共用）
         if is_anomalous is not None:

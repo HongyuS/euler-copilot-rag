@@ -42,7 +42,7 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
         score = 0.0
         for anomalous_keywords, _ in log_class.keywords_regex_and_scores["anomalous"].items():
             sum += _
-            if re.search(re.escape(anomalous_keywords), log_content):
+            if re.search(anomalous_keywords, log_content):
                 score += _
         return score/sum * 100 if sum > 0 else 0.0
 

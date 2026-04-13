@@ -83,7 +83,7 @@ class LLMService:
                 break
             yield data
 
-    async def nostream(self, chat, system_call, user_call, st_str: str = None, en_str: str = None):
+    async def nostream(self, chat, system_call, user_call, st_str: str | None = None, en_str: str | None = None):
         try:
             content = ''
             async for chunk in self.stream(chat, system_call, user_call):
