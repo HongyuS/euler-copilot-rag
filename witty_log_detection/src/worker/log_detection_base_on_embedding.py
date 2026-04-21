@@ -166,36 +166,78 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         if len(log_models) == 0:
             return log_models, []
         
-        # 不使用模板：直接对原始日志内容向量化
+        # 第一步：先计算所有日志的整行语义相似度，提前剪枝低相关日志
         log_contents = [log.content for log in log_models]
+        logger.info(f"原始日志内容向量化，共{len(log_contents)}条")
         content_vectors = await Embedding.vectorize_embedding(log_contents)
         
-        # 批量收集所有日志的分词，去重后一次性向量化
-        all_words_set = set()
-        log_words_list = []
-        for log_model in log_models:
-            log_words = list(jieba.cut(log_model.content))
-            log_words_list.append(log_words)
-            all_words_set.update(log_words)
-        
-        # 一次性向量化所有唯一词
-        all_words = list(all_words_set)
-        word_vector_dict = {}
-        if all_words:
-            all_word_vectors = await Embedding.vectorize_embedding(all_words)
-            for word, vec in zip(all_words, all_word_vectors):
-                if vec is not None:
-                    word_vector_dict[word] = vec
-        
-        # 多维度评分
-        candidate_unnormal_log_models: list[LogModel] = []
-        for log_model, content_vector, log_words in zip(log_models, content_vectors, log_words_list):
-            # 1. 计算语义相似度（使用原始内容向量）
+        # 计算语义相似度，初步筛选出>10分的高相关候选日志（剪枝过滤70%+低相关日志）
+        candidate_items = []
+        for log_model, content_vector in zip(log_models, content_vectors):
             semantic_similarity = 0.0
             if content_vector is not None:
                 semantic_similarity = LogDetectionBasedOnEmbeddingWorker.cosine_similarity(
                     content_vector, query_vector
                 )
+            # 语义分本身已经超过20分，或者加上异常分可能超过20分的，才进入下一轮
+            if semantic_similarity > 10:  # 留足够余量，避免误删
+                candidate_items.append({
+                    "log_model": log_model,
+                    "content_vector": content_vector,
+                    "semantic_similarity": semantic_similarity
+                })
+        
+        # 没有任何候选，直接返回
+        if not candidate_items:
+            return log_models, []
+        
+        # 第二步：每行计算词相关性，取TopN核心词，仅向量化核心词
+        config = Config().get_config()
+        TOP_WORDS_PER_LINE = config.top_core_words_per_line
+        all_words_set = set()
+        log_words_list = []
+        
+        for item in candidate_items:
+            content = item["log_model"].content
+            line_words = list(jieba.cut(content))
+            word_with_score = []
+            
+            # 计算每个词和当前行的相关性得分：越长越靠前的词得分越高
+            for word in line_words:
+                word = word.strip()
+                if not word:
+                    continue
+                # 长度权重：词越长越可能是核心词
+                len_score = len(word) * 3
+                # 位置权重：日志核心信息一般在前，越靠前权重越高
+                pos = content.find(word)
+                pos_score = max(0, 100 - pos) / 2 if pos != -1 else 0
+                total_score = len_score + pos_score
+                word_with_score.append((total_score, word))
+            
+            # 按得分倒序排序，取TopN核心词
+            word_with_score.sort(reverse=True)
+            core_words = [word for score, word in word_with_score[:TOP_WORDS_PER_LINE]]
+            
+            log_words_list.append(core_words)
+            all_words_set.update(core_words)
+        
+        # 只向量化候选日志的唯一词
+        logger.info("所有唯一词向量化开始")
+        word_vector_dict = {}
+        if all_words_set:
+            all_words = list(all_words_set)
+            all_word_vectors = await Embedding.vectorize_embedding(all_words)
+            for word, vec in zip(all_words, all_word_vectors):
+                if vec is not None:
+                    word_vector_dict[word] = vec
+        
+        # 第三步：只对候选日志计算多维度评分
+        candidate_unnormal_log_models: list[LogModel] = []
+        for item, log_words in zip(candidate_items, log_words_list):
+            log_model = item["log_model"]
+            content_vector = item["content_vector"]
+            semantic_similarity = item["semantic_similarity"]
             
             # 2. 计算关键字相似度（使用预计算的词向量字典）
             keyword_similarity = LogDetectionBasedOnEmbeddingWorker.cal_keyword_similarity(
