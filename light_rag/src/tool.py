@@ -301,7 +301,7 @@ async def cancel_import_task(task_id: str) -> Dict[str, Any]:
             return create_error_response(f"任务状态为 {status}，无法取消").model_dump()
         await remove_task(task_id)
         await TaskManager.update_task_by_id(task_id, {"status": TaskStatusEnum.CANCELED.value})
-        data = CancelTaskData(task_id=task_id, canceled=True, message="任务已取消")
+        data = CancelTaskData(task_id=task_id, canceled=True, message   ="任务已取消")
         return create_success_response(data=data, message="任务已取消").model_dump()
     except Exception as e:
         logger.exception("[cancel_import_task] %s", e)
@@ -623,7 +623,7 @@ async def document_manager(
     if action == "getchunks":
         if not doc_name or not kb_name:
             return create_error_response("获取解析结果时 doc_name 和 kb_name 必填").model_dump()
-        return get_document_chunks(doc_name, kb_name)
+        return get_document_chunks(doc_name, kb_name)  
     return create_error_response(f"不支持的操作: {action}，支持: add, getstatus, cancel, getchunks").model_dump()
 
 
