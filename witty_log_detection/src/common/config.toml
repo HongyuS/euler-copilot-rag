@@ -6,7 +6,9 @@ LOG_PARSE_METHOD = "log_detection_base_on_llm"
 SQL_LITE_DB_PATH = "log_detection_multi_process.db"
 
 # 基于嵌入的日志检测worker处理文件时的批大小
-EMBEDDING_WORKER_BATCH_SIZE = 8
+EMBEDDING_WORKER_BATCH_SIZE = 128
+# 每行日志提取的核心词数量，用于减少embedding调用量
+TOP_CORE_WORDS_PER_LINE = 4
 
 # Embedding模型配置
 [EMBEDDING_MODEL]
@@ -14,7 +16,7 @@ EMBEDDING_PROVIDER = "openai"
 EMBEDDING_END_POINT = "https://api.siliconflow.cn/v1/embeddings"
 EMBEDDING_API_KEY = ""
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
-EMBEDDING_BATCH_SIZE = 16
+EMBEDDING_BATCH_SIZE = 64
 
 # LLM模型配置
 [LLM_MODEL]
