@@ -16,7 +16,7 @@ from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.schemas.log import LogModel
 from src.service.embedding import Embedding
 from src.config.config import Config
-from src.enum.pattern import PreciseSearchPatternEnum, QueryIntentEnum
+from src.enum.query_intent import QueryIntentEnum
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +103,17 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
         """识别query意图类型"""
         query_lower = query.lower()
         
+        # 精确检索特征模式列表
+        precise_patterns = [
+            r'\d+\.\d+\.\d+\.\d+',            # IP地址
+            r'0x[0-9a-fA-F]+',              # 十六进制错误码
+            r'[A-Z]+-\d+',                  # 错误码格式如ERR-123
+            r'错误码\s*\d+',                 # 错误码XXX格式
+            r'端口\s*\d+',                   # 端口XXX格式
+            r'\d{3,}',                      # 3位以上数字（端口号、错误码等）
+            r'([a-zA-Z0-9_-]+)\.[a-zA-Z]{2,}',  # 域名
+        ]
+        
         # 特定类型问题关键词 - 避免与异常排查关键词重叠，只保留明确的问题类型关键词
         specific_type_keywords = {
             "oom": ["内存溢出", "oom", "out of memory", "内存不足", "内存泄漏"],
@@ -122,9 +133,6 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
             "异常", "错误", "故障", "问题", "帮忙看", "帮我看看",
             "什么原因", "为啥", "怎么回事", "原因是什么", "为什么"
         ]
-        
-        # 精确检索特征模式
-        precise_patterns = PreciseSearchPatternEnum.get_all_patterns()
         
         # 决策逻辑：精确检索 > 特定问题 > 异常排查
         # 1. 先判断是否是精确检索（包含具体特征）

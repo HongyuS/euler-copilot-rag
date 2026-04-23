@@ -24,7 +24,7 @@ from src.schemas.task import TaskModel, TaskRelatedParamsModel
 from src.schemas.log import LogModel
 from src.enum.task import TaskTypeEnum, TaskStatusEnum
 from src.enum.log import LogTypeEnum, LogLevelEnum
-from src.enum.pattern import QueryIntentEnum
+from src.enum.query_intent import QueryIntentEnum
 from src.service.cluster import ClusterService
 from src.service.llm import LLMService
 from src.config.config import Config
