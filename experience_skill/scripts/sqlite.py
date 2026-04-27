@@ -10,50 +10,58 @@ logger = logging.getLogger(__name__)
 
 # ====================== 表结构（正确版） ======================
 table_ddl_list = {
-    "experience_table": '''
+    "keyword_table": """
+        CREATE TABLE IF NOT EXISTS keyword_table (
+            id TEXT PRIMARY KEY,
+            experience_id TEXT NOT NULL,
+            name TEXT NOT NULL
+        )
+    """,
+    "experience_table": """
         CREATE TABLE IF NOT EXISTS experience_table (
             id TEXT PRIMARY KEY,
             type TEXT NOT NULL,
             description TEXT,
-            keywords TEXT,
             status TEXT NOT NULL,
+            is_hot BOOLEAN NOT NULL DEFAULT 0,
+            source TEXT,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            is_hot BOOLEAN NOT NULL DEFAULT 0
+            updated_at TEXT NOT NULL
         )
-    ''',
-    "experience_fts": '''
+    """,
+    "experience_fts": """
         CREATE VIRTUAL TABLE IF NOT EXISTS experience_fts USING fts5(
             description,
             content=experience_table,
             content_rowid=rowid
         )
-    ''',
-    "trg1": '''
+    """,
+    "trg1": """
         CREATE TRIGGER IF NOT EXISTS fts_insert
         AFTER INSERT ON experience_table
         BEGIN
             INSERT INTO experience_fts(rowid, description) VALUES (new.rowid, new.description);
         END
-    ''',
-    "trg2": '''
+    """,
+    "trg2": """
         CREATE TRIGGER IF NOT EXISTS fts_update
         AFTER UPDATE ON experience_table
         BEGIN
             UPDATE experience_fts SET description=new.description WHERE rowid=new.rowid;
         END
-    ''',
-    "trg3": '''
+    """,
+    "trg3": """
         CREATE TRIGGER IF NOT EXISTS fts_delete
         AFTER DELETE ON experience_table
         BEGIN
             DELETE FROM experience_fts WHERE rowid=old.rowid;
         END
-    '''
+    """,
 }
 
+
 class AsyncSQLiteSingleton:
-    _instance: Optional['AsyncSQLiteSingleton'] = None
+    _instance: Optional["AsyncSQLiteSingleton"] = None
     _process_lock = ProcessLock()
 
     def __new__(cls):
@@ -63,8 +71,8 @@ class AsyncSQLiteSingleton:
                     cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
-        if hasattr(self, '_init'):
+    def __init__(self) -> None:
+        if hasattr(self, "_init"):
             return
         self.DB_PATH = "experience.db"
         self._async_lock = asyncio.Lock()
@@ -72,17 +80,13 @@ class AsyncSQLiteSingleton:
         self._init = True
         self._connect()
 
-    def _connect(self):
+    def _connect(self) -> None:
         if self._conn:
             return
-        self._conn = sqlite3.connect(
-            self.DB_PATH,
-            check_same_thread=False,
-            timeout=30
-        )
+        self._conn = sqlite3.connect(self.DB_PATH, check_same_thread=False, timeout=30)
         self._conn.execute("PRAGMA journal_mode=WAL")
 
-    def _run(self, sql, params=()):
+    def _run(self, sql, params=()) -> bool:
         self._connect()
         try:
             cur = self._conn.cursor()
@@ -93,7 +97,7 @@ class AsyncSQLiteSingleton:
             self._conn.rollback()
             return False
 
-    def _query(self, sql, params=()):
+    def _query(self, sql, params=()) -> list[dict[str, Any]]:
         self._connect()
         try:
             self._conn.row_factory = sqlite3.Row
@@ -103,6 +107,6 @@ class AsyncSQLiteSingleton:
         except:
             return []
 
-    def init(self):
+    def init(self) -> None:
         for sql in table_ddl_list.values():
             self._run(sql)
