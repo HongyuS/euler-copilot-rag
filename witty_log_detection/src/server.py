@@ -3,6 +3,7 @@ import json
 from pydantic import Field
 import asyncio
 from mcp.server import FastMCP
+from src.enum.task import TaskStatusEnum
 from src.config.config import Config
 from src.service.log import LogTaskHandleService
 from src.enum.task import TaskTypeEnum
@@ -141,7 +142,7 @@ async def stop_task(
     ]
 """,
 )
-#加关键字匹配
+# 加关键字匹配
 async def get_task_result(
     task_id: str = Field(description="任务ID，uuid4格式的字符串"),
     offset: int | None = Field(
@@ -157,16 +158,27 @@ async def get_task_result(
         description="是否只返回异常日志，布尔类型，如果为true，则只返回异常日志；如果为false，则返回所有日志；如果不传，则默认返回所有日志",
     ),
 ) -> str:
+    task_model = await LogTaskHandleService.get_task_message(task_id)
+    if task_model is None:
+        raise ValueError(f"任务 {task_id} 不存在")
+    if (
+        task_model.status == TaskStatusEnum.PENDING.value
+        or task_model.status == TaskStatusEnum.RUNNING.value
+    ):
+        return "任务正在执行中，结果尚未生成结果，请稍后再试"
     total, log_parse_result_models = await LogTaskHandleService.get_task_result(
         task_id, limit, offset, is_anomalous
     )
-    return json.dumps({
-        "total": total,
-        "results": [
-            log_parse_result_model.model_dump(exclude_none=True)
-            for log_parse_result_model in log_parse_result_models
-        ],
-    })
+    return json.dumps(
+        {
+            "total": total,
+            "results": [
+                log_parse_result_model.model_dump(exclude_none=True)
+                for log_parse_result_model in log_parse_result_models
+            ],
+        }
+    )
+
 
 @mcp.tool(
     name="delete_task",
@@ -204,6 +216,7 @@ if __name__ == "__main__":
     finally:
         import os
         import signal
+
         print(f"任务监听进程ID：{listener.pid}")
         if listener.pid is not None:
             os.kill(listener.pid, signal.SIGKILL)

@@ -125,7 +125,7 @@ async def main() -> None:
     client = MCPClient(url, headers)
     await client.init()
     js = {
-        "task_type": "log_detection_base_on_keywords",
+        "task_type": "log_detection_base_on_llm",
         "query": "我的网卡掉了帮我分析下异常",
         "file_path_list": ["/home/zjq/euler-copilot-rag/witty_log_detection/test/test.log"],
         "anomaly_keywords": ["disconnected"],
