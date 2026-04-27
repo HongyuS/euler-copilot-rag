@@ -47,3 +47,9 @@ LOG_TYPES_TO_LOAD = []
 [VMCORE]
 # vmcore解析默认使用的内核调试文件vmlinux路径，留空则自动使用最小模式
 VMCORE_VMLINUX_PATH = "/usr/lib/debug/lib/modules/6.6.0-132.0.0.111.oe2403sp3.x86_64/vmlinux"
+# 是否保存vmcore转储后的文本到本地，默认不保存
+VMCORE_SAVE_PARSED_TEXT = false
+# 转储文本保存目录，留空则默认保存到vmcore所在目录
+VMCORE_SAVE_PATH = ""
+# 转储文本保存后缀，支持txt/log等
+VMCORE_SAVE_SUFFIX = "txt"

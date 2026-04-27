@@ -90,6 +90,18 @@ class VmcoreConfig(BaseModel):
         default="", 
         description="vmcore解析默认使用的内核调试文件vmlinux路径", 
         alias="VMCORE_VMLINUX_PATH")
+    save_parsed_text: bool = Field(
+        default=False, 
+        description="是否保存vmcore转储后的文本到本地", 
+        alias="VMCORE_SAVE_PARSED_TEXT")
+    save_path: str = Field(
+        default="", 
+        description="转储文本保存目录，留空则默认保存到vmcore所在目录", 
+        alias="VMCORE_SAVE_PATH")
+    save_suffix: str = Field(
+        default="txt", 
+        description="转储文本保存后缀，支持txt/log等", 
+        alias="VMCORE_SAVE_SUFFIX")
 
 
 class ConfigModel(BaseModel):

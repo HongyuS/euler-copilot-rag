@@ -101,7 +101,32 @@ class LogParser:
                 check=True  # 非0返回码直接抛异常
             )
 
-            return result.stdout
+            text_content = result.stdout
+
+            # 开启保存功能时将转储文本写入本地
+            if getattr(_config.vmcore, "save_parsed_text", False) and text_content:
+                try:
+                    # 确定保存目录：优先用配置的目录，否则用vmcore所在目录
+                    save_dir = getattr(_config.vmcore, "save_path", "") or os.path.dirname(file_path)
+                    if save_dir and not os.path.exists(save_dir):
+                        os.makedirs(save_dir, exist_ok=True)
+                    
+                    # 生成文件名：原vmcore名 + _parsed + 时间戳 + 后缀
+                    vmcore_name = os.path.basename(file_path)
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                    suffix = getattr(_config.vmcore, "save_suffix", "txt").strip(".")
+                    save_file_name = f"{vmcore_name}_parsed_{timestamp}.{suffix}"
+                    save_full_path = os.path.join(save_dir, save_file_name)
+                    
+                    # 写入文件
+                    with open(save_full_path, "w", encoding="utf-8", errors="ignore") as f:
+                        f.write(text_content)
+                    logger.info(f"vmcore转储文本已保存到: {save_full_path}")
+                except Exception as save_e:
+                    logger.warning(f"保存vmcore转储文本失败: {str(save_e)[:200]}")
+
+            return text_content
 
         except Exception as e:
             logger.warning(f"vmcore转储失败: {str(e)[:200]}")
