@@ -85,6 +85,13 @@ class LogParseConfig(BaseModel):
         alias="LOG_TYPES_TO_LOAD")
 
 
+class VmcoreConfig(BaseModel):
+    vmlinux_path: str = Field(
+        default="", 
+        description="vmcore解析默认使用的内核调试文件vmlinux路径", 
+        alias="VMCORE_VMLINUX_PATH")
+
+
 class ConfigModel(BaseModel):
     cpu_use_limit: int = Field(
         default=8, 
@@ -98,6 +105,10 @@ class ConfigModel(BaseModel):
         default="log_detection_multi_process.db", 
         description="SQLite数据库文件路径", 
         alias="SQL_LITE_DB_PATH")
+    top_core_words_per_line: int = Field(
+        default=4, 
+        description="每行日志提取的核心词数量，用于减少embedding调用量", 
+        alias="TOP_CORE_WORDS_PER_LINE")
     embedding_model: EmbeddingModelConfig = Field(
         default=EmbeddingModelConfig(), 
         description="embedding模型配置", 
@@ -118,6 +129,10 @@ class ConfigModel(BaseModel):
         default=OcrConfig(), 
         description="OCR配置", 
         alias="OCR_CONFIG")
+    vmcore: VmcoreConfig = Field(
+        default=VmcoreConfig(), 
+        description="vmcore解析相关配置", 
+        alias="VMCORE")
     embedding_worker_batch_size: int = Field(
         default=8, 
         description="基于嵌入的日志检测worker处理文件时的批大小", 

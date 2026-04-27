@@ -1,18 +1,150 @@
-import asyncio
+import os
 import re
+import tempfile
+import subprocess
+import asyncio
 from datetime import datetime, timedelta
+from typing import List, Optional
 from src.service.embedding import Embedding
 from src.parser.log_feature_loader import log_feature_class_mapping
 from src.enum.log import LogTypeEnum, LogValueEnum
 from src.schemas.log import LogModel
 from src.service.ocr import OcrTool
+from src.config.config import Config
 import logging
+
+# 加载全局配置
+_config = Config().get_config()
+
 logger = logging.getLogger(__name__)
 
 class LogParser:
     """
-    日志解析器，负责从日志文件中提取日志信息，并进行日志类型分类
+    统一日志解析器：支持普通文本日志、二进制vmcore文件解析
     """
+    # crash工具常用命令，用于提取vmcore的关键信息
+    _CRASH_COMMANDS = [
+        "sys",               # 系统基本信息
+        "bt",                # 调用栈
+        "ps",                # 进程列表
+        "log",               # 内核日志
+        "reg",               # 寄存器信息
+        "vm",                # 内存信息
+    ]
+
+    @staticmethod
+    def is_vmcore_file(file_path: str) -> bool:
+        """判断是否为vmcore二进制文件"""
+        if not os.path.exists(file_path):
+            return False
+        basename = os.path.basename(file_path).lower()
+        # 首先检查文件名是否符合vmcore命名规则
+        if not (basename == "vmcore" or basename.startswith("vmcore.")):
+            return False
+        # 再检查是否为ELF二进制文件或者非文本文件
+        try:
+            with open(file_path, "rb") as f:
+                header = f.read(512)
+                # 检查是否为ELF文件
+                if header.startswith(b"\x7fELF"):
+                    return True
+                # 检查是否为二进制文件（包含空字节）
+                if b"\x00" in header:
+                    return True
+                return False
+        except Exception as e:
+            logger.warning(f"检查vmcore文件失败: {e}")
+            return False
+
+    @staticmethod
+    def _read_vmcore_dmesg(file_path: str) -> Optional[str]:
+        """降级读取同目录下的vmcore-dmesg.txt"""
+        dmesg_path = os.path.join(os.path.dirname(file_path), "vmcore-dmesg.txt")
+        if os.path.exists(dmesg_path):
+            logger.info(f"尝试读取同目录下的dmesg文件: {dmesg_path}")
+            with open(dmesg_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        return None
+
+    @staticmethod
+    def _dump_vmcore_to_text(file_path: str, vmlinux_path: Optional[str] = None) -> Optional[str]:
+        """
+        将二进制vmcore文件转储为文本格式
+        :param file_path: vmcore文件路径
+        :param vmlinux_path: 带调试信息的内核镜像路径，可选
+        :return: 转储后的完整文本内容
+        """
+        cmd_file = None
+        try:
+            # 生成crash命令脚本
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".cmd", delete=False) as f:
+                for cmd in LogParser._CRASH_COMMANDS:
+                    f.write(f"{cmd}\n")
+                f.write("quit\n")
+                cmd_file = f.name
+
+            # 构建并执行crash命令，执行失败直接进异常处理
+            cmd = ["crash"]
+            # 优先级：传入的vmlinux > 配置文件中的vmlinux路径 > 最小模式
+            final_vmlinux_path = vmlinux_path or getattr(_config.vmcore, "vmlinux_path", None)
+            if final_vmlinux_path and os.path.exists(final_vmlinux_path):
+                cmd.append(final_vmlinux_path)
+            else:
+                cmd.append("--minimal")  # 无vmlinux时启用最小模式，尽量解析基础信息
+            cmd.extend([file_path, "-i", cmd_file, "-s"])
+
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=True  # 非0返回码直接抛异常
+            )
+
+            return result.stdout
+
+        except Exception as e:
+            logger.warning(f"vmcore转储失败: {str(e)[:200]}")
+        finally:
+            # 清理临时文件
+            if cmd_file and os.path.exists(cmd_file):
+                os.unlink(cmd_file)
+
+        # 所有失败场景统一降级
+        return LogParser._read_vmcore_dmesg(file_path)
+
+    @staticmethod
+    async def _parse_vmcore_file(file_path: str, vmlinux_path: Optional[str] = None, need_split_by_regex: bool = True) -> List[LogModel]:
+        """
+        内部方法：解析vmcore二进制文件，返回LogModel列表
+        """
+        # 先尝试转储为文本
+        content = LogParser._dump_vmcore_to_text(file_path, vmlinux_path)
+        if not content:
+            # 如果转储失败，尝试作为文本文件读取（可能是已经导出的vmcore日志文本）
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+            except Exception as e:
+                logger.error(f"读取vmcore文件失败: {e}")
+                return []
+
+        # 拆成行，交给统一的LogParser处理
+        log_lines = content.splitlines()
+        
+        # 调用LogParser解析，复用kdump的所有feature配置
+        log_models = await LogParser.parse_log_lines(
+            log_lines=log_lines,
+            file_path=file_path,
+            need_split_by_regex=need_split_by_regex
+        )
+
+        # 所有vmcore日志默认标记为异常
+        for log_model in log_models:
+            log_model.log_type = LogTypeEnum.KDUMP.value
+            log_model.is_anomalous = True
+            
+        return log_models
 
     @staticmethod
     def get_log_line_type(log_line: str) -> LogTypeEnum:
@@ -208,14 +340,17 @@ class LogParser:
         return log_models_in_time_range
 
     @staticmethod
-    async def parse_log_file(
+    async def parse_log_lines(
+        log_lines: list[str],
         file_path: str,
         need_split_by_regex: bool = False,
         time_start: datetime | None = None,
         time_end: datetime | None = None,
         chunk_size: int = 1024,
     ) -> list[LogModel]:
-        log_lines = LogParser.read_log_file(file_path)
+        """
+        直接处理日志行列表，生成LogModel
+        """
         log_models = []
         current = ""
         offset = 0
@@ -297,3 +432,30 @@ class LogParser:
                 log_models, time_start, time_end
             )
         return log_models
+
+    @staticmethod
+    async def parse_log_file(
+        file_path: str,
+        need_split_by_regex: bool = False,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+        chunk_size: int = 1024,
+        vmlinux_path: str | None = None,
+    ) -> list[LogModel]:
+        # 自动识别vmcore二进制文件，优先走vmcore解析流程
+        if LogParser.is_vmcore_file(file_path):
+            return await LogParser._parse_vmcore_file(
+                file_path=file_path,
+                vmlinux_path=vmlinux_path,
+                need_split_by_regex=need_split_by_regex
+            )
+        # 普通文本日志走原有流程
+        log_lines = LogParser.read_log_file(file_path)
+        return await LogParser.parse_log_lines(
+            log_lines=log_lines,
+            file_path=file_path,
+            need_split_by_regex=need_split_by_regex,
+            time_start=time_start,
+            time_end=time_end,
+            chunk_size=chunk_size
+        )
