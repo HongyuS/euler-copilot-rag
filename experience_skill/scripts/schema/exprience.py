@@ -7,14 +7,15 @@ from datetime import datetime
 class Experience(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     type: ExperienceType = Field(default=ExperienceType.WIKI)
+    name: str = Field(default="")
     description: str = Field(default="")
     keywords: list[str] = Field(default_factory=list)
     status: ExperienceStatus = Field(default=ExperienceStatus.EXISTED)
     is_hot: int = Field(default=0)
     source: str = Field(default="")
     created_at: str = Field(
-        default_factory=lambda: datetime.now().isoformat("y-%m-%d %H:%M:%S")
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )
     updated_at: str = Field(
-        default_factory=lambda: datetime.now().isoformat("y-%m-%d %H:%M:%S")
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     )

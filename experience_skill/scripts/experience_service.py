@@ -28,9 +28,7 @@ class ExperienceService:
         """
         result = {}
         # 匹配标准的 front matter：---\n...yaml...\n---
-        match = __import__("re").match(
-            r"^---\s*\n(.*?)\n---\s*(?:\n|$)", md_content, __import__("re").DOTALL
-        )
+        match = __import__("re").match(r"^---\s*\n(.*?)\n---\s*(?:\n|$)", md_content, __import__("re").DOTALL)
         if match:
             try:
                 result = yaml.safe_load(match.group(1)) or {}
@@ -45,9 +43,6 @@ class ExperienceService:
         """
         添加Experience
         """
-        experiences = ExperienceManager.query_experience_by_source(source)
-        if experiences:
-            raise ValueError(f"Experience with source {source} already exists.")
         description = ""
         keywords = []
         if experience_type == ExperienceType.SKILL:
@@ -61,13 +56,11 @@ class ExperienceService:
             if not os.path.exists(path):
                 raise FileNotFoundError(f"WIKI.md not found in {source}")
             structured_data = yaml.safe_load(open(path, "r", encoding="utf-8"))
-        name = structured_data.get("name", "")
         description = structured_data.get("description", "")
         keywords = structured_data.get("keywords", [])
         description = ExperienceService.filter_special_characters(description)
         experience = Experience(
             type=experience_type,
-            name=name,
             description=description,
             keywords=keywords,
             source=source,
@@ -79,7 +72,6 @@ class ExperienceService:
     @staticmethod
     def list_experiences(
         experience_type: ExperienceType | None,
-        name: str | None,
         is_hot: bool | None,
         page: int,
         page_size: int,
@@ -90,7 +82,6 @@ class ExperienceService:
         total_cnt, experiences = ExperienceManager.list_experiences(
             experience_type=experience_type,
             keywords=None,
-            name=name,
             is_hot=is_hot,
             page=page,
             page_size=page_size,
@@ -144,10 +135,8 @@ class ExperienceService:
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
         keywords = [w.strip() for w in cleaned.split() if w.strip()]
-        # 过滤纯 ASCII 单字母，避免 c* / a* 等前缀匹配大量误召回
-        keywords = [w for w in keywords if not (len(w) == 1 and w.isascii())]
         if not keywords:
-            return []
+            keywords = [cleaned]
 
         experiences = ExperienceManager.query_experience_by_fts5_use_description(
             keywords=keywords,
@@ -162,6 +151,4 @@ class ExperienceService:
             experience.keywords = KeyWordManager.get_keywords_by_experience_id(
                 experience.id
             )
-        for experience in experiences:
-            ExperienceManager.update_hot_experience(experience.id)
         return experiences
