@@ -19,14 +19,35 @@ max_top_k = 100
 
 # GitHub线上检索配置
 [github]
-enabled = false
+enabled = true
 token = ""
-issue_repos = ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"]
-commit_repo = "torvalds/linux"
+issue_repos = [
+  "torvalds/linux",
+  "moby/moby",
+  "containerd/containerd",
+  "systemd/systemd",
+  "kubernetes/kubernetes",
+  "etcd-io/etcd",
+  "opencontainers/runc",
+  "cri-o/cri-o"
+]
+commit_repos = [
+  "torvalds/linux",
+  "moby/moby",
+  "containerd/containerd",
+  "systemd/systemd",
+  "kubernetes/kubernetes",
+  "etcd-io/etcd",
+  "opencontainers/runc",
+  "cri-o/cri-o"
+]
 default_online_top_k = 5
 max_candidates = 20
 request_timeout = 10
 rate_limit_delay = 1
+commit_vector_db_path = "database/commit_vec.db"
+commit_local_min_hits = 3
+commit_local_min_similarity = 0.45
 
 # 向量化服务配置
 [embedding]
