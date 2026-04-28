@@ -19,7 +19,7 @@ max_top_k = 100
 
 # GitHub线上检索配置
 [github]
-enabled = true
+enabled = false
 token = ""
 issue_repos = [
   "torvalds/linux",
