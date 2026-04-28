@@ -1,49 +1,44 @@
-from operator import is_
-
 from ENUM.exprience import ExperienceType, ExperienceStatus
 from sqlite import AsyncSQLiteSingleton
 from schema.exprience import Experience
 from datetime import datetime
 
 
-class experience_manager:
+class ExperienceManager:
     @staticmethod
-    def insert_experiences(experiences: list[Experience]) -> None:
+    def add_experiences(experiences: list[Experience]) -> None:
         db = AsyncSQLiteSingleton()
         for experience in experiences:
             db._run(
                 """
-                INSERT INTO experience_table (id, type, description, status, is_hot, source, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO experience_table (id, type, name, description, status, is_hot, source, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     experience.id,
                     experience.type.value,
+                    experience.name,
                     experience.description,
                     experience.status.value,
                     experience.is_hot,
                     experience.source,
-                    datetime.now().isoformat("y-%m-%d %H:%M:%S"),
-                    datetime.now().isoformat("y-%m-%d %H:%M:%S"),
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 ),
             )
 
     @staticmethod
-    def delete_experiences(experience_ids: list[str]) -> None:
+    def delete_experiences_by_ids(experience_ids: list[str]) -> None:
         db = AsyncSQLiteSingleton()
-        for experience_id in experience_ids:
-            db._run(
-                """
-                UPDATE experience_table
-                SET status = ?, updated_at = ?
-                WHERE id = ?
-                """,
-                (
-                    ExperienceStatus.DELETED.value,
-                    datetime.now().isoformat("y-%m-%d %H:%M:%S"),
-                    experience_id,
-                ),
-            )
+        placeholders = ",".join(["?"] * len(experience_ids))
+        db._run(
+            f"""
+            UPDATE experience_table
+            SET status = ?
+            WHERE id IN ({placeholders})
+            """,
+            (ExperienceStatus.DELETED.value, *experience_ids),
+        )
 
     @staticmethod
     def update_experience(experience: Experience) -> None:
@@ -51,15 +46,16 @@ class experience_manager:
         db._run(
             """
             UPDATE experience_table
-            SET type = ?, description = ?, status = ?, source = ?, updated_at = ?
+            SET type = ?, name = ?, description = ?, status = ?, source = ?, updated_at = ?
             WHERE id = ?
             """,
             (
                 experience.type.value,
+                experience.name,
                 experience.description,
                 experience.status.value,
                 experience.source,
-                datetime.now().isoformat("y-%m-%d %H:%M:%S"),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 experience.id,
             ),
         )
@@ -84,7 +80,7 @@ class experience_manager:
                     WHERE id = ?
                     """,
                     (
-                        datetime.now().isoformat("y-%m-%d %H:%M:%S"),
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                         experience_id,
                     ),
                 )
@@ -114,32 +110,46 @@ class experience_manager:
                     WHERE id = ?
                     """,
                 (
-                    datetime.now().isoformat("y-%m-%d %H:%M:%S"),
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     experience_id,
                 ),
             )
 
     @staticmethod
     def list_experiences(
-        experience_type: ExperienceType,
+        experience_type: ExperienceType | None,
         keywords: list[str] | None,
+        name: str | None,
         is_hot: bool | None,
         page: int,
         page_size: int,
-    ) -> list[Experience]:
+    ) -> tuple[int, list[Experience]]:
         if keywords is not None and len(keywords) == 0:
-            return []
+            return 0, []
         db = AsyncSQLiteSingleton()
         offset = (page - 1) * page_size
-        where_clauses = ["type = ?", "status = ?"]
-        params = [experience_type.value, ExperienceStatus.EXISTED.value]
+        where_clauses = ["status = ?"]
+        params = [ExperienceStatus.EXISTED.value]
+        if experience_type is not None:
+            where_clauses.append("type = ?")
+            params.append(experience_type.value)
         if keywords is not None:
             where_clauses.append(" AND ".join(["description LIKE ?"] * len(keywords)))
             params.extend([f"%{keyword}%" for keyword in keywords])
+        if name is not None:
+            where_clauses.append("name LIKE ?")
+            params.append(f"%{name}%")
         if is_hot is not None:
             where_clauses.append("is_hot = ?")
             params.append(int(is_hot))
         where_clause = " AND ".join(where_clauses)
+        total_cnt = db._query(
+            f"""
+            SELECT COUNT(*) as cnt FROM experience_table
+            WHERE {where_clause}
+            """,
+            params,
+        )[0]["cnt"]
         experience_rows = db._query(
             f"""
             SELECT * FROM experience_table
@@ -155,6 +165,7 @@ class experience_manager:
                 Experience(
                     id=row["id"],
                     type=ExperienceType(row["type"]),
+                    name=row["name"],
                     description=row["description"],
                     status=ExperienceStatus(row["status"]),
                     is_hot=bool(row["is_hot"]),
@@ -163,24 +174,27 @@ class experience_manager:
                     updated_at=row["updated_at"],
                 )
             )
-        return experiences
+        return total_cnt, experiences
 
     @staticmethod
-    async def query_experience_by_fts5_use_description(
-        keywords: list[str],  # 修复拼写错误
+    def query_experience_by_fts5_use_description(
+        keywords: list[str],
         type: ExperienceType,
+        fields: list[str] | None = None,
         top_k: int = 5,
         is_hot: bool | None = None,
-        banned_experience_ids: bool | None = None,
-        experience_ids: Optional[list[str]] = None,
+        banned_experience_ids: list[str] | None = None,
+        experience_ids: list[str] | None = None,
     ) -> list[Experience]:
         """
-        基于FTS5检索Experience：
-        1. 先AND语义精确查询
-        2. 不足数量再OR语义松散查询
+        基于FTS5检索Experience（适配 simple tokenizer 扩展）：
+        1. 先使用 simple_query() 做 AND 语义精确查询（支持中文/拼音）
+        2. 不足数量再使用标准 OR 语法做松散查询补全
         """
         # 1. 初始化默认参数
         if top_k <= 0:
+            return []
+        if fields is not None and len(fields) == 0:
             return []
         if experience_ids is not None and len(experience_ids) == 0:
             return []
@@ -194,10 +208,31 @@ class experience_manager:
         experiences = []
 
         # ====================== 抽取公共方法：避免代码重复 ======================
-        def build_fts_query(keywords_str: str, limit: int):
+        def build_fts_query(
+            match_expr: str, limit: int, use_simple_query: bool = False
+        ):
             """构建SQL和参数（公共逻辑）"""
-            where_clause = "WHERE experience_fts MATCH ? AND type = ?"
-            params = [keywords_str, type.value]
+            # 基础：关联FTS表
+            from_clause = """
+                FROM experience_table
+                JOIN experience_fts ON experience_table.rowid = experience_fts.rowid
+            """
+            if use_simple_query:
+                where_clause = "WHERE experience_fts MATCH simple_query(?) AND type = ?"
+            else:
+                where_clause = "WHERE experience_fts MATCH ? AND type = ?"
+            params = [match_expr, type.value]
+
+            # ====================== fields 筛选（关联keyword_table） ======================
+            if fields is not None and len(fields) > 0:
+                # 关联关键词表，只保留name在fields里的experience
+                from_clause += """
+                    JOIN keyword_table ON experience_table.id = keyword_table.experience_id
+                """
+                # 生成占位符
+                field_placeholders = ",".join(["?"] * len(fields))
+                where_clause += f" AND keyword_table.name IN ({field_placeholders})"
+                params.extend(fields)
 
             # 过滤已排除ID
             if banned_ids:
@@ -211,15 +246,15 @@ class experience_manager:
                 where_clause += f" AND experience_table.id IN ({placeholders})"
                 params.extend(target_experience_ids)
 
-            # 安全拼接is_hot（使用?占位符）
+            # 安全拼接is_hot
             if is_hot is not None:
                 where_clause += " AND experience_table.is_hot = ?"
                 params.append(int(is_hot))
 
-            # 最终SQL
+            # 最终SQL（去重，避免一个experience匹配多个keyword返回多条）
             sql = f"""
-            SELECT experience_table.* FROM experience_table
-            JOIN experience_fts ON experience_table.id = experience_fts.rowid
+            SELECT DISTINCT experience_table.*
+            {from_clause}
             {where_clause}
             ORDER BY experience_fts.rank
             LIMIT ?
@@ -227,19 +262,20 @@ class experience_manager:
             params.append(limit)
             return sql, params
 
-        # ====================== 1. 紧凑查询（AND） ======================
+        # ====================== 1. 紧凑查询（simple_query AND 语义） ======================
         and_keywords = " ".join(keywords)
-        sql, params = build_fts_query(and_keywords, tight_query_cnt)
+        sql, params = build_fts_query(
+            and_keywords, tight_query_cnt, use_simple_query=True
+        )
 
-        # 修复异步调用
-        experience_rows = await db._query(sql, params)
+        experience_rows = db._query(sql, params)
 
-        # 转换为模型
         for row in experience_rows:
             experiences.append(
                 Experience(
                     id=row["id"],
                     type=ExperienceType(row["type"]),
+                    name=row["name"],
                     description=row["description"],
                     status=ExperienceStatus(row["status"]),
                     is_hot=bool(row["is_hot"]),
@@ -249,23 +285,25 @@ class experience_manager:
                 )
             )
 
-        # 把已查到的ID加入排除列表（不修改外部参数）
+        # 已查到的ID加入排除
         banned_ids.extend([exp.id for exp in experiences])
 
-        # ====================== 2. 松散查询（OR） ======================
+        # ====================== 2. 松散查询（标准 OR 语法补全） ======================
         if len(experiences) < top_k:
             loose_cnt = top_k - len(experiences)
             or_keywords = " OR ".join(keywords)
-            sql, params = build_fts_query(or_keywords, loose_cnt)
+            sql, params = build_fts_query(
+                or_keywords, loose_cnt, use_simple_query=False
+            )
 
-            experience_rows = await db._query(sql, params)
+            experience_rows = db._query(sql, params)
 
-            # 修复模型构造错误
             for row in experience_rows:
                 experiences.append(
                     Experience(
                         id=row["id"],
                         type=ExperienceType(row["type"]),
+                        name=row["name"],
                         description=row["description"],
                         status=ExperienceStatus(row["status"]),
                         is_hot=bool(row["is_hot"]),
@@ -275,4 +313,64 @@ class experience_manager:
                     )
                 )
 
+        return experiences
+
+    @staticmethod
+    def query_experience_ids_by_source(source: str) -> list[str]:
+        db = AsyncSQLiteSingleton()
+        rows = db._query(
+            "SELECT id FROM experience_table WHERE source = ? AND status = ?",
+            (source, ExperienceStatus.EXISTED.value),
+        )
+        return [row["id"] for row in rows]
+
+    @staticmethod
+    def query_experience_by_ids(experience_ids: list[str]) -> list[Experience]:
+        if len(experience_ids) == 0:
+            return []
+        db = AsyncSQLiteSingleton()
+        placeholders = ",".join(["?"] * len(experience_ids))
+        rows = db._query(
+            f"SELECT * FROM experience_table WHERE id IN ({placeholders}) AND status = ?",
+            (*experience_ids, ExperienceStatus.EXISTED.value),
+        )
+        experiences = []
+        for row in rows:
+            experiences.append(
+                Experience(
+                    id=row["id"],
+                    type=ExperienceType(row["type"]),
+                    name=row["name"],
+                    description=row["description"],
+                    status=ExperienceStatus(row["status"]),
+                    is_hot=bool(row["is_hot"]),
+                    source=row["source"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+            )
+        return experiences
+
+    @staticmethod
+    def query_experience_by_source(source: str) -> list[Experience]:
+        db = AsyncSQLiteSingleton()
+        rows = db._query(
+            "SELECT * FROM experience_table WHERE source = ? AND status = ?",
+            (source, ExperienceStatus.EXISTED.value),
+        )
+        experiences = []
+        for row in rows:
+            experiences.append(
+                Experience(
+                    id=row["id"],
+                    type=ExperienceType(row["type"]),
+                    name=row["name"],
+                    description=row["description"],
+                    status=ExperienceStatus(row["status"]),
+                    is_hot=bool(row["is_hot"]),
+                    source=row["source"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+            )
         return experiences

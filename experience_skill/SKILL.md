@@ -9,7 +9,7 @@ Skill 聚焦个人标准化工作流程的沉淀描述；Wiki 是工作过程中
 ## 目录结构
 experience-skill 完整目录结构如下：
 ```
-experience_skill
+experience_skill/
 ├── abilities
 │   ├── skill
 │   │   ├── create-skill.md
@@ -24,8 +24,19 @@ experience_skill
 │       ├── merge-wiki.md
 │       └── optimize-wiki.md
 ├── scripts
+│   ├── common
+│   │   └── exprience.py
+│   ├── ENUM
+│   │   └── exprience.py
 │   ├── main.py
-│   ├── parser
+│   ├── manager
+│   │   ├── experience_manager.py
+│   │   └── keyword_manager.py
+│   ├── schema
+│   │   └── exprience.py
+│   ├── service
+│   │   ├── document_service.py
+│   │   └── experience_service.py
 │   └── sqlite.py
 ├── skill_hub
 │   └── exmaple_skill
@@ -40,7 +51,7 @@ experience_skill
 
 目录说明：
 1. `abilities`：核心能力目录，承载 Skill、Wiki 两类资源的创建、评估、检索、合并、优化能力定义；
-2. `scripts`：业务脚本目录，`main.py` 为组件统一入口，`sqlite.py` 负责数据存储与查询能力，parser目录下存放各种文件解析器；
+2. `scripts`：业务逻辑目录，包含经验管理核心代码实现、命令行接口等脚本文件，main.py 提供命令行入口，experience_service.py、document_service.py 等提供核心服务实现，experience_manager.py、keyword_manager.py 等提供数据库交互支持；
 3. `skill_hub`：存量 Skill 资源仓库，存放用户沉淀的所有工作流程技能；
 4. `wiki_hub`：存量 Wiki 资源仓库，集中保管资料类沉淀文档。
 

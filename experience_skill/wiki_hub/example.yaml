@@ -1,13 +1,13 @@
+name: "Example Wiki Document"
 author: ""
 date: ""
 
-overview:
-  abstract: ""
-  keywords:
-    - keyword1
-    - keyword2
-    - keyword3
-    - keyword4
+description: ""
+keywords:
+  - keyword1
+  - keyword2
+  - keyword3
+  - keyword4
 
 content: ""
 
