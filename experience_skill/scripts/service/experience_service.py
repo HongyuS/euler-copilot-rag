@@ -1,3 +1,4 @@
+import json
 import re
 from pathlib import Path
 
@@ -45,8 +46,10 @@ class ExperienceService:
 
         流程：
         1. 检查 source 路径是否已注册（精确去重）。
-        2. 读取源文件（SKILL.md 或 yaml），解析 front matter。
-        3. 写入 experience_table + keyword_table + FTS 索引。
+        2. 读取源文件（SKILL.md 或 .md），解析 YAML front matter。
+        3. 仅提取 YAML header 中的 name / description / keywords / references 写入 DB。
+           Markdown 正文不存入数据库，仅供检索命中后按 source 路径读取使用。
+        4. 写入 experience_table + keyword_table + FTS 索引。
         """
         experiences = ExperienceManager.query_experience_by_source(source)
         if experiences:
@@ -61,20 +64,23 @@ class ExperienceService:
                 raise FileNotFoundError(msg)
             structured_data = ExperienceService.md_to_structured_json(skill_md.read_text(encoding="utf-8"))
         elif experience_type == ExperienceType.WIKI:
-            wiki_path = Path(source)
-            if not wiki_path.exists():
+            wiki_md = Path(source)
+            if not wiki_md.exists():
                 msg = f"WIKI file not found: {source}"
                 raise FileNotFoundError(msg)
-            structured_data = yaml.safe_load(wiki_path.read_text(encoding="utf-8"))
+            structured_data = ExperienceService.md_to_structured_json(wiki_md.read_text(encoding="utf-8"))
         name = structured_data.get("name", "")
         description = structured_data.get("description", "")
         keywords = structured_data.get("keywords", [])
+        references = structured_data.get("references")
+        references_json = json.dumps(references, ensure_ascii=False) if references else ""
         description = ExperienceService.filter_special_characters(description)
         experience = Experience(
             type=experience_type,
             name=name,
             description=description,
             keywords=keywords,
+            references=references_json,
             source=source,
         )
         KeyWordManager.add_keywords(experience.id, keywords)

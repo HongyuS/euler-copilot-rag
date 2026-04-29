@@ -12,14 +12,15 @@ class ExperienceManager:
         for experience in experiences:
             db._run(
                 """
-                INSERT INTO experience_table (id, type, name, description, status, is_hot, source, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO experience_table (id, type, name, description, "references", status, is_hot, source, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     experience.id,
                     experience.type.value,
                     experience.name,
                     experience.description,
+                    experience.references,
                     experience.status.value,
                     experience.is_hot,
                     experience.source,
@@ -47,13 +48,14 @@ class ExperienceManager:
         db._run(
             """
             UPDATE experience_table
-            SET type = ?, name = ?, description = ?, status = ?, source = ?, updated_at = ?
+            SET type = ?, name = ?, description = ?, "references" = ?, status = ?, source = ?, updated_at = ?
             WHERE id = ?
             """,
             (
                 experience.type.value,
                 experience.name,
                 experience.description,
+                experience.references,
                 experience.status.value,
                 experience.source,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -168,6 +170,7 @@ class ExperienceManager:
                     type=ExperienceType(row["type"]),
                     name=row["name"],
                     description=row["description"],
+                    references=row["references"],
                     status=ExperienceStatus(row["status"]),
                     is_hot=bool(row["is_hot"]),
                     source=row["source"],
@@ -274,6 +277,7 @@ class ExperienceManager:
                     type=ExperienceType(row["type"]),
                     name=row["name"],
                     description=row["description"],
+                    references=row["references"],
                     status=ExperienceStatus(row["status"]),
                     is_hot=bool(row["is_hot"]),
                     source=row["source"],
@@ -300,6 +304,7 @@ class ExperienceManager:
                         type=ExperienceType(row["type"]),
                         name=row["name"],
                         description=row["description"],
+                        references=row["references"],
                         status=ExperienceStatus(row["status"]),
                         is_hot=bool(row["is_hot"]),
                         source=row["source"],
@@ -337,6 +342,7 @@ class ExperienceManager:
                     type=ExperienceType(row["type"]),
                     name=row["name"],
                     description=row["description"],
+                    references=row["references"],
                     status=ExperienceStatus(row["status"]),
                     is_hot=bool(row["is_hot"]),
                     source=row["source"],
@@ -361,6 +367,7 @@ class ExperienceManager:
                     type=ExperienceType(row["type"]),
                     name=row["name"],
                     description=row["description"],
+                    references=row["references"],
                     status=ExperienceStatus(row["status"]),
                     is_hot=bool(row["is_hot"]),
                     source=row["source"],

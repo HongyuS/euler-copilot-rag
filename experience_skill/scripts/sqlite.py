@@ -1,8 +1,8 @@
-from multiprocessing import Lock as ProcessLock
-import os
 import asyncio
-import sqlite3
 import logging
+import os
+import sqlite3
+from multiprocessing import Lock as ProcessLock
 from typing import Any, Optional
 
 # 配置日志
@@ -30,6 +30,7 @@ table_ddl_list = {
             type TEXT NOT NULL,
             name TEXT,
             description TEXT,
+            "references" TEXT DEFAULT '',
             status TEXT NOT NULL,
             is_hot BOOLEAN NOT NULL DEFAULT 0,
             source TEXT,
@@ -160,8 +161,9 @@ class AsyncSQLiteSingleton:
     def init(self) -> None:
         for sql in table_ddl_list.values():
             self._run(sql)
-        # 兼容旧表：动态添加 name 列（如果尚不存在）
+        # 兼容旧表：动态添加列（如果尚不存在）
         self._ensure_column("experience_table", "name", "TEXT")
+        self._ensure_column("experience_table", "references", "TEXT")
 
     def clear_database(self) -> None:
         if self._conn:
