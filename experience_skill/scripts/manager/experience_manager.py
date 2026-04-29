@@ -1,7 +1,8 @@
-from ENUM.exprience import ExperienceType, ExperienceStatus
-from sqlite import AsyncSQLiteSingleton
-from schema.exprience import Experience
 from datetime import datetime
+
+from ENUM.exprience import ExperienceStatus, ExperienceType
+from schema.exprience import Experience
+from sqlite import AsyncSQLiteSingleton
 
 
 class ExperienceManager:
@@ -208,9 +209,7 @@ class ExperienceManager:
         experiences = []
 
         # ====================== 抽取公共方法：避免代码重复 ======================
-        def build_fts_query(
-            match_expr: str, limit: int, use_simple_query: bool = False
-        ):
+        def build_fts_query(match_expr: str, limit: int, use_simple_query: bool = False):
             """构建SQL和参数（公共逻辑）"""
             # 基础：关联FTS表
             from_clause = """
@@ -264,9 +263,7 @@ class ExperienceManager:
 
         # ====================== 1. 紧凑查询（simple_query AND 语义） ======================
         and_keywords = " ".join(keywords)
-        sql, params = build_fts_query(
-            and_keywords, tight_query_cnt, use_simple_query=True
-        )
+        sql, params = build_fts_query(and_keywords, tight_query_cnt, use_simple_query=True)
 
         experience_rows = db._query(sql, params)
 
@@ -292,9 +289,7 @@ class ExperienceManager:
         if len(experiences) < top_k:
             loose_cnt = top_k - len(experiences)
             or_keywords = " OR ".join(keywords)
-            sql, params = build_fts_query(
-                or_keywords, loose_cnt, use_simple_query=False
-            )
+            sql, params = build_fts_query(or_keywords, loose_cnt, use_simple_query=False)
 
             experience_rows = db._query(sql, params)
 

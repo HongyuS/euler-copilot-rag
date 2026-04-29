@@ -1,7 +1,8 @@
-from ENUM.exprience import ExperienceType, ExperienceStatus
-from pydantic import BaseModel, Field
-from uuid import uuid4
 from datetime import datetime
+from uuid import uuid4
+
+from ENUM.exprience import ExperienceStatus, ExperienceType
+from pydantic import BaseModel, Field
 
 
 class Experience(BaseModel):
@@ -13,9 +14,5 @@ class Experience(BaseModel):
     status: ExperienceStatus = Field(default=ExperienceStatus.EXISTED)
     is_hot: int = Field(default=0)
     source: str = Field(default="")
-    created_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
-    updated_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    )
+    created_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
