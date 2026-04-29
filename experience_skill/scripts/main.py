@@ -1,26 +1,24 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 import argparse
-import asyncio
-from enum import Enum
+
+from ENUM.exprience import ExperienceType
+from service.experience_service import ExperienceService
 
 # 导入你现有的服务
 from sqlite import AsyncSQLiteSingleton
-from service.experience_service import ExperienceService
-from ENUM.exprience import ExperienceType
 
 
 # ------------------------------
 # 经验相关命令
 # ------------------------------
-def add_experiences_cli(args):
+def add_experiences_cli(args) -> None:
     """添加经验：支持 SKILL / WIKI"""
     experience_type = ExperienceType[args.type.upper()]
-    asyncio.run(ExperienceService.add_experiences(experience_type, args.source))
+    ExperienceService.add_experiences(experience_type, args.source)
     print(f"✅ 成功添加 {args.type} 经验，来源：{args.source}")
 
 
-def list_experiences_cli(args):
+def list_experiences_cli(args) -> None:
     """列出经验"""
     experience_type = ExperienceType[args.type.upper()] if args.type else None
     total, exps = ExperienceService.list_experiences(
@@ -47,31 +45,29 @@ def list_experiences_cli(args):
         print()
 
 
-def delete_experience_ids_cli(args):
+def delete_experience_ids_cli(args) -> None:
     """按 ID 删除经验"""
     ExperienceService.delete_experience_by_ids(args.ids)
     print(f"🗑️ 已删除经验 ID：{args.ids}")
 
 
-def delete_experience_source_cli(args):
+def delete_experience_source_cli(args) -> None:
     """按来源路径删除经验"""
     ExperienceService.delete_experience_by_source(args.source)
     print(f"🗑️ 已删除来源为 {args.source} 的经验")
 
 
-def search_experiences_cli(args):
+def search_experiences_cli(args) -> None:
     """搜索经验"""
     experience_type = ExperienceType[args.type.upper()]
     exps = ExperienceService.search_experiences(
         query=args.query,
-        type=experience_type,
+        exp_type=experience_type,
         top_k=args.top_k,
         fields=args.fields if args.fields is not None else None,
         is_hot=args.is_hot,
         banned_experience_ids=args.banned_ids if args.banned_ids is not None else None,
-        experience_ids=(
-            args.experience_ids if args.experience_ids is not None else None
-        ),
+        experience_ids=(args.experience_ids if args.experience_ids is not None else None),
     )
     print(f"🔍 搜索「{args.query}」找到 {len(exps)} 条结果\n")
 
@@ -119,9 +115,7 @@ def main():
 
     # add-experiences
     add_parser = subparsers.add_parser("add-experiences", help="添加经验")
-    add_parser.add_argument(
-        "--type", required=True, choices=["SKILL", "WIKI"], help="经验类型"
-    )
+    add_parser.add_argument("--type", required=True, choices=["SKILL", "WIKI"], help="经验类型")
     add_parser.add_argument("--source", required=True, help="文件/目录路径")
     add_parser.set_defaults(func=add_experiences_cli)
 
@@ -131,7 +125,7 @@ def main():
     list_parser.add_argument("--name", default=None, help="名称模糊匹配")
     list_parser.add_argument(
         "--is-hot",
-        type=lambda x: (str(x).lower() == "true"),
+        type=lambda x: str(x).lower() == "true",
         default=None,
         help="是否热门",
     )
@@ -141,29 +135,21 @@ def main():
 
     # delete-by-ids
     del_ids_parser = subparsers.add_parser("delete-by-ids", help="按ID删除经验")
-    del_ids_parser.add_argument(
-        "--ids", nargs="+", required=True, help="经验ID列表，空格分隔"
-    )
+    del_ids_parser.add_argument("--ids", nargs="+", required=True, help="经验ID列表，空格分隔")
     del_ids_parser.set_defaults(func=delete_experience_ids_cli)
 
     # delete-by-source
-    del_source_parser = subparsers.add_parser(
-        "delete-by-source", help="按来源路径删除经验"
-    )
+    del_source_parser = subparsers.add_parser("delete-by-source", help="按来源路径删除经验")
     del_source_parser.add_argument("--source", required=True, help="来源路径")
     del_source_parser.set_defaults(func=delete_experience_source_cli)
 
     search_parser = subparsers.add_parser("search-experiences", help="搜索经验")
     search_parser.add_argument("--query", required=True, help="搜索关键词")
-    search_parser.add_argument(
-        "--type", required=True, choices=["SKILL", "WIKI"], help="经验类型"
-    )
-    search_parser.add_argument(
-        "--fields", nargs="+", help="搜索字段列表，空格分隔，默认为全部字段"
-    )
+    search_parser.add_argument("--type", required=True, choices=["SKILL", "WIKI"], help="经验类型")
+    search_parser.add_argument("--fields", nargs="+", help="搜索字段列表，空格分隔，默认为全部字段")
     search_parser.add_argument(
         "--is-hot",
-        type=lambda x: (str(x).lower() == "true"),
+        type=lambda x: str(x).lower() == "true",
         default=None,
         help="是否热门",
     )
