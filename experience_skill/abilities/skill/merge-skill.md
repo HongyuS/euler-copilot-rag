@@ -59,9 +59,9 @@ merged = ExperienceService.merge_experiences(
 
 ### 第四步：更新源文件
 
-合并仅影响 DB 中的元信息，**不会自动修改 `skill_hub/` 下的 SKILL.md 源文件**。合并完成后需手动或由智能体：
+合并仅影响 DB 中的元信息，**不会自动修改 `skill_hub/` 下的 skill_def.md 源文件**。合并完成后需手动或由智能体：
 
-1. 更新 base Skill 目录下的 `SKILL.md`，反映合并后的 name、description、keywords。
+1. 更新 base Skill 目录下的 `skill_def.md`，反映合并后的 name、description、keywords。
 2. 可选：删除或归档被合并 Skill 的目录。
 3. 可选：更新 `database.yaml`，整合各 Skill 的评测用例。
 

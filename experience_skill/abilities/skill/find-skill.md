@@ -120,7 +120,7 @@ uv run python main.py search-experiences \
 | ---- | ---- |
 | ID | Skill 唯一标识符 |
 | 类型 | 固定为 SKILL |
-| 名称 | Skill 名称（来自 SKILL.md front matter） |
+| 名称 | Skill 名称（来自 skill_def.md front matter） |
 | 状态 | existed / deleted |
 | 描述 | Skill 描述文本 |
 | 关键词 | Skill 标签列表 |

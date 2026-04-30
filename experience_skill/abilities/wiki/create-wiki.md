@@ -7,7 +7,7 @@
 ## 前置约束
 
 - 所有新建 Wiki 必须存放至 `wiki_hub/` 目录下，以 `.md` 文件形式组织，文件名使用 Wiki 名称的英文/拼音缩写。
-- Wiki 文件采用 **YAML front matter + Markdown 正文** 格式（与 Skill 的 SKILL.md 格式一致），YAML 头部包含 `name`、`description`、`keywords` 等元信息，正文为 Markdown 内容。
+- Wiki 文件采用 **YAML front matter + Markdown 正文** 格式（与 Skill 的 skill_def.md 格式一致），YAML 头部包含 `name`、`description`、`keywords` 等元信息，正文为 Markdown 内容。
 - Wiki 内容仅限提炼、整合工作场景内查阅的网页、文档等资料，禁止混入无关冗余信息。
 - 禁止在 Wiki 内容中包含敏感数据、隐私信息及违规内容。
 
@@ -34,7 +34,7 @@
 
 ### 第二步：生成 Wiki Markdown 文件
 
-若查重通过（无相似 Wiki 或用户确认新建），按以下规范生成 `.md` 文件（YAML front matter + Markdown 正文，与 SKILL.md 格式一致）：
+若查重通过（无相似 Wiki 或用户确认新建），按以下规范生成 `.md` 文件（YAML front matter + Markdown 正文，与 skill_def.md 格式一致）：
 
 1. **YAML front matter**（必须包含，仅 header 中的字段会存入数据库用于检索）：
 

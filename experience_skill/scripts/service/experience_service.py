@@ -49,7 +49,7 @@ class ExperienceService:
 
         流程：
         1. 检查 source 路径是否已注册（精确去重）。
-        2. 读取源文件（SKILL.md 或 .md），解析 YAML front matter。
+        2. 读取源文件（skill_def.md 或 .md），解析 YAML front matter。
         3. 仅提取 YAML header 中的 name / description / keywords / references 写入 DB。
            Markdown 正文不存入数据库，仅供检索命中后按 source 路径读取使用。
         4. 写入 experience_table + keyword_table + FTS 索引。
@@ -61,9 +61,9 @@ class ExperienceService:
         description = ""
         keywords = []
         if experience_type == ExperienceType.SKILL:
-            skill_md = Path(source) / "SKILL.md"
+            skill_md = Path(source) / "skill_def.md"
             if not skill_md.exists():
-                msg = f"SKILL.md not found in {source}"
+                msg = f"skill_def.md not found in {source}"
                 raise FileNotFoundError(msg)
             structured_data = ExperienceService.md_to_structured_json(
                 skill_md.read_text(encoding="utf-8")

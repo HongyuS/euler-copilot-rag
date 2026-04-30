@@ -33,7 +33,7 @@ uv run python main.py list-experiences --type SKILL
 读取 Skill 源文件，梳理优化点：
 
 ```bash
-cat <skill_hub/目标Skill目录/SKILL.md>
+cat <skill_hub/目标Skill目录/skill_def.md>
 cat <skill_hub/目标Skill目录/database.yaml>  # 如果存在
 ```
 
@@ -52,9 +52,9 @@ cat <skill_hub/目标Skill目录/database.yaml>  # 如果存在
 
 根据问题分析结果，逐项改进：
 
-#### 3a. 更新 SKILL.md 内容
+#### 3a. 更新 skill_def.md 内容
 
-直接编辑 `skill_hub/<Skill 目录>/SKILL.md`：
+直接编辑 `skill_hub/<Skill 目录>/skill_def.md`：
 
 - 修正 front matter 中的 `name`、`description`、`keywords`（如有变更）。
 - 更新正文各章节内容。
@@ -100,12 +100,12 @@ uv run python main.py search-experiences \
 ## 优化原则
 
 1. **增量改进**：只修改有问题的部分，不推翻重写已验证正确的内容。
-2. **保持一致性**：SKILL.md 与 DB 记录的 name / description / keywords 必须一致。
+2. **保持一致性**：skill_def.md 与 DB 记录的 name / description / keywords 必须一致。
 3. **评测驱动**：优化后应在 database.yaml 中补充或更新对应评测用例，形成"评估 → 优化 → 再评估"的闭环。
-4. **记录变更**：复杂优化建议在 SKILL.md 中添加变更日志，方便回溯。
+4. **记录变更**：复杂优化建议在 skill_def.md 中添加变更日志，方便回溯。
 
 ## 错误处理
 
 - 若 experience_id 不存在或已删除，抛出 `ValueError`。
-- 若 SKILL.md 文件被外部修改但 DB 未同步，先手动确认文件内容，再调用 optimize 同步。
+- 若 skill_def.md 文件被外部修改但 DB 未同步，先手动确认文件内容，再调用 optimize 同步。
 - keywords 传入 `None` 表示不修改关键词；传入空列表 `[]` 会清空所有关键词。

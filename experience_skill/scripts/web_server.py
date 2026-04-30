@@ -2,6 +2,9 @@
 
 import os
 import re
+import threading
+import time
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -158,7 +161,7 @@ async def get_experience(experience_id: str):
     content = ""
     try:
         if exp.type == ExperienceType.SKILL:
-            skill_md = SKILL_ROOT / exp.source / "SKILL.md"
+            skill_md = SKILL_ROOT / exp.source / "skill_def.md"
             if skill_md.exists():
                 content = skill_md.read_text(encoding="utf-8")
         elif exp.type == ExperienceType.WIKI:
@@ -202,7 +205,30 @@ def start_web_server(
 
     url = f"http://{host}:{port}"
 
-    # 判断是否有图形环境
+    # 在后台线程启动 uvicorn
+    server_thread = threading.Thread(
+        target=uvicorn.run,
+        args=(app,),
+        kwargs={"host": host, "port": port, "log_level": "warning"},
+        daemon=True,
+    )
+    server_thread.start()
+
+    # 等待服务就绪
+    max_retries = 30
+    for _ in range(max_retries):
+        try:
+            with urllib.request.urlopen(f"{url}/api/keywords", timeout=1):
+                break
+        except Exception:
+            time.sleep(0.1)
+    else:
+        print(f"⚠️  服务启动超时，请手动访问: {url}")
+        # 等待 server 线程结束（通常不会到这里）
+        server_thread.join()
+        return
+
+    # 服务就绪后再打开浏览器
     has_display = os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
     is_macos = os.uname().sysname == "Darwin"
 
@@ -216,4 +242,10 @@ def start_web_server(
         print(f"🔗 请访问: {url}")
 
     print(f"🚀 Web 服务启动于 {host}:{port}，按 Ctrl+C 停止")
-    uvicorn.run(app, host=host, port=port, log_level="warning")
+
+    # 阻塞主线程，直到 uvicorn 结束
+    try:
+        while server_thread.is_alive():
+            server_thread.join(timeout=0.5)
+    except KeyboardInterrupt:
+        pass

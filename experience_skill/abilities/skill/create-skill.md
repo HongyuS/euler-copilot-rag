@@ -7,8 +7,8 @@
 ## 前置约束
 
 - 所有新建 Skill 必须存放至 `skill_hub/` 目录下，以独立子目录形式组织。
-- Skill 目录内必须包含 `SKILL.md` 文件，推荐包含 `database.yaml`（评测用例）、`references/`（参考资料）、`scripts/`（辅助脚本）等可选内容。
-- 禁止在 SKILL.md 内容中包含恶意代码、敏感数据、隐私信息。
+- Skill 目录内必须包含 `skill_def.md` 文件，推荐包含 `database.yaml`（评测用例）、`references/`（参考资料）、`scripts/`（辅助脚本）等可选内容。
+- 禁止在 skill_def.md 内容中包含恶意代码、敏感数据、隐私信息。
 
 ## 执行流程
 
@@ -31,9 +31,9 @@ uv run python main.py search-experiences \
    - **其次推荐优化（optimize-skill）**：若存量 Skill 内容过时或质量不佳，建议以优化方式更新。
    - 仅当用户明确坚持新建且存量不构成冗余时，才继续创建流程。
 
-### 第二步：生成 SKILL.md
+### 第二步：生成 skill_def.md
 
-若查重通过（无相似 Skill 或用户确认新建），按以下规范生成 `SKILL.md`：
+若查重通过（无相似 Skill 或用户确认新建），按以下规范生成 `skill_def.md`：
 
 1. **YAML front matter**（必须包含）：
 
@@ -95,7 +95,7 @@ uv run python main.py add-experiences \
 
 此命令会：
 
-- 读取 `SKILL.md` 的 YAML front matter，提取 name、description、keywords。
+- 读取 `skill_def.md` 的 YAML front matter，提取 name、description、keywords。
 - 检查 source 路径是否已存在（防重复）。
 - 将 Skill 元信息写入 `experience_table`，启用 FTS5 全文索引。
 - 将 keywords 写入 `keyword_table`，支持关键字过滤检索。
@@ -115,6 +115,6 @@ uv run python main.py search-experiences \
 
 ## 错误处理
 
-- 若 `SKILL.md` 不存在于 source 目录，CLI 会报 `FileNotFoundError`，需检查路径。
+- 若 `skill_def.md` 不存在于 source 目录，CLI 会报 `FileNotFoundError`，需检查路径。
 - 若 source 路径已注册过，CLI 会报 `ValueError`，需更换路径或先删除旧记录。
 - 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/tokenizer/build.sh`。

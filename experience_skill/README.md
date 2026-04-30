@@ -50,7 +50,7 @@ experience_skill/
 │       └── libsimple -> ...        # 编译产物软链接
 ├── skill_hub/                 # Skill 资源仓库
 │   └── exmaple_skill/
-│       ├── SKILL.md
+│       ├── skill_def.md
 │       └── database.yaml
 ├── wiki_hub/                  # Wiki 资源仓库
 │   ├── example.md             # 示例 Wiki（YAML front matter + Markdown）
@@ -148,10 +148,10 @@ Web 页面功能：
 
 聚焦个人标准化工作流程的沉淀描述。每个 Skill 以目录形式存放，目录内需包含：
 
-- `SKILL.md`：技能定义文档（YAML Front Matter + Markdown）
+- `skill_def.md`：技能定义文档（YAML Front Matter + Markdown）
 - `database.yaml`（可选）：评测用例集
 
-**SKILL.md 示例结构**：
+**skill_def.md 示例结构**：
 
 ```yaml
 ---

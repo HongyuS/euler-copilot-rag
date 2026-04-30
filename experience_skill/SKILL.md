@@ -51,7 +51,7 @@ experience_skill/
 │       ├── database.yaml
 │       ├── references
 │       ├── scripts
-│       └── SKILL.md
+│       └── skill_def.md
 ├── SKILL.md
 └── wiki_hub
     └── example.md
@@ -67,7 +67,7 @@ experience_skill/
 ## 约束规范
 
 - 所有新建 Skill、Wiki 必须统一存放至 `skill_hub`、`wiki_hub` 专属目录，禁止自定义存储路径；
-- Skill 采用 `SKILL.md`（YAML front matter + Markdown 正文）格式，包含 name、description、keywords 等元信息；
+- Skill 采用 `skill_def.md`（YAML front matter + Markdown 正文）格式，包含 name、description、keywords 等元信息；
 - Wiki 采用 `.md`（YAML front matter + Markdown 正文）格式，与 Skill 相同的文件结构，包含 name、description、keywords、references 等元信息；
 - 沉淀的 Skill 禁止包含恶意代码、敏感数据、隐私信息及违规内容；
 - Wiki 内容仅限提炼、整合工作场景内查阅的网页、文档等资料，不得混入无关冗余信息；
