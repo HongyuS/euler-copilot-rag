@@ -6,7 +6,7 @@
 
 ## 前置约束
 
-- 所有新建 Wiki 必须存放至 `experience_skill/wiki_hub/` 目录下，以 `.md` 文件形式组织，文件名使用 Wiki 名称的英文/拼音缩写。
+- 所有新建 Wiki 必须存放至 `wiki_hub/` 目录下，以 `.md` 文件形式组织，文件名使用 Wiki 名称的英文/拼音缩写。
 - Wiki 文件采用 **YAML front matter + Markdown 正文** 格式（与 Skill 的 SKILL.md 格式一致），YAML 头部包含 `name`、`description`、`keywords` 等元信息，正文为 Markdown 内容。
 - Wiki 内容仅限提炼、整合工作场景内查阅的网页、文档等资料，禁止混入无关冗余信息。
 - 禁止在 Wiki 内容中包含敏感数据、隐私信息及违规内容。
@@ -20,7 +20,8 @@
 1. 使用 CLI 搜索现有 Wiki：
 
    ```bash
-   python experience_skill/scripts/main.py search-experiences \
+   cd scripts
+   uv run python main.py search-experiences \
        --query "<待创建 Wiki 的核心关键词>" \
        --type WIKI \
        --top-k 5
@@ -76,7 +77,7 @@
 
 ### 第三步：保存到 wiki_hub
 
-将生成的 Markdown 文件保存到 `experience_skill/wiki_hub/` 目录下：
+将生成的 Markdown 文件保存到 `wiki_hub/` 目录下：
 
 ```bash
 # 文件命名示例：{主题英文缩写}.md
@@ -88,7 +89,8 @@
 将 Wiki 文件注册到 SQLite 经验库：
 
 ```bash
-python experience_skill/scripts/main.py add-experiences \
+cd scripts
+uv run python main.py add-experiences \
     --type WIKI \
     --source "<wiki_hub 下的 .md 文件绝对路径>"
 ```
@@ -105,7 +107,7 @@ python experience_skill/scripts/main.py add-experiences \
 注册成功后，执行一次检索验证 Wiki 可被召回：
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<Wiki 核心关键词>" \
     --type WIKI \
     --top-k 3
@@ -126,4 +128,4 @@ python experience_skill/scripts/main.py search-experiences \
 - 若 `.md` 文件不存在于 source 路径，CLI 会报 `FileNotFoundError`，需检查路径。
 - 若 source 路径已注册过，CLI 会报 `ValueError`，需更换路径或先删除旧记录。
 - 若 `.md` 文件的 YAML front matter 格式不符合规范（缺少必填字段），注册仍会成功但元信息可能为空。
-- 若 simple tokenizer 扩展未编译，需先执行 `bash experience_skill/scripts/tokenizer/build.sh`。
+- 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/tokenizer/build.sh`。

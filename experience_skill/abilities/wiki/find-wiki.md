@@ -23,10 +23,28 @@
 
 ## 执行方式
 
+> **运行环境**：以下命令需在 `scripts/` 目录下执行。首次使用前需运行 `uv sync` 安装依赖。
+
+### Web 界面搜索（推荐）
+
+启动 Web 管理界面后，可在浏览器中可视化搜索：
+
+```bash
+cd scripts
+uv run python main.py web
+```
+
+页面功能：
+
+- 点击 **Wiki** 标签筛选类型
+- 在「名称搜索」输入框输入名称片段模糊匹配
+- 在「关键词全文检索」输入框使用 FTS5 语义搜索
+- 勾选「仅热门」查看高频使用的 Wiki
+
 ### 基础搜索（全文检索）
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --top-k 10
@@ -39,7 +57,7 @@ python experience_skill/scripts/main.py search-experiences \
 ### 按关键字过滤搜索
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --fields <关键词1> <关键词2> \
@@ -51,7 +69,7 @@ python experience_skill/scripts/main.py search-experiences \
 ### 限制搜索范围
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --experience-ids <id1> <id2> \
@@ -63,7 +81,7 @@ python experience_skill/scripts/main.py search-experiences \
 ### 排除特定 Wiki
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --banned-ids <id1> <id2> \
@@ -75,7 +93,7 @@ python experience_skill/scripts/main.py search-experiences \
 ### 热门优先搜索
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --is-hot true \
@@ -126,15 +144,21 @@ cat <搜索结果中的 source 路径>
 
 ## 结果为空时的处理
 
-1. 确认 simple tokenizer 扩展已编译：`bash experience_skill/scripts/tokenizer/build.sh`
+1. 确认 simple tokenizer 扩展已编译：`bash scripts/tokenizer/build.sh`
 2. 尝试缩短 / 精简查询词，减少 AND 语义过紧导致的零召回。
 3. 尝试使用 `list-experiences` 命令浏览全量 Wiki 列表：
 
    ```bash
-   python experience_skill/scripts/main.py list-experiences --type WIKI
+   uv run python main.py list-experiences --type WIKI
    ```
 
-4. 若确实无相关 Wiki，提示用户可考虑 create-wiki 新建。
+4. 或启动 Web 界面可视化浏览：
+
+   ```bash
+   uv run python main.py web
+   ```
+
+5. 若确实无相关 Wiki，提示用户可考虑 create-wiki 新建。
 
 ## 与其他能力的协作
 

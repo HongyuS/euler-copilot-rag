@@ -6,7 +6,7 @@
 
 ## 前置约束
 
-- 所有新建 Skill 必须存放至 `experience_skill/skill_hub/` 目录下，以独立子目录形式组织。
+- 所有新建 Skill 必须存放至 `skill_hub/` 目录下，以独立子目录形式组织。
 - Skill 目录内必须包含 `SKILL.md` 文件，推荐包含 `database.yaml`（评测用例）、`references/`（参考资料）、`scripts/`（辅助脚本）等可选内容。
 - 禁止在 SKILL.md 内容中包含恶意代码、敏感数据、隐私信息。
 
@@ -19,7 +19,8 @@
 1. 使用 CLI 搜索现有 Skill：
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+cd scripts
+uv run python main.py search-experiences \
     --query "<待创建Skill的核心关键词>" \
     --type SKILL \
     --top-k 5
@@ -86,7 +87,8 @@ keywords: [关键词1, 关键词2, 关键词3]
 将 Skill 目录注册到 SQLite 经验库：
 
 ```bash
-python experience_skill/scripts/main.py add-experiences \
+cd scripts
+uv run python main.py add-experiences \
     --type SKILL \
     --source "<skill_hub下的子目录绝对路径>"
 ```
@@ -103,7 +105,7 @@ python experience_skill/scripts/main.py add-experiences \
 注册成功后，执行一次检索验证 Skill 可被召回：
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<Skill核心关键词>" \
     --type SKILL \
     --top-k 3
@@ -115,4 +117,4 @@ python experience_skill/scripts/main.py search-experiences \
 
 - 若 `SKILL.md` 不存在于 source 目录，CLI 会报 `FileNotFoundError`，需检查路径。
 - 若 source 路径已注册过，CLI 会报 `ValueError`，需更换路径或先删除旧记录。
-- 若 simple tokenizer 扩展未编译，需先执行 `bash experience_skill/scripts/tokenizer/build.sh`。
+- 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/tokenizer/build.sh`。

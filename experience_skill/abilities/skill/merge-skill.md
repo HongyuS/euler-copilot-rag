@@ -15,7 +15,8 @@
 使用 `find-skill` 能力检索与目标 Skill 相似的存量资源：
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+cd scripts
+uv run python main.py search-experiences \
     --query "<待合并 Skill 的核心关键词>" \
     --type SKILL \
     --top-k 10
@@ -68,10 +69,10 @@ merged = ExperienceService.merge_experiences(
 
 ```bash
 # 确认 base Skill 信息已更新
-python experience_skill/scripts/main.py list-experiences --type SKILL --name "<合并后的名称>"
+uv run python main.py list-experiences --type SKILL --name "<合并后的名称>"
 
 # 确认被合并 Skill 已软删除（不再出现在正常列表）
-python experience_skill/scripts/main.py search-experiences --query "<被合并 Skill 名>" --type SKILL
+uv run python main.py search-experiences --query "<被合并 Skill 名>" --type SKILL
 ```
 
 ## 合并规则细节

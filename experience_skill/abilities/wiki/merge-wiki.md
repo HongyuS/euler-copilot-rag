@@ -16,7 +16,8 @@
 使用 `find-wiki` 能力检索与目标 Wiki 相似的存量资源：
 
 ```bash
-python experience_skill/scripts/main.py search-experiences \
+cd scripts
+uv run python main.py search-experiences \
     --query "<待合并 Wiki 的核心关键词>" \
     --type WIKI \
     --top-k 10
@@ -88,13 +89,13 @@ merged = ExperienceService.merge_experiences(
 
 ```bash
 # 确认 base Wiki 信息已更新
-python experience_skill/scripts/main.py list-experiences --type WIKI --name "<合并后的名称>"
+uv run python main.py list-experiences --type WIKI --name "<合并后的名称>"
 
 # 确认被合并 Wiki 已软删除（不再出现在正常列表）
-python experience_skill/scripts/main.py search-experiences --query "<被合并 Wiki 名>" --type WIKI
+uv run python main.py search-experiences --query "<被合并 Wiki 名>" --type WIKI
 
 # 确认合并后的 Wiki 可正常检索
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<合并后 Wiki 的关键词>" \
     --type WIKI \
     --top-k 5

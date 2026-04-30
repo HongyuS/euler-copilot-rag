@@ -26,11 +26,13 @@ Wiki 质量评估围绕以下四个维度展开：
 按需选择评估范围：
 
 ```bash
+cd scripts
+
 # 评估全部 Wiki
-python experience_skill/scripts/main.py list-experiences --type WIKI
+uv run python main.py list-experiences --type WIKI
 
 # 按关键词筛选评估范围
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<主题关键词>" \
     --type WIKI \
     --top-k 20
@@ -50,7 +52,7 @@ python experience_skill/scripts/main.py search-experiences \
 
    ```bash
    # 取 Wiki 的 name 和 keywords 作为查询词
-   python experience_skill/scripts/main.py search-experiences \
+   uv run python main.py search-experiences \
        --query "<Wiki 名称或首个关键词>" \
        --type WIKI \
        --top-k 10
@@ -64,7 +66,7 @@ python experience_skill/scripts/main.py search-experiences \
    使用 Wiki 描述文本中的自然语言句子作为查询词：
 
    ```bash
-   python experience_skill/scripts/main.py search-experiences \
+   uv run python main.py search-experiences \
        --query "<Wiki 描述中的核心语句>" \
        --type WIKI \
        --top-k 10

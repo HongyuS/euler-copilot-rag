@@ -16,13 +16,14 @@
 
 ```bash
 # 按名称搜索
-python experience_skill/scripts/main.py search-experiences \
+cd scripts
+uv run python main.py search-experiences \
     --query "<Skill 名称或关键词>" \
     --type SKILL \
     --top-k 5
 
 # 或浏览全量列表
-python experience_skill/scripts/main.py list-experiences --type SKILL
+uv run python main.py list-experiences --type SKILL
 ```
 
 记录目标 Skill 的 ID（如 `a1b2c3d4-...`）和 source 路径。
@@ -87,10 +88,10 @@ updated = ExperienceService.optimize_experience(
 
 ```bash
 # 确认 DB 记录已更新
-python experience_skill/scripts/main.py list-experiences --type SKILL --name "<Skill 名称>"
+uv run python main.py list-experiences --type SKILL --name "<Skill 名称>"
 
 # 确认优化后的 Skill 可被检索召回
-python experience_skill/scripts/main.py search-experiences \
+uv run python main.py search-experiences \
     --query "<优化后的核心关键词>" \
     --type SKILL \
     --top-k 5
