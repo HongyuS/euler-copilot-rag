@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 
-from ENUM.exprience import ExperienceType
+from schema.enum import ExperienceType
 from service.experience_service import ExperienceService
 
 # 导入你现有的服务
 from sqlite import AsyncSQLiteSingleton
+from web_server import start_web_server
 
 
 # ------------------------------
@@ -67,7 +68,9 @@ def search_experiences_cli(args) -> None:
         fields=args.fields if args.fields is not None else None,
         is_hot=args.is_hot,
         banned_experience_ids=args.banned_ids if args.banned_ids is not None else None,
-        experience_ids=(args.experience_ids if args.experience_ids is not None else None),
+        experience_ids=(
+            args.experience_ids if args.experience_ids is not None else None
+        ),
     )
     print(f"🔍 搜索「{args.query}」找到 {len(exps)} 条结果\n")
 
@@ -101,6 +104,15 @@ def init_db() -> None:
     sqlite_manager.init()
 
 
+def web_cli(args) -> None:
+    """启动 Web 管理界面"""
+    start_web_server(
+        host=args.host,
+        port=args.port,
+        open_browser=not args.no_browser,
+    )
+
+
 # ------------------------------
 # 主入口：argparse 子命令
 # ------------------------------
@@ -115,7 +127,9 @@ def main():
 
     # add-experiences
     add_parser = subparsers.add_parser("add-experiences", help="添加经验")
-    add_parser.add_argument("--type", required=True, choices=["SKILL", "WIKI"], help="经验类型")
+    add_parser.add_argument(
+        "--type", required=True, choices=["SKILL", "WIKI"], help="经验类型"
+    )
     add_parser.add_argument("--source", required=True, help="文件/目录路径")
     add_parser.set_defaults(func=add_experiences_cli)
 
@@ -135,18 +149,26 @@ def main():
 
     # delete-by-ids
     del_ids_parser = subparsers.add_parser("delete-by-ids", help="按ID删除经验")
-    del_ids_parser.add_argument("--ids", nargs="+", required=True, help="经验ID列表，空格分隔")
+    del_ids_parser.add_argument(
+        "--ids", nargs="+", required=True, help="经验ID列表，空格分隔"
+    )
     del_ids_parser.set_defaults(func=delete_experience_ids_cli)
 
     # delete-by-source
-    del_source_parser = subparsers.add_parser("delete-by-source", help="按来源路径删除经验")
+    del_source_parser = subparsers.add_parser(
+        "delete-by-source", help="按来源路径删除经验"
+    )
     del_source_parser.add_argument("--source", required=True, help="来源路径")
     del_source_parser.set_defaults(func=delete_experience_source_cli)
 
     search_parser = subparsers.add_parser("search-experiences", help="搜索经验")
     search_parser.add_argument("--query", required=True, help="搜索关键词")
-    search_parser.add_argument("--type", required=True, choices=["SKILL", "WIKI"], help="经验类型")
-    search_parser.add_argument("--fields", nargs="+", help="搜索字段列表，空格分隔，默认为全部字段")
+    search_parser.add_argument(
+        "--type", required=True, choices=["SKILL", "WIKI"], help="经验类型"
+    )
+    search_parser.add_argument(
+        "--fields", nargs="+", help="搜索字段列表，空格分隔，默认为全部字段"
+    )
     search_parser.add_argument(
         "--is-hot",
         type=lambda x: str(x).lower() == "true",
@@ -168,6 +190,19 @@ def main():
 
     del_all_parser = subparsers.add_parser("delete-all", help="删除所有经验")
     del_all_parser.set_defaults(func=delete_all_experiences_cli)
+
+    # web
+    web_parser = subparsers.add_parser("web", help="启动 Web 管理界面")
+    web_parser.add_argument(
+        "--host", default="127.0.0.1", help="监听地址，默认 127.0.0.1"
+    )
+    web_parser.add_argument(
+        "--port", type=int, default=8080, help="监听端口，默认 8080"
+    )
+    web_parser.add_argument(
+        "--no-browser", action="store_true", help="不自动打开浏览器"
+    )
+    web_parser.set_defaults(func=web_cli)
 
     # 执行
     args = parser.parse_args()

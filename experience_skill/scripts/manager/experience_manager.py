@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from ENUM.exprience import ExperienceStatus, ExperienceType
+from schema.enum import ExperienceStatus, ExperienceType
 from schema.exprience import Experience
 from sqlite import AsyncSQLiteSingleton
 
@@ -126,8 +126,12 @@ class ExperienceManager:
         is_hot: bool | None,
         page: int,
         page_size: int,
+        *,
+        experience_ids: list[str] | None = None,
     ) -> tuple[int, list[Experience]]:
         if keywords is not None and len(keywords) == 0:
+            return 0, []
+        if experience_ids is not None and len(experience_ids) == 0:
             return 0, []
         db = AsyncSQLiteSingleton()
         offset = (page - 1) * page_size
@@ -145,6 +149,10 @@ class ExperienceManager:
         if is_hot is not None:
             where_clauses.append("is_hot = ?")
             params.append(int(is_hot))
+        if experience_ids is not None:
+            placeholders = ",".join(["?"] * len(experience_ids))
+            where_clauses.append(f"id IN ({placeholders})")
+            params.extend(experience_ids)
         where_clause = " AND ".join(where_clauses)
         total_cnt = db._query(
             f"""
@@ -212,7 +220,9 @@ class ExperienceManager:
         experiences = []
 
         # ====================== 抽取公共方法：避免代码重复 ======================
-        def build_fts_query(match_expr: str, limit: int, use_simple_query: bool = False):
+        def build_fts_query(
+            match_expr: str, limit: int, use_simple_query: bool = False
+        ):
             """构建SQL和参数（公共逻辑）"""
             # 基础：关联FTS表
             from_clause = """
@@ -266,7 +276,9 @@ class ExperienceManager:
 
         # ====================== 1. 紧凑查询（simple_query AND 语义） ======================
         and_keywords = " ".join(keywords)
-        sql, params = build_fts_query(and_keywords, tight_query_cnt, use_simple_query=True)
+        sql, params = build_fts_query(
+            and_keywords, tight_query_cnt, use_simple_query=True
+        )
 
         experience_rows = db._query(sql, params)
 
@@ -293,7 +305,9 @@ class ExperienceManager:
         if len(experiences) < top_k:
             loose_cnt = top_k - len(experiences)
             or_keywords = " OR ".join(keywords)
-            sql, params = build_fts_query(or_keywords, loose_cnt, use_simple_query=False)
+            sql, params = build_fts_query(
+                or_keywords, loose_cnt, use_simple_query=False
+            )
 
             experience_rows = db._query(sql, params)
 

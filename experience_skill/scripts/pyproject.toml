@@ -1,7 +1,7 @@
 [project]
 name = "experience-skill-cli"
 version = "0.1.0"
-description = "经验管理与文档解析 CLI 工具（含 Web 前端）"
+description = "经验管理与文档解析工具"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110.0",

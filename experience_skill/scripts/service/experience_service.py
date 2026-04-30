@@ -3,9 +3,10 @@ import re
 from pathlib import Path
 
 import yaml
-from ENUM.exprience import ExperienceStatus, ExperienceType
+
 from manager.experience_manager import ExperienceManager
 from manager.keyword_manager import KeyWordManager
+from schema.enum import ExperienceType
 from schema.exprience import Experience
 
 
@@ -31,7 +32,9 @@ class ExperienceService:
         """从 Markdown 的 YAML front matter 中解析结构化数据（name / description / keywords）"""
         result = {}
         # 匹配标准的 front matter：---\n...yaml...\n---
-        match = __import__("re").match(r"^---\s*\n(.*?)\n---\s*(?:\n|$)", md_content, __import__("re").DOTALL)
+        match = __import__("re").match(
+            r"^---\s*\n(.*?)\n---\s*(?:\n|$)", md_content, __import__("re").DOTALL
+        )
         if match:
             try:
                 result = yaml.safe_load(match.group(1)) or {}
@@ -62,18 +65,24 @@ class ExperienceService:
             if not skill_md.exists():
                 msg = f"SKILL.md not found in {source}"
                 raise FileNotFoundError(msg)
-            structured_data = ExperienceService.md_to_structured_json(skill_md.read_text(encoding="utf-8"))
+            structured_data = ExperienceService.md_to_structured_json(
+                skill_md.read_text(encoding="utf-8")
+            )
         elif experience_type == ExperienceType.WIKI:
             wiki_md = Path(source)
             if not wiki_md.exists():
                 msg = f"WIKI file not found: {source}"
                 raise FileNotFoundError(msg)
-            structured_data = ExperienceService.md_to_structured_json(wiki_md.read_text(encoding="utf-8"))
+            structured_data = ExperienceService.md_to_structured_json(
+                wiki_md.read_text(encoding="utf-8")
+            )
         name = structured_data.get("name", "")
         description = structured_data.get("description", "")
         keywords = structured_data.get("keywords", [])
         references = structured_data.get("references")
-        references_json = json.dumps(references, ensure_ascii=False) if references else ""
+        references_json = (
+            json.dumps(references, ensure_ascii=False) if references else ""
+        )
         description = ExperienceService.filter_special_characters(description)
         experience = Experience(
             type=experience_type,
@@ -112,7 +121,11 @@ class ExperienceService:
         # 进一步过滤：排除名称完全不相关的结果
         if name:
             similar = [
-                exp for exp in similar if any(w in exp.name or w in (exp.description or "") for w in name.split())
+                exp
+                for exp in similar
+                if any(
+                    w in exp.name or w in (exp.description or "") for w in name.split()
+                )
             ]
         return similar
 
@@ -135,7 +148,9 @@ class ExperienceService:
             page_size=page_size,
         )
         for experience in experiences:
-            experience.keywords = KeyWordManager.get_keywords_by_experience_id(experience.id)
+            experience.keywords = KeyWordManager.get_keywords_by_experience_id(
+                experience.id
+            )
         return total_cnt, experiences
 
     @staticmethod
@@ -211,7 +226,9 @@ class ExperienceService:
             parts = [base.description] if base.description else []
             parts.extend(merged_descriptions)
             base.description = "\n---\n".join(parts)
-            base.description = ExperienceService.filter_special_characters(base.description)
+            base.description = ExperienceService.filter_special_characters(
+                base.description
+            )
 
         # 合并 keywords：去重
         base.keywords = list(merged_keyword_sets)
@@ -303,7 +320,9 @@ class ExperienceService:
             experience_ids=experience_ids,
         )
         for experience in experiences:
-            experience.keywords = KeyWordManager.get_keywords_by_experience_id(experience.id)
+            experience.keywords = KeyWordManager.get_keywords_by_experience_id(
+                experience.id
+            )
         for experience in experiences:
             ExperienceManager.update_hot_experience(experience.id)
         return experiences
