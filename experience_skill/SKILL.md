@@ -28,24 +28,30 @@ experience_skill/
 │       ├── merge-wiki.md
 │       └── optimize-wiki.md
 ├── scripts
-│   ├── common
-│   │   └── exprience.py
-│   ├── ENUM
-│   │   └── exprience.py
 │   ├── main.py
 │   ├── pyproject.toml
-│   ├── web_server.py
-│   ├── templates
-│   │   └── index.html
-│   ├── manager
-│   │   ├── experience_manager.py
-│   │   └── keyword_manager.py
-│   ├── schema
-│   │   └── exprience.py
-│   ├── service
-│   │   ├── document_service.py
-│   │   └── experience_service.py
-│   └── sqlite.py
+│   ├── uv.lock
+│   └── src
+│       └── experience_skill_cli
+│           ├── common
+│           │   └── exprience.py
+│           ├── cli.py
+│           ├── console.py
+│           ├── manager
+│           │   ├── experience_manager.py
+│           │   └── keyword_manager.py
+│           ├── schema
+│           │   ├── enum.py
+│           │   └── exprience.py
+│           ├── service
+│           │   └── experience_service.py
+│           ├── sqlite.py
+│           ├── templates
+│           │   └── index.html
+│           ├── tokenizer
+│           │   ├── build.sh
+│           │   └── libsimple
+│           └── web_server.py
 ├── skill_hub
 │   └── exmaple_skill
 │       ├── database.yaml
@@ -60,7 +66,7 @@ experience_skill/
 目录说明：
 
 1. `abilities`：核心能力目录，承载 Skill、Wiki 两类资源的创建、评估、检索、合并、优化能力定义；
-2. `scripts`：业务逻辑目录，包含经验管理核心代码实现、命令行接口等脚本文件。main.py 提供命令行入口（CLI + Web），experience_service.py、document_service.py 等提供核心服务实现，experience_manager.py、keyword_manager.py 等提供数据库交互支持。pyproject.toml 为 uv 项目配置，web_server.py + templates/ 为 Web 管理前端；
+2. `scripts`：Python 项目目录，使用 `uv` 管理依赖。`main.py` 为 CLI 薄入口，`pyproject.toml` 为项目配置，`uv.lock` 为依赖锁定文件。所有 Python 源码位于 `src/experience_skill_cli/` 包内，`cli.py` 为主命令实现，其余模块包括核心服务、数据库交互、Web 服务、控制台工具等；
 3. `skill_hub`：存量 Skill 资源仓库，存放用户沉淀的所有工作流程技能；
 4. `wiki_hub`：存量 Wiki 资源仓库，集中保管资料类沉淀文档。
 
@@ -90,7 +96,7 @@ uv sync
 
 ### CLI 命令概览
 
-所有 CLI 命令需在 `scripts/` 目录下通过 `uv run python main.py` 执行：
+所有 CLI 命令需在 `scripts/` 目录下通过 `uv run python main.py` 执行（或直接使用 `uv run experience-skill`）：
 
 | 子命令               | 用途                                 |
 | -------------------- | ------------------------------------ |
@@ -106,6 +112,8 @@ uv sync
 
 ```bash
 uv run python main.py <子命令> --help
+# 或
+uv run experience-skill <子命令> --help
 ```
 
 ### Web 管理界面
@@ -115,6 +123,8 @@ uv run python main.py <子命令> --help
 ```bash
 cd scripts
 uv run python main.py web
+# 或
+uv run experience-skill web
 ```
 
 - **自动打开浏览器**：在 macOS 或有 `DISPLAY`/`WAYLAND_DISPLAY` 的 Linux 环境下自动调用系统浏览器打开 `http://127.0.0.1:8080`。
@@ -136,6 +146,8 @@ Web 页面功能：
 
 ```bash
 python scripts/main.py <子命令> ...
+# 或
+PYTHONPATH=scripts/src python -m experience_skill_cli ...
 ```
 
 ## 核心能力

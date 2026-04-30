@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "experience-skill-cli"
 version = "0.1.0"
@@ -11,7 +15,10 @@ dependencies = [
 ]
 
 [project.scripts]
-experience-skill = "main:main"
+experience-skill = "experience_skill_cli.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/experience_skill_cli"]
 
 [[tool.uv.index]]
 name = "tsinghua"

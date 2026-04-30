@@ -1,13 +1,15 @@
+"""经验业务服务层。"""
+
 import json
 import re
 from pathlib import Path
 
 import yaml
 
-from manager.experience_manager import ExperienceManager
-from manager.keyword_manager import KeyWordManager
-from schema.enum import ExperienceType
-from schema.exprience import Experience
+from experience_skill_cli.manager.experience_manager import ExperienceManager
+from experience_skill_cli.manager.keyword_manager import KeyWordManager
+from experience_skill_cli.schema.enum import ExperienceType
+from experience_skill_cli.schema.exprience import Experience
 
 
 class ExperienceService:
@@ -33,7 +35,9 @@ class ExperienceService:
         result = {}
         # 匹配标准的 front matter：---\n...yaml...\n---
         match = __import__("re").match(
-            r"^---\s*\n(.*?)\n---\s*(?:\n|$)", md_content, __import__("re").DOTALL
+            r"^---\s*\n(.*?)\n---\s*(?:\n|$)",
+            md_content,
+            __import__("re").DOTALL,
         )
         if match:
             try:
@@ -66,7 +70,7 @@ class ExperienceService:
                 msg = f"skill_def.md not found in {source}"
                 raise FileNotFoundError(msg)
             structured_data = ExperienceService.md_to_structured_json(
-                skill_md.read_text(encoding="utf-8")
+                skill_md.read_text(encoding="utf-8"),
             )
         elif experience_type == ExperienceType.WIKI:
             wiki_md = Path(source)
@@ -74,15 +78,13 @@ class ExperienceService:
                 msg = f"WIKI file not found: {source}"
                 raise FileNotFoundError(msg)
             structured_data = ExperienceService.md_to_structured_json(
-                wiki_md.read_text(encoding="utf-8")
+                wiki_md.read_text(encoding="utf-8"),
             )
         name = structured_data.get("name", "")
         description = structured_data.get("description", "")
         keywords = structured_data.get("keywords", [])
         references = structured_data.get("references")
-        references_json = (
-            json.dumps(references, ensure_ascii=False) if references else ""
-        )
+        references_json = json.dumps(references, ensure_ascii=False) if references else ""
         description = ExperienceService.filter_special_characters(description)
         experience = Experience(
             type=experience_type,
@@ -121,11 +123,7 @@ class ExperienceService:
         # 进一步过滤：排除名称完全不相关的结果
         if name:
             similar = [
-                exp
-                for exp in similar
-                if any(
-                    w in exp.name or w in (exp.description or "") for w in name.split()
-                )
+                exp for exp in similar if any(w in exp.name or w in (exp.description or "") for w in name.split())
             ]
         return similar
 
@@ -149,7 +147,7 @@ class ExperienceService:
         )
         for experience in experiences:
             experience.keywords = KeyWordManager.get_keywords_by_experience_id(
-                experience.id
+                experience.id,
             )
         return total_cnt, experiences
 
@@ -187,7 +185,7 @@ class ExperienceService:
         # 加载 base 和被合并的经验
         all_ids = [base_id, *merge_ids]
         all_exps = ExperienceManager.query_experience_by_ids(all_ids)
-        if len(all_exps) < 2:
+        if len(all_exps) < 2:  # noqa: PLR2004
             msg = "部分 experience_id 不存在或已删除"
             raise ValueError(msg)
 
@@ -227,7 +225,7 @@ class ExperienceService:
             parts.extend(merged_descriptions)
             base.description = "\n---\n".join(parts)
             base.description = ExperienceService.filter_special_characters(
-                base.description
+                base.description,
             )
 
         # 合并 keywords：去重
@@ -280,7 +278,7 @@ class ExperienceService:
         return exp
 
     @staticmethod
-    def search_experiences(  # noqa: PLR0913
+    def search_experiences(
         query: str,
         exp_type: ExperienceType,
         fields: list[str] | None = None,
@@ -312,7 +310,7 @@ class ExperienceService:
 
         experiences = ExperienceManager.query_experience_by_fts5_use_description(
             keywords=keywords,
-            type=exp_type,
+            exp_type=exp_type,
             fields=fields,
             is_hot=is_hot,
             top_k=top_k,
@@ -321,7 +319,7 @@ class ExperienceService:
         )
         for experience in experiences:
             experience.keywords = KeyWordManager.get_keywords_by_experience_id(
-                experience.id
+                experience.id,
             )
         for experience in experiences:
             ExperienceManager.update_hot_experience(experience.id)

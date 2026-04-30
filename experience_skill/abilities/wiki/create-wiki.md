@@ -128,4 +128,4 @@ uv run python main.py search-experiences \
 - 若 `.md` 文件不存在于 source 路径，CLI 会报 `FileNotFoundError`，需检查路径。
 - 若 source 路径已注册过，CLI 会报 `ValueError`，需更换路径或先删除旧记录。
 - 若 `.md` 文件的 YAML front matter 格式不符合规范（缺少必填字段），注册仍会成功但元信息可能为空。
-- 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/tokenizer/build.sh`。
+- 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/src/experience_skill_cli/tokenizer/build.sh`。

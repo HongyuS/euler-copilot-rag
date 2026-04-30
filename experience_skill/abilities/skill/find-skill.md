@@ -133,7 +133,7 @@ uv run python main.py search-experiences \
 
 ## 结果为空时的处理
 
-1. 确认 simple tokenizer 扩展已编译：`bash scripts/tokenizer/build.sh`
+1. 确认 simple tokenizer 扩展已编译：`bash scripts/src/experience_skill_cli/tokenizer/build.sh`
 2. 尝试缩短 / 精简查询词，减少 AND 语义过紧导致的零召回。
 3. 尝试使用 `list-experiences` 命令浏览全量 Skill 列表：
 

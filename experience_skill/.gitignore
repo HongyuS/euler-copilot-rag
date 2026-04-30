@@ -1,4 +1,4 @@
 *.db*
-scripts/tokenizer/*.tar.gz
-scripts/tokenizer/lib*
-scripts/tokenizer/*-src/
+**/tokenizer/*.tar.gz
+**/tokenizer/lib*
+**/tokenizer/*-src/

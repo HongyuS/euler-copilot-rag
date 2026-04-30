@@ -117,4 +117,4 @@ uv run python main.py search-experiences \
 
 - 若 `skill_def.md` 不存在于 source 目录，CLI 会报 `FileNotFoundError`，需检查路径。
 - 若 source 路径已注册过，CLI 会报 `ValueError`，需更换路径或先删除旧记录。
-- 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/tokenizer/build.sh`。
+- 若 simple tokenizer 扩展未编译，需先执行 `bash scripts/src/experience_skill_cli/tokenizer/build.sh`。

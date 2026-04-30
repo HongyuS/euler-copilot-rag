@@ -1,18 +1,21 @@
+"""SQLite 数据库单例管理及 tokenizer 扩展加载。"""
+
 import asyncio
 import logging
-import os
 import sqlite3
+from collections.abc import Sequence
 from multiprocessing import Lock as ProcessLock
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Self
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ====================== 路径常量 ======================
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TOKENIZER_DIR = os.path.join(SCRIPT_DIR, "tokenizer")
-LIBSIMPLE_PATH = os.path.join(TOKENIZER_DIR, "libsimple")
+SCRIPT_DIR = Path(__file__).resolve().parent
+TOKENIZER_DIR = SCRIPT_DIR / "tokenizer"
+LIBSIMPLE_PATH = TOKENIZER_DIR / "libsimple"
 
 
 # ====================== 表结构 ======================
@@ -73,32 +76,43 @@ table_ddl_list = {
 def _check_tokenizer() -> str:
     """
     检查 libsimple 扩展是否已就绪，返回扩展路径（不带后缀）。
+
     如果不存在，抛出 RuntimeError 提示用户手动编译。
     """
     ext_candidates = [
-        LIBSIMPLE_PATH,
-        LIBSIMPLE_PATH + ".so",
-        LIBSIMPLE_PATH + ".dylib",
-        LIBSIMPLE_PATH + ".dll",
+        str(LIBSIMPLE_PATH),
+        str(LIBSIMPLE_PATH) + ".so",
+        str(LIBSIMPLE_PATH) + ".dylib",
+        str(LIBSIMPLE_PATH) + ".dll",
     ]
-    ext_exists = any(os.path.exists(p) for p in ext_candidates)
+    ext_exists = any(Path(p).exists() for p in ext_candidates)
 
     if not ext_exists:
-        build_script = os.path.join(TOKENIZER_DIR, "build.sh")
-        raise RuntimeError(
+        build_script = TOKENIZER_DIR / "build.sh"
+        msg = (
             f"[Tokenizer] 扩展未找到: {LIBSIMPLE_PATH}\n"
             f"            请先编译 simple 分词器扩展:\n"
             f"            bash {build_script}"
         )
+        raise RuntimeError(msg)
 
-    return LIBSIMPLE_PATH
+    return str(LIBSIMPLE_PATH)
 
 
 class AsyncSQLiteSingleton:
-    _instance: Optional["AsyncSQLiteSingleton"] = None
-    _process_lock = ProcessLock()
+    """SQLite 异步安全单例管理器。"""
 
-    def __new__(cls):
+    _instance: "AsyncSQLiteSingleton | None" = None
+    _process_lock: ProcessLock = ProcessLock()
+
+    DB_PATH: str
+    _async_lock: asyncio.Lock
+    _conn: sqlite3.Connection | None
+    _init: bool
+    _ext_path: str | None
+
+    def __new__(cls) -> Self:
+        """创建或返回单例实例。"""
         if cls._instance is None:
             with cls._process_lock:
                 if cls._instance is None:
@@ -106,16 +120,18 @@ class AsyncSQLiteSingleton:
         return cls._instance
 
     def __init__(self) -> None:
+        """初始化数据库连接与 tokenizer 扩展。"""
         if hasattr(self, "_init"):
             return
-        self.DB_PATH = os.path.join(SCRIPT_DIR, "experience.db")
+        self.DB_PATH = str(SCRIPT_DIR / "experience.db")
         self._async_lock = asyncio.Lock()
         self._conn = None
         self._init = True
-        self._ext_path: Optional[str] = None
+        self._ext_path = None
         self._connect()
 
     def _connect(self) -> None:
+        """建立 SQLite 连接并加载 simple 分词器扩展。"""
         if self._conn:
             return
         self._conn = sqlite3.connect(self.DB_PATH, check_same_thread=False, timeout=30)
@@ -124,41 +140,48 @@ class AsyncSQLiteSingleton:
         # 加载 simple 分词器扩展（幂等：只加载一次）
         if self._ext_path is None:
             self._ext_path = _check_tokenizer()
-        self._conn.enable_load_extension(True)
+        self._conn.enable_load_extension(enabled=True)
         self._conn.load_extension(self._ext_path)
 
-    def _run(self, sql, params=()) -> bool:
+    def _run(self, sql: str, params: Sequence[Any] = ()) -> bool:
+        """执行写操作 SQL。"""
         self._connect()
+        assert self._conn is not None
         try:
             cur = self._conn.cursor()
             cur.execute(sql, params)
             self._conn.commit()
-            return True
-        except Exception as e:
-            logger.error(f"SQL execute error: {e}, sql: {sql}, params: {params}")
+        except Exception:
+            logger.exception("SQL execute error: sql=%s, params=%s", sql, params)
             self._conn.rollback()
             return False
+        else:
+            return True
 
-    def _query(self, sql, params=()) -> list[dict[str, Any]]:
+    def _query(self, sql: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
+        """执行查询操作 SQL，返回字典列表。"""
         self._connect()
+        assert self._conn is not None
         try:
             self._conn.row_factory = sqlite3.Row
             cur = self._conn.cursor()
             cur.execute(sql, params)
             return [dict(r) for r in cur.fetchall()]
-        except Exception as e:
-            logger.error(f"SQL query error: {e}, sql: {sql}, params: {params}")
+        except Exception:
+            logger.exception("SQL query error: sql=%s, params=%s", sql, params)
             return []
 
     def _ensure_column(self, table: str, column: str, col_type: str) -> None:
         """检查表是否包含指定列，没有则添加（用于旧表迁移）。"""
         self._connect()
+        assert self._conn is not None
         cur = self._conn.execute(f"PRAGMA table_info({table})")
         cols = [r[1] for r in cur.fetchall()]
         if column not in cols:
             self._run(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
 
     def init(self) -> None:
+        """初始化数据库表结构。"""
         for sql in table_ddl_list.values():
             self._run(sql)
         # 兼容旧表：动态添加列（如果尚不存在）
@@ -166,10 +189,11 @@ class AsyncSQLiteSingleton:
         self._ensure_column("experience_table", "references", "TEXT")
 
     def clear_database(self) -> None:
+        """清空数据库文件。"""
         if self._conn:
             self._conn.close()
             self._conn = None
         for suffix in ["", "-wal", "-shm"]:
-            path = self.DB_PATH + suffix
-            if os.path.exists(path):
-                os.remove(path)
+            path = Path(self.DB_PATH + suffix)
+            if path.exists():
+                path.unlink()

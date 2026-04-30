@@ -7,18 +7,23 @@ import time
 import urllib.request
 import webbrowser
 from pathlib import Path
+from typing import Annotated
 
+import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from manager.keyword_manager import KeyWordManager
-from schema.enum import ExperienceType
-from service.experience_service import ExperienceService
+from experience_skill_cli.console import launch, link, rocket, warn
+from experience_skill_cli.manager.experience_manager import ExperienceManager
+from experience_skill_cli.manager.keyword_manager import KeyWordManager
+from experience_skill_cli.schema.enum import ExperienceType
+from experience_skill_cli.schema.exprience import Experience
+from experience_skill_cli.service.experience_service import ExperienceService
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 # Skill 安装根目录（SKILL.md 所在目录 = scripts/ 的父目录）
-SKILL_ROOT = Path(__file__).parent.parent
+SKILL_ROOT = Path(__file__).parent.parent.parent.parent
 
 app = FastAPI(title="经验管理", docs_url=None, redoc_url=None)
 
@@ -26,8 +31,9 @@ app = FastAPI(title="经验管理", docs_url=None, redoc_url=None)
 # ------------------------------
 # 静态页面
 # ------------------------------
-@app.get("/", response_class=HTMLResponse)
-async def index():
+@app.get("/", response_class=HTMLResponse, response_model=None)
+async def index() -> HTMLResponse | str:
+    """返回主页面 index.html。"""
     index_path = TEMPLATES_DIR / "index.html"
     if index_path.exists():
         return index_path.read_text(encoding="utf-8")
@@ -39,9 +45,10 @@ async def index():
 # ------------------------------
 @app.get("/api/keywords")
 async def list_keywords(
-    type: str | None = Query(None, description="类型过滤：SKILL / WIKI"),
-):
-    experience_type = ExperienceType[type.upper()] if type else None
+    exp_type: Annotated[str | None, Query(description="类型过滤：SKILL / WIKI")] = None,
+) -> JSONResponse:
+    """获取所有关键词，可按类型过滤。"""
+    experience_type = ExperienceType[exp_type.upper()] if exp_type else None
     keywords = KeyWordManager.get_all_keywords(experience_type)
     return JSONResponse({"keywords": keywords})
 
@@ -51,19 +58,18 @@ async def list_keywords(
 # ------------------------------
 @app.get("/api/experiences")
 async def list_experiences(
-    type: str | None = Query(None, description="类型过滤：SKILL / WIKI"),
-    name: str | None = Query(None, description="名称模糊匹配"),
-    is_hot: bool | None = Query(None, description="是否热门"),
-    kw: list[str] = Query(None, description="关键词过滤（多选）"),
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(20, ge=1, le=100, description="每页数量"),
-):
-    experience_type = ExperienceType[type.upper()] if type else None
+    exp_type: Annotated[str | None, Query(description="类型过滤：SKILL / WIKI")] = None,
+    name: Annotated[str | None, Query(description="名称模糊匹配")] = None,
+    is_hot: Annotated[bool | None, Query(description="是否热门")] = None,
+    kw: Annotated[list[str] | None, Query(description="关键词过滤（多选）")] = None,
+    page: Annotated[int, Query(ge=1, description="页码")] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100, description="每页数量")] = 20,
+) -> JSONResponse:
+    """列出经验列表，支持多条件筛选和分页。"""
+    experience_type = ExperienceType[exp_type.upper()] if exp_type else None
 
     # 关键词过滤：先查出命中的经验 ID，再传给列表查询
     keyword_ids = KeyWordManager.get_experience_ids_by_keywords(kw) if kw else None
-
-    from manager.experience_manager import ExperienceManager
 
     total, exps = ExperienceManager.list_experiences(
         experience_type=experience_type,
@@ -83,7 +89,7 @@ async def list_experiences(
             "page": page,
             "page_size": page_size,
             "items": [_exp_to_dict(e) for e in exps],
-        }
+        },
     )
 
 
@@ -92,9 +98,10 @@ async def list_experiences(
 # ------------------------------
 @app.get("/api/experiences/hot")
 async def list_hot_experiences(
-    type: str | None = Query(None, description="类型过滤：SKILL / WIKI"),
-):
-    experience_type = ExperienceType[type.upper()] if type else None
+    exp_type: Annotated[str | None, Query(description="类型过滤：SKILL / WIKI")] = None,
+) -> JSONResponse:
+    """获取热门经验 Top 20。"""
+    experience_type = ExperienceType[exp_type.upper()] if exp_type else None
     total, exps = ExperienceService.list_experiences(
         experience_type=experience_type,
         name=None,
@@ -106,7 +113,7 @@ async def list_hot_experiences(
         {
             "total": total,
             "items": [_exp_to_dict(e) for e in exps],
-        }
+        },
     )
 
 
@@ -115,12 +122,13 @@ async def list_hot_experiences(
 # ------------------------------
 @app.get("/api/experiences/search")
 async def search_experiences(
-    query: str = Query(..., min_length=1, description="搜索关键词"),
-    type: str = Query(..., description="类型：SKILL / WIKI"),
-    top_k: int = Query(20, ge=1, le=100, description="返回条数"),
-    is_hot: bool | None = Query(None, description="是否热门"),
-):
-    experience_type = ExperienceType[type.upper()]
+    query: Annotated[str, Query(min_length=1, description="搜索关键词")],
+    exp_type: Annotated[str, Query(description="类型：SKILL / WIKI")],
+    top_k: Annotated[int, Query(ge=1, le=100, description="返回条数")] = 20,
+    is_hot: Annotated[bool | None, Query(description="是否热门")] = None,
+) -> JSONResponse:
+    """基于 FTS 全文搜索经验。"""
+    experience_type = ExperienceType[exp_type.upper()]
     exps = ExperienceService.search_experiences(
         query=query,
         exp_type=experience_type,
@@ -130,7 +138,7 @@ async def search_experiences(
     return JSONResponse(
         {
             "items": [_exp_to_dict(e) for e in exps],
-        }
+        },
     )
 
 
@@ -142,14 +150,17 @@ async def search_experiences(
 def _strip_yaml_header(md_content: str) -> str:
     """去除 Markdown 文件开头的 YAML front matter（--- ... ---）。"""
     return re.sub(
-        r"^---\s*\n.*?\n---\s*\n", "", md_content, count=1, flags=re.DOTALL
+        r"^---\s*\n.*?\n---\s*\n",
+        "",
+        md_content,
+        count=1,
+        flags=re.DOTALL,
     ).lstrip("\n")
 
 
 @app.get("/api/experiences/{experience_id}")
-async def get_experience(experience_id: str):
-    from manager.experience_manager import ExperienceManager
-
+async def get_experience(experience_id: str) -> JSONResponse:
+    """获取单条经验详情，含源文件内容。"""
     exps = ExperienceManager.query_experience_by_ids([experience_id])
     if not exps:
         return JSONResponse({"error": "Experience not found"}, status_code=404)
@@ -168,7 +179,7 @@ async def get_experience(experience_id: str):
             wiki_md = SKILL_ROOT / exp.source
             if wiki_md.exists():
                 content = wiki_md.read_text(encoding="utf-8")
-    except Exception:
+    except Exception:  # noqa: BLE001
         content = "无法读取文件内容"
 
     # 剥离 YAML header，正文区域不展示冗余元信息
@@ -182,7 +193,8 @@ async def get_experience(experience_id: str):
 # ------------------------------
 # 辅助函数
 # ------------------------------
-def _exp_to_dict(exp) -> dict:
+def _exp_to_dict(exp: Experience) -> dict[str, object]:
+    """将 Experience 对象转为字典。"""
     return {
         "id": exp.id,
         "type": exp.type.value,
@@ -198,11 +210,12 @@ def _exp_to_dict(exp) -> dict:
 
 
 def start_web_server(
-    host: str = "127.0.0.1", port: int = 8080, open_browser: bool = True
-):
-    """启动 Web 服务并可选自动打开浏览器"""
-    import uvicorn
-
+    host: str = "127.0.0.1",
+    port: int = 8080,
+    *,
+    open_browser: bool = True,
+) -> None:
+    """启动 Web 服务并可选自动打开浏览器。"""
     url = f"http://{host}:{port}"
 
     # 在后台线程启动 uvicorn
@@ -218,12 +231,15 @@ def start_web_server(
     max_retries = 30
     for _ in range(max_retries):
         try:
-            with urllib.request.urlopen(f"{url}/api/keywords", timeout=1):
+            with urllib.request.urlopen(  # noqa: S310
+                f"{url}/api/keywords",
+                timeout=1,
+            ):
                 break
-        except Exception:
+        except Exception:  # noqa: BLE001
             time.sleep(0.1)
     else:
-        print(f"⚠️  服务启动超时，请手动访问: {url}")
+        warn(f"服务启动超时，请手动访问: {url}")
         # 等待 server 线程结束（通常不会到这里）
         server_thread.join()
         return
@@ -235,13 +251,13 @@ def start_web_server(
     if open_browser and (has_display or is_macos):
         try:
             webbrowser.open(url)
-            print(f"🌐 浏览器已打开: {url}")
-        except Exception:
-            print(f"⚠️  无法自动打开浏览器，请手动访问: {url}")
+            launch(f"浏览器已打开: {url}")
+        except Exception:  # noqa: BLE001
+            warn(f"无法自动打开浏览器，请手动访问: {url}")
     else:
-        print(f"🔗 请访问: {url}")
+        link(f"请访问: {url}")
 
-    print(f"🚀 Web 服务启动于 {host}:{port}，按 Ctrl+C 停止")
+    rocket(f"Web 服务启动于 {host}:{port}，按 Ctrl+C 停止")
 
     # 阻塞主线程，直到 uvicorn 结束
     try:

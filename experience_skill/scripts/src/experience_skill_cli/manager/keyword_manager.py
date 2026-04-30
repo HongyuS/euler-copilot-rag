@@ -1,10 +1,15 @@
-from schema.enum import ExperienceStatus, ExperienceType
-from sqlite import AsyncSQLiteSingleton
+"""关键词数据访问层。"""
+
+from experience_skill_cli.schema.enum import ExperienceStatus, ExperienceType
+from experience_skill_cli.sqlite import AsyncSQLiteSingleton
 
 
 class KeyWordManager:
+    """关键词管理器，负责关键词的增删查操作。"""
+
     @staticmethod
     def add_keywords(experience_id: str, keywords: list[str]) -> None:
+        """为指定经验添加关键词。"""
         db = AsyncSQLiteSingleton()
         for keyword in keywords:
             db._run(
@@ -14,14 +19,17 @@ class KeyWordManager:
 
     @staticmethod
     def get_keywords_by_experience_id(experience_id: str) -> list[str]:
+        """获取指定经验的所有关键词。"""
         db = AsyncSQLiteSingleton()
         rows = db._query(
-            "SELECT name FROM keyword_table WHERE experience_id = ?", (experience_id,)
+            "SELECT name FROM keyword_table WHERE experience_id = ?",
+            (experience_id,),
         )
         return [row["name"] for row in rows]
 
     @staticmethod
     def delete_keywords_by_experience_id(experience_id: str) -> None:
+        """删除指定经验的所有关键词。"""
         db = AsyncSQLiteSingleton()
         db._run("DELETE FROM keyword_table WHERE experience_id = ?", (experience_id,))
 
