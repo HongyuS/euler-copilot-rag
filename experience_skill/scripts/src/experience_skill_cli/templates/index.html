@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
     <head>
         <meta charset="UTF-8" />
@@ -155,50 +155,128 @@
                 display: flex;
                 align-items: center;
                 gap: 8px;
+                flex-wrap: wrap;
+            }
+
+            .kw-section-header .kw-search-input {
+                flex: 1;
+                min-width: 140px;
+                border: 1px solid #d0d5dd;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 0.8rem;
+                outline: none;
+                color: #333;
+            }
+
+            .kw-section-header .kw-search-input:focus {
+                border-color: #888;
+            }
+
+            .kw-section-header .kw-search-input::placeholder {
+                color: #bbb;
             }
 
             .kw-section-header button {
                 font-size: 0.75rem;
-                color: #888;
+                color: #666;
                 border: 1px solid #ddd;
                 background: #fff;
                 border-radius: 4px;
-                padding: 2px 8px;
+                padding: 4px 10px;
                 cursor: pointer;
+                white-space: nowrap;
+                transition: all 0.15s;
             }
 
             .kw-section-header button:hover {
                 background: #f0f0f0;
             }
 
+            .kw-section-header .kw-toggle-btn {
+                font-size: 0.75rem;
+                color: #888;
+                border: none;
+                background: none;
+                padding: 2px 4px;
+                cursor: pointer;
+            }
+
+            .kw-section-header .kw-toggle-btn:hover {
+                color: #444;
+            }
+
             .kw-list {
                 display: flex;
                 flex-wrap: wrap;
-                gap: 4px 12px;
+                gap: 4px 8px;
+                max-height: 160px;
+                overflow-y: auto;
+                padding: 4px 0;
+                transition: max-height 0.25s ease;
+            }
+
+            .kw-list.collapsed {
+                max-height: 0;
+                overflow: hidden;
+                padding: 0;
+            }
+
+            .kw-list::-webkit-scrollbar {
+                width: 4px;
+            }
+
+            .kw-list::-webkit-scrollbar-thumb {
+                background: #d0d5dd;
+                border-radius: 2px;
             }
 
             .kw-list label {
-                font-size: 0.82rem;
-                color: #444;
+                font-size: 0.78rem;
+                color: #555;
                 cursor: pointer;
-                display: flex;
+                display: inline-flex;
                 align-items: center;
                 gap: 4px;
                 white-space: nowrap;
+                padding: 2px 8px;
+                border-radius: 12px;
+                border: 1px solid #e0e0e0;
+                background: #fafafa;
+                transition: all 0.15s;
+                user-select: none;
+            }
+
+            .kw-list label:hover {
+                border-color: #b0b0b0;
+                background: #f0f0f0;
             }
 
             .kw-list label input {
                 accent-color: #555;
+                width: 13px;
+                height: 13px;
+                margin: 0;
             }
 
             .kw-list label.checked {
                 font-weight: 500;
-                color: #222;
+                color: #1a6fb5;
+                border-color: #90caf9;
+                background: #e3f2fd;
             }
 
             .kw-list .kw-count {
                 font-size: 0.7rem;
                 color: #aaa;
+            }
+
+            .kw-list .kw-empty {
+                width: 100%;
+                font-size: 0.78rem;
+                color: #bbb;
+                padding: 8px 0;
+                text-align: center;
             }
 
             /* 表格 */
@@ -536,14 +614,20 @@
 
     <body>
         <div class="container">
-            <h1><img class="title-icon" src="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%3Csvg%20version%3D%221.1%22%20width%3D%2224px%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024.0%2024.0%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22i0%22%3E%3Cpath%20d%3D%22M1920%2C0%20L1920%2C1080%20L0%2C1080%20L0%2C0%20L1920%2C0%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3CclipPath%20id%3D%22i1%22%3E%3Cpath%20d%3D%22M11.2892089%2C0.356345957%20L18.7107911%2C4.77644474%20C19.5085564%2C5.25157268%2020%2C6.12964533%2020%2C7.07990122%20L20%2C15.492%20L16.0338995%2C13.2799439%20C16.1903699%2C12.714441%2016.2741498%2C12.1173133%2016.2741498%2C11.5%20C16.2741498%2C7.92551042%2013.4651173%2C5.02781408%2010%2C5.02781408%20C6.53488272%2C5.02781408%203.72585015%2C7.92551042%203.72585015%2C11.5%20C3.72585015%2C15.0744896%206.53488272%2C17.9721859%2010%2C17.9721859%20C11.9110647%2C17.9721859%2013.6225688%2C17.0907966%2014.7733471%2C15.700583%20L18.9720315%2C18.0453591%20C18.8891365%2C18.1096916%2018.8019643%2C18.1692549%2018.7107911%2C18.2235553%20L11.2892089%2C22.643654%20C10.4914436%2C23.118782%209.50855635%2C23.118782%208.71079113%2C22.643654%20L1.28920887%2C18.2235553%20C0.491443646%2C17.7484273%200%2C16.8703547%200%2C15.9200988%20L0%2C7.07990122%20C0%2C6.12964533%200.491443646%2C5.25157268%201.28920887%2C4.77644474%20L8.71079113%2C0.356345957%20C9.50855635%2C-0.118781986%2010.4914436%2C-0.118781986%2011.2892089%2C0.356345957%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i2%22%20x1%3D%2220px%22%20y1%3D%2223px%22%20x2%3D%225.70835302px%22%20y2%3D%222.80969047px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23C8FCFF%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22%23389BFF%22%20offset%3D%2239.7278259%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22%239C69FF%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i3%22%3E%3Cpath%20d%3D%22M3.33007861%2C0.00018796359%20C5.12313128%2C-0.025423555%206.53979457%2C2.56953783%206.49428462%2C5.79619644%20C6.44877468%2C9.02285505%204.95832519%2C11.6593409%203.16527252%2C11.6849524%20C1.37221984%2C11.7105639%20-0.0444434486%2C9.11560256%200.00106649645%2C5.88894395%20C0.0465764415%2C2.66228534%201.53702593%2C0.0257994822%203.33007861%2C0.00018796359%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i4%22%20x1%3D%226.49535112px%22%20y1%3D%223.59098906px%22%20x2%3D%221.94071772px%22%20y2%3D%226.15599152px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i5%22%3E%3Cpath%20d%3D%22M3.17499814%2C0.000225285839%20C4.97749815%2C0.0281922907%206.47899927%2C2.65297887%206.52869476%2C5.86285019%20C6.57839025%2C9.07272151%205.15746142%2C11.6521646%203.35496141%2C11.6241976%20C1.5524614%2C11.5962306%200.0509602747%2C8.97144403%200.00126478905%2C5.76157271%20C-0.0484306966%2C2.55170138%201.37249812%2C-0.027741719%203.17499814%2C0.000225285839%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i6%22%20x1%3D%226.52995955px%22%20y1%3D%223.57232982px%22%20x2%3D%221.95105822px%22%20y2%3D%226.1240042px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i7%22%3E%3Cpath%20d%3D%22M3.34595432%2C0%20C5.17675454%2C-0.00956172075%206.64709904%2C2.54401387%206.63006068%2C5.70359763%20C6.61302232%2C8.86318139%205.11505317%2C11.4323032%203.28425295%2C11.4419188%20C1.45345273%2C11.4514805%20-0.0168917651%2C8.89790492%200.000146596626%2C5.73832116%20C0.0171849583%2C2.57873739%201.5151541%2C0.00961555213%203.34595432%2C0%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i8%22%20x1%3D%226.63020727px%22%20y1%3D%223.51624404px%22%20x2%3D%221.98101081px%22%20y2%3D%226.02785698px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i9%22%3E%3Cpath%20d%3D%22M3.16497028%2C0.000154442341%20C4.9537488%2C0.0233967573%206.43732059%2C2.66411887%206.47862062%2C5.89837237%20C6.51992064%2C9.13262587%205.10330943%2C11.7356647%203.31453091%2C11.7124224%20C1.5257524%2C11.6891801%200.0421806067%2C9.048458%200.000880577179%2C5.8142045%20C-0.0404194524%2C2.57995101%201.37619176%2C-0.0230878726%203.16497028%2C0.000154442341%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i10%22%20x1%3D%226.47950119px%22%20y1%3D%223.59942063px%22%20x2%3D%221.93598199px%22%20y2%3D%226.17044567px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i11%22%3E%3Cpath%20d%3D%22M3.31123201%2C0.000147010387%20C5.09920894%2C-0.0225340217%206.51597885%2C2.58211455%206.47567618%2C5.81779243%20C6.43537351%2C9.05347031%204.95326007%2C11.6948921%203.16528314%2C11.7175731%20C1.37730622%2C11.7402542%20-0.0394636932%2C9.13560559%200.000838974502%2C5.89992772%20C0.0411416422%2C2.66424984%201.52325509%2C0.0228280424%203.31123201%2C0.000147010387%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i12%22%20x1%3D%226.47651515px%22%20y1%3D%223.60100123px%22%20x2%3D%221.93508981px%22%20y2%3D%226.17315526px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate%28-24.0%20-12.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i0%29%22%3E%3Cg%20transform%3D%22translate%2824.0%2012.0%29%22%3E%3Cg%20transform%3D%22translate%282.0%200.5%29%22%3E%3Cg%20clip-path%3D%22url%28%23i1%29%22%3E%3Cpolygon%20points%3D%220%2C0%2020%2C0%2020%2C23%200%2C23%200%2C0%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i2%29%22%3E%3C%2Fpolygon%3E%3Cg%20transform%3D%22translate%283.6569722087348877%201.0897685084147302%29%20rotate%28-33.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i3%29%22%3E%3Cpolygon%20points%3D%222.27343535e-13%2C-1.14575016e-13%206.49535112%2C-1.14575016e-13%206.49535112%2C11.6851404%202.27343535e-13%2C11.6851404%202.27343535e-13%2C-1.14575016e-13%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i4%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2816.98418130159498%201.020141454636434%29%20rotate%2843.00000000000001%29%22%3E%3Cg%20clip-path%3D%22url%28%23i5%29%22%3E%3Cpolygon%20points%3D%226.39488462e-14%2C1.73743398e-17%206.52995955%2C1.73743398e-17%206.52995955%2C11.6244229%206.39488462e-14%2C11.6244229%206.39488462e-14%2C1.73743398e-17%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i6%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28-2.4495037481518684%2011.019866109128307%29%20rotate%28-80.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i7%29%22%3E%3Cpolygon%20points%3D%22-3.49399119e-16%2C0.498710614%206.63020727%2C0.498710614%206.63020727%2C11.4419456%20-3.49399119e-16%2C11.4419456%20-3.49399119e-16%2C0.498710614%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i8%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%284.292508756143779%2023.833760804500628%29%20rotate%28-152.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i9%29%22%3E%3Cpolygon%20points%3D%22-5.68434189e-14%2C2.27333668e-13%206.47950119%2C2.27333668e-13%206.47950119%2C11.7125769%20-5.68434189e-14%2C11.7125769%20-5.68434189e-14%2C2.27333668e-13%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i10%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2817.31345948670518%2023.549756705558988%29%20rotate%28153.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i11%29%22%3E%3Cpolygon%20points%3D%222.27377145e-13%2C0%206.47651515%2C0%206.47651515%2C11.7177201%202.27377145e-13%2C11.7177201%202.27377145e-13%2C0%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i12%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E" alt="" />经验管理</h1>
+            <h1>
+                <img
+                    class="title-icon"
+                    src="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22UTF-8%22%3F%3E%3Csvg%20version%3D%221.1%22%20width%3D%2224px%22%20height%3D%2224px%22%20viewBox%3D%220%200%2024.0%2024.0%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20xmlns%3Axlink%3D%22http%3A%2F%2Fwww.w3.org%2F1999%2Fxlink%22%3E%3Cdefs%3E%3CclipPath%20id%3D%22i0%22%3E%3Cpath%20d%3D%22M1920%2C0%20L1920%2C1080%20L0%2C1080%20L0%2C0%20L1920%2C0%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3CclipPath%20id%3D%22i1%22%3E%3Cpath%20d%3D%22M11.2892089%2C0.356345957%20L18.7107911%2C4.77644474%20C19.5085564%2C5.25157268%2020%2C6.12964533%2020%2C7.07990122%20L20%2C15.492%20L16.0338995%2C13.2799439%20C16.1903699%2C12.714441%2016.2741498%2C12.1173133%2016.2741498%2C11.5%20C16.2741498%2C7.92551042%2013.4651173%2C5.02781408%2010%2C5.02781408%20C6.53488272%2C5.02781408%203.72585015%2C7.92551042%203.72585015%2C11.5%20C3.72585015%2C15.0744896%206.53488272%2C17.9721859%2010%2C17.9721859%20C11.9110647%2C17.9721859%2013.6225688%2C17.0907966%2014.7733471%2C15.700583%20L18.9720315%2C18.0453591%20C18.8891365%2C18.1096916%2018.8019643%2C18.1692549%2018.7107911%2C18.2235553%20L11.2892089%2C22.643654%20C10.4914436%2C23.118782%209.50855635%2C23.118782%208.71079113%2C22.643654%20L1.28920887%2C18.2235553%20C0.491443646%2C17.7484273%200%2C16.8703547%200%2C15.9200988%20L0%2C7.07990122%20C0%2C6.12964533%200.491443646%2C5.25157268%201.28920887%2C4.77644474%20L8.71079113%2C0.356345957%20C9.50855635%2C-0.118781986%2010.4914436%2C-0.118781986%2011.2892089%2C0.356345957%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i2%22%20x1%3D%2220px%22%20y1%3D%2223px%22%20x2%3D%225.70835302px%22%20y2%3D%222.80969047px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%23C8FCFF%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22%23389BFF%22%20offset%3D%2239.7278259%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22%239C69FF%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i3%22%3E%3Cpath%20d%3D%22M3.33007861%2C0.00018796359%20C5.12313128%2C-0.025423555%206.53979457%2C2.56953783%206.49428462%2C5.79619644%20C6.44877468%2C9.02285505%204.95832519%2C11.6593409%203.16527252%2C11.6849524%20C1.37221984%2C11.7105639%20-0.0444434486%2C9.11560256%200.00106649645%2C5.88894395%20C0.0465764415%2C2.66228534%201.53702593%2C0.0257994822%203.33007861%2C0.00018796359%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i4%22%20x1%3D%226.49535112px%22%20y1%3D%223.59098906px%22%20x2%3D%221.94071772px%22%20y2%3D%226.15599152px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i5%22%3E%3Cpath%20d%3D%22M3.17499814%2C0.000225285839%20C4.97749815%2C0.0281922907%206.47899927%2C2.65297887%206.52869476%2C5.86285019%20C6.57839025%2C9.07272151%205.15746142%2C11.6521646%203.35496141%2C11.6241976%20C1.5524614%2C11.5962306%200.0509602747%2C8.97144403%200.00126478905%2C5.76157271%20C-0.0484306966%2C2.55170138%201.37249812%2C-0.027741719%203.17499814%2C0.000225285839%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i6%22%20x1%3D%226.52995955px%22%20y1%3D%223.57232982px%22%20x2%3D%221.95105822px%22%20y2%3D%226.1240042px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i7%22%3E%3Cpath%20d%3D%22M3.34595432%2C0%20C5.17675454%2C-0.00956172075%206.64709904%2C2.54401387%206.63006068%2C5.70359763%20C6.61302232%2C8.86318139%205.11505317%2C11.4323032%203.28425295%2C11.4419188%20C1.45345273%2C11.4514805%20-0.0168917651%2C8.89790492%200.000146596626%2C5.73832116%20C0.0171849583%2C2.57873739%201.5151541%2C0.00961555213%203.34595432%2C0%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i8%22%20x1%3D%226.63020727px%22%20y1%3D%223.51624404px%22%20x2%3D%221.98101081px%22%20y2%3D%226.02785698px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i9%22%3E%3Cpath%20d%3D%22M3.16497028%2C0.000154442341%20C4.9537488%2C0.0233967573%206.43732059%2C2.66411887%206.47862062%2C5.89837237%20C6.51992064%2C9.13262587%205.10330943%2C11.7356647%203.31453091%2C11.7124224%20C1.5257524%2C11.6891801%200.0421806067%2C9.048458%200.000880577179%2C5.8142045%20C-0.0404194524%2C2.57995101%201.37619176%2C-0.0230878726%203.16497028%2C0.000154442341%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i10%22%20x1%3D%226.47950119px%22%20y1%3D%223.59942063px%22%20x2%3D%221.93598199px%22%20y2%3D%226.17044567px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3CclipPath%20id%3D%22i11%22%3E%3Cpath%20d%3D%22M3.31123201%2C0.000147010387%20C5.09920894%2C-0.0225340217%206.51597885%2C2.58211455%206.47567618%2C5.81779243%20C6.43537351%2C9.05347031%204.95326007%2C11.6948921%203.16528314%2C11.7175731%20C1.37730622%2C11.7402542%20-0.0394636932%2C9.13560559%200.000838974502%2C5.89992772%20C0.0411416422%2C2.66424984%201.52325509%2C0.0228280424%203.31123201%2C0.000147010387%20Z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3ClinearGradient%20id%3D%22i12%22%20x1%3D%226.47651515px%22%20y1%3D%223.60100123px%22%20x2%3D%221.93508981px%22%20y2%3D%226.17315526px%22%20gradientUnits%3D%22userSpaceOnUse%22%3E%3Cstop%20stop-color%3D%22%230B5DBB%22%20offset%3D%220%25%22%3E%3C%2Fstop%3E%3Cstop%20stop-color%3D%22rgba%2848%2C%20131%2C%20255%2C%200%29%22%20offset%3D%22100%25%22%3E%3C%2Fstop%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cg%20transform%3D%22translate%28-24.0%20-12.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i0%29%22%3E%3Cg%20transform%3D%22translate%2824.0%2012.0%29%22%3E%3Cg%20transform%3D%22translate%282.0%200.5%29%22%3E%3Cg%20clip-path%3D%22url%28%23i1%29%22%3E%3Cpolygon%20points%3D%220%2C0%2020%2C0%2020%2C23%200%2C23%200%2C0%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i2%29%22%3E%3C%2Fpolygon%3E%3Cg%20transform%3D%22translate%283.6569722087348877%201.0897685084147302%29%20rotate%28-33.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i3%29%22%3E%3Cpolygon%20points%3D%222.27343535e-13%2C-1.14575016e-13%206.49535112%2C-1.14575016e-13%206.49535112%2C11.6851404%202.27343535e-13%2C11.6851404%202.27343535e-13%2C-1.14575016e-13%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i4%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2816.98418130159498%201.020141454636434%29%20rotate%2843.00000000000001%29%22%3E%3Cg%20clip-path%3D%22url%28%23i5%29%22%3E%3Cpolygon%20points%3D%226.39488462e-14%2C1.73743398e-17%206.52995955%2C1.73743398e-17%206.52995955%2C11.6244229%206.39488462e-14%2C11.6244229%206.39488462e-14%2C1.73743398e-17%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i6%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%28-2.4495037481518684%2011.019866109128307%29%20rotate%28-80.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i7%29%22%3E%3Cpolygon%20points%3D%22-3.49399119e-16%2C0.498710614%206.63020727%2C0.498710614%206.63020727%2C11.4419456%20-3.49399119e-16%2C11.4419456%20-3.49399119e-16%2C0.498710614%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i8%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%284.292508756143779%2023.833760804500628%29%20rotate%28-152.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i9%29%22%3E%3Cpolygon%20points%3D%22-5.68434189e-14%2C2.27333668e-13%206.47950119%2C2.27333668e-13%206.47950119%2C11.7125769%20-5.68434189e-14%2C11.7125769%20-5.68434189e-14%2C2.27333668e-13%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i10%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3Cg%20transform%3D%22translate%2817.31345948670518%2023.549756705558988%29%20rotate%28153.0%29%22%3E%3Cg%20clip-path%3D%22url%28%23i11%29%22%3E%3Cpolygon%20points%3D%222.27377145e-13%2C0%206.47651515%2C0%206.47651515%2C11.7177201%202.27377145e-13%2C11.7177201%202.27377145e-13%2C0%22%20stroke%3D%22none%22%20fill%3D%22url%28%23i12%29%22%3E%3C%2Fpolygon%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fg%3E%3C%2Fsvg%3E"
+                    alt=""
+                />经验管理
+            </h1>
 
             <!-- 工具栏 -->
             <div class="toolbar">
                 <div class="tag-group" id="type-filter">
                     <button data-type="" class="active">全部</button>
-                    <button data-type="SKILL">Skill</button>
-                    <button data-type="WIKI">Wiki</button>
+                    <button data-type="skill">Skill</button>
+                    <button data-type="wiki">Wiki</button>
                 </div>
 
                 <div class="search-box">
@@ -564,8 +648,21 @@
             <!-- 关键词勾选区 -->
             <div class="kw-section">
                 <div class="kw-section-header">
-                    关键词过滤
+                    <span>关键词过滤</span>
+                    <input
+                        type="text"
+                        class="kw-search-input"
+                        id="kw-search"
+                        placeholder="搜索关键词…"
+                    />
                     <button id="kw-clear">清除勾选</button>
+                    <button
+                        class="kw-toggle-btn"
+                        id="kw-toggle"
+                        title="折叠/展开"
+                    >
+                        ▲
+                    </button>
                     <span class="kw-count" id="kw-info"></span>
                 </div>
                 <div class="kw-list" id="kw-list">加载中…</div>
@@ -612,6 +709,8 @@
             const hotToggle = document.getElementById("hot-toggle");
             const kwList = document.getElementById("kw-list");
             const kwClear = document.getElementById("kw-clear");
+            const kwSearch = document.getElementById("kw-search");
+            const kwToggle = document.getElementById("kw-toggle");
             const kwInfo = document.getElementById("kw-info");
             const content = document.getElementById("content");
 
@@ -623,8 +722,13 @@
                     state.type = btn.dataset.type;
                     state.page = 1;
                     state.selectedKw.clear();
-                    loadKeywords();
-                    loadList();
+                    // 清空关键词搜索框
+                    if (kwSearch) kwSearch.value = "";
+                    // 重新加载关键词（会根据 state.type 过滤）
+                    loadKeywords().then(() => {
+                        // 关键词列表更新后再加载列表，确保视觉一致
+                        loadList();
+                    });
                 });
             });
 
@@ -645,41 +749,78 @@
                 loadList();
             });
 
+            // ----- 关键词搜索过滤 -----
+            let kwSearchTerm = "";
+            kwSearch.addEventListener("input", () => {
+                kwSearchTerm = kwSearch.value.trim().toLowerCase();
+                // 重新渲染关键词列表（保留勾选状态）
+                renderKeywords(allKeywords);
+            });
+
+            // ----- 折叠/展开关键词列表 -----
+            kwToggle.addEventListener("click", () => {
+                const collapsed = kwList.classList.toggle("collapsed");
+                kwToggle.textContent = collapsed ? "▼" : "▲";
+                kwToggle.title = collapsed ? "展开" : "折叠";
+            });
+
             // ----- 清除关键词勾选 -----
             kwClear.addEventListener("click", () => {
                 state.selectedKw.clear();
-                kwList.querySelectorAll("input").forEach((cb) => {
-                    cb.checked = false;
-                    cb.parentElement.classList.remove("checked");
-                });
                 state.page = 1;
+                // 重新渲染关键词列表
+                renderKeywords(allKeywords);
                 loadList();
             });
+
+            // ----- 缓存所有关键词（未过滤的原始列表）-----
+            let allKeywords = [];
 
             // ----- 加载关键词列表 -----
             async function loadKeywords() {
                 try {
                     const params = new URLSearchParams();
-                    if (state.type) params.set("type", state.type);
+                    if (state.type) params.set("exp_type", state.type);
                     const resp = await fetch(`/api/keywords?${params}`);
                     const data = await resp.json();
-                    renderKeywords(data.keywords || []);
+                    allKeywords = data.keywords || [];
+                    kwSearchTerm = "";
+                    if (kwSearch) kwSearch.value = "";
+                    renderKeywords(allKeywords);
                 } catch (e) {
                     kwList.innerHTML =
-                        '<span style="color:#c0392b">加载关键词失败</span>';
+                        '<span class="kw-empty" style="color:#c0392b">加载关键词失败</span>';
                 }
             }
 
             function renderKeywords(keywords) {
-                if (!keywords.length) {
-                    kwList.innerHTML =
-                        '<span style="color:#999">暂无关键词</span>';
+                // 过滤：根据搜索词
+                let filtered = keywords;
+                if (kwSearchTerm) {
+                    filtered = keywords.filter((k) =>
+                        k.toLowerCase().includes(kwSearchTerm),
+                    );
+                }
+
+                // 更新计数：显示 过滤后数量 / 总数量
+                const total = keywords.length;
+                const shown = filtered.length;
+                if (kwSearchTerm && shown !== total) {
+                    kwInfo.textContent = `（${shown}/${total} 个）`;
+                } else if (total > 0) {
+                    kwInfo.textContent = `（共 ${total} 个）`;
+                } else {
                     kwInfo.textContent = "";
+                }
+
+                if (!filtered.length) {
+                    kwList.innerHTML =
+                        '<span class="kw-empty">暂无匹配关键词</span>';
                     return;
                 }
-                kwInfo.textContent = `（共 ${keywords.length} 个）`;
+
                 const current = state.selectedKw;
-                kwList.innerHTML = keywords
+                kwList.innerHTML = filtered
                     .map((k) => {
                         const checked = current.has(k);
                         return `<label class="${checked ? "checked" : ""}"><input type="checkbox" value="${esc(k)}" ${checked ? "checked" : ""}>${esc(k)}</label>`;
@@ -710,7 +851,7 @@
                         page: state.page,
                         page_size: state.pageSize,
                     });
-                    if (state.type) params.set("type", state.type);
+                    if (state.type) params.set("exp_type", state.type);
                     if (state.name) params.set("name", state.name);
                     if (state.isHot) params.set("is_hot", "true");
                     for (const kw of state.selectedKw) {
