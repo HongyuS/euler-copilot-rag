@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = [
   { name = "zls", email = "zouliushi1@huawei.com" }
 ]
-description = "RAG Knowledge Base MCP Server"
+description = "RAG Knowledge Base MCP Server"   
 requires-python = "==3.11.6"
 dependencies = [
     "mcp>=1.0.0",

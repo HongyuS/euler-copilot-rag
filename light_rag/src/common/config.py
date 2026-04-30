@@ -50,11 +50,23 @@ def _load_config() -> Dict[str, Any]:
                 "enabled": False,
                 "token": os.getenv("GITHUB_TOKEN", ""),
                 "issue_repos": ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"],
-                "commit_repo": "torvalds/linux",
+                "commit_repos": [
+                    "torvalds/linux",
+                    "moby/moby",
+                    "containerd/containerd",
+                    "systemd/systemd",
+                    "kubernetes/kubernetes",
+                    "etcd-io/etcd",
+                    "opencontainers/runc",
+                    "cri-o/cri-o",
+                ],
                 "default_online_top_k": 5,
                 "max_candidates": 20,
                 "request_timeout": 10,
                 "rate_limit_delay": 1,
+                "commit_vector_db_path": "database/commit_vec.db",
+                "commit_local_min_hits": 3,
+                "commit_local_min_similarity": 0.45,
             },
         }
         return _config
@@ -83,11 +95,23 @@ def _load_config() -> Dict[str, Any]:
             "enabled": config_data.get("github", {}).get("enabled", False),
             "token": config_data.get("github", {}).get("token") or os.getenv("GITHUB_TOKEN", ""),
             "issue_repos": config_data.get("github", {}).get("issue_repos", ["raspberrypi/linux", "microsoft/WSL2-Linux-Kernel"]),
-            "commit_repo": config_data.get("github", {}).get("commit_repo", "torvalds/linux"),
+            "commit_repos": config_data.get("github", {}).get("commit_repos", [
+                "torvalds/linux",
+                "moby/moby",
+                "containerd/containerd",
+                "systemd/systemd",
+                "kubernetes/kubernetes",
+                "etcd-io/etcd",
+                "opencontainers/runc",
+                "cri-o/cri-o",
+            ]),
             "default_online_top_k": config_data.get("github", {}).get("default_online_top_k", 5),
             "max_candidates": config_data.get("github", {}).get("max_candidates", 20),
             "request_timeout": config_data.get("github", {}).get("request_timeout", 10),
             "rate_limit_delay": config_data.get("github", {}).get("rate_limit_delay", 1),
+            "commit_vector_db_path": config_data.get("github", {}).get("commit_vector_db_path", "database/commit_vec.db"),
+            "commit_local_min_hits": config_data.get("github", {}).get("commit_local_min_hits", 3),
+            "commit_local_min_similarity": config_data.get("github", {}).get("commit_local_min_similarity", 0.45),
         },
     }
     return _config
@@ -159,8 +183,8 @@ def get_github_issue_repos() -> list:
     return _cfg()["github"]["issue_repos"]
 
 
-def get_github_commit_repo() -> str:
-    return _cfg()["github"]["commit_repo"]
+def get_github_commit_repos() -> list:
+    return _cfg()["github"]["commit_repos"]
 
 
 def get_github_default_online_top_k() -> int:
@@ -177,6 +201,18 @@ def get_github_request_timeout() -> int:
 
 def get_github_rate_limit_delay() -> int:
     return _cfg()["github"]["rate_limit_delay"]
+
+
+def get_commit_vector_db_path() -> str:
+    return _cfg()["github"]["commit_vector_db_path"]
+
+
+def get_commit_local_min_hits() -> int:
+    return int(_cfg()["github"]["commit_local_min_hits"])
+
+
+def get_commit_local_min_similarity() -> float:
+    return float(_cfg()["github"]["commit_local_min_similarity"])
 
 
 def get_task_db_path() -> str:
