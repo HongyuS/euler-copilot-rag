@@ -2,18 +2,24 @@
 
 import argparse
 
+from experience_skill_cli.common.exprience import SKILL_ROOT
 from experience_skill_cli.console import (
     blank,
     deleted,
+    info,
     print_experience,
     print_experience_list,
     search_result,
     success,
+    warn,
 )
 from experience_skill_cli.schema.enum import ExperienceType
 from experience_skill_cli.service.experience_service import ExperienceService
 from experience_skill_cli.sqlite import AsyncSQLiteSingleton
 from experience_skill_cli.web_server import start_web_server
+
+DATA_SKILL_DIR = SKILL_ROOT / "data" / "skill_hub"
+DATA_WIKI_DIR = SKILL_ROOT / "data" / "wiki_hub"
 
 
 def add_experiences_cli(args: argparse.Namespace) -> None:
@@ -21,6 +27,43 @@ def add_experiences_cli(args: argparse.Namespace) -> None:
     experience_type = ExperienceType[args.type.upper()]
     ExperienceService.add_experiences(experience_type, args.source)
     success(f"成功添加 {args.type} 经验，来源：{args.source}")
+
+
+def sync_cli(_args: argparse.Namespace) -> None:
+    """同步 data/ 目录下所有 Skill 与 Wiki 到数据库。"""
+    skill_count = 0
+    wiki_count = 0
+    errors: list[str] = []
+
+    # data skills
+    if DATA_SKILL_DIR.exists():
+        for skill_dir in sorted(DATA_SKILL_DIR.iterdir()):
+            if skill_dir.is_dir():
+                source = str(skill_dir.relative_to(SKILL_ROOT))
+                try:
+                    ExperienceService.add_experiences(ExperienceType.SKILL, source)
+                    skill_count += 1
+                except ValueError:
+                    pass  # 已存在，跳过
+                except Exception as e:
+                    errors.append(f"SKILL {source}: {e}")
+
+    # data wikis
+    if DATA_WIKI_DIR.exists():
+        for wiki_file in sorted(DATA_WIKI_DIR.glob("*.md")):
+            source = str(wiki_file.relative_to(SKILL_ROOT))
+            try:
+                ExperienceService.add_experiences(ExperienceType.WIKI, source)
+                wiki_count += 1
+            except ValueError:
+                pass
+            except Exception as e:
+                errors.append(f"WIKI {source}: {e}")
+
+    info(f"同步完成：新增 {skill_count} 个 Skill，{wiki_count} 篇 Wiki")
+    if errors:
+        for err in errors:
+            warn(err)
 
 
 def list_experiences_cli(args: argparse.Namespace) -> None:
@@ -97,6 +140,10 @@ def main() -> None:
     init_db()
     parser = argparse.ArgumentParser(description="经验管理 & 文档解析 CLI 工具")
     subparsers = parser.add_subparsers(dest="command", required=True, help="子命令")
+
+    # sync
+    sync_parser = subparsers.add_parser("sync", help="同步 data/ 中所有经验到数据库")
+    sync_parser.set_defaults(func=sync_cli)
 
     # add-experiences
     add_parser = subparsers.add_parser("add-experiences", help="添加经验")

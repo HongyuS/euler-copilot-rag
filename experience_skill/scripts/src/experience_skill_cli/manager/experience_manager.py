@@ -221,7 +221,8 @@ class ExperienceManager:
         banned_experience_ids: list[str] | None = None,
         experience_ids: list[str] | None = None,
     ) -> list[Experience]:
-        """基于 FTS5 检索 Experience（适配 simple tokenizer 扩展）。
+        """
+        基于 FTS5 检索 Experience（适配 simple tokenizer 扩展）。
 
         1. 先使用 simple_query() 做 AND 语义精确查询（支持中文/拼音）
         2. 不足数量再使用标准 OR 语法做松散查询补全

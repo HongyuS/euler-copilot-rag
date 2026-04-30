@@ -18,13 +18,13 @@
 ```bash
 # 按名称搜索
 cd scripts
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<Wiki 名称或关键词>" \
     --type WIKI \
     --top-k 5
 
 # 或浏览全量列表
-uv run python main.py list-experiences --type WIKI
+uv run experience-skill list-experiences --type WIKI
 ```
 
 记录目标 Wiki 的 ID（如 `a1b2c3d4-...`）和 source 路径。
@@ -34,7 +34,7 @@ uv run python main.py list-experiences --type WIKI
 读取 Wiki 源文件，梳理优化点：
 
 ```bash
-cat <wiki_hub/目标Wiki.md>
+cat <data/wiki_hub/目标Wiki.md>
 ```
 
 常见优化维度：
@@ -55,7 +55,7 @@ cat <wiki_hub/目标Wiki.md>
 
 #### 3a. 更新 Wiki Markdown 文件
 
-直接编辑 `wiki_hub/<Wiki 文件名>.md`：
+直接编辑 `data/wiki_hub/<Wiki 文件名>.md`：
 
 - 修正 YAML front matter 中的 `name`、`description`（如有变更）。
 - 更新 `keywords` 列表，补充遗漏、删除无关标签。
@@ -98,28 +98,28 @@ updated = ExperienceService.optimize_experience(
 - 若传入 keywords，全量替换 `keyword_table` 中该 Wiki 的关键词（先删后插）。
 - 更新 `updated_at` 时间戳。
 
-**注意**：`optimize_experience()` 仅同步 DB 元信息，不修改 `wiki_hub/` 下的源 `.md` 文件。因此应先修改源文件，再调用此方法同步 DB。
+**注意**：`optimize_experience()` 仅同步 DB 元信息，不修改 `data/wiki_hub/` 下的源 `.md` 文件。因此应先修改源文件，再调用此方法同步 DB。
 
 ### 第四步：验证
 
 ```bash
 # 确认 DB 记录已更新
-uv run python main.py list-experiences --type WIKI --name "<Wiki 名称>"
+uv run experience-skill list-experiences --type WIKI --name "<Wiki 名称>"
 
 # 确认优化后的 Wiki 可被检索召回
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<优化后的核心关键词>" \
     --type WIKI \
     --top-k 5
 
 # 确认源文件内容已更新
-cat <wiki_hub/优化后的Wiki.md>
+cat <data/wiki_hub/优化后的Wiki.md>
 ```
 
 ## 优化原则
 
 1. **增量改进**：只修改有问题的部分，不推翻重写已验证正确的内容。
-2. **源文件优先**：先修改 `wiki_hub/` 下的 `.md` 源文件，再同步 DB 元信息，确保两者一致。
+2. **源文件优先**：先修改 `data/wiki_hub/` 下的 `.md` 源文件，再同步 DB 元信息，确保两者一致。
 3. **测评闭环**：优化后应在评估环节重新验证（eval-wiki），形成"评估 → 优化 → 再评估"的闭环。
 4. **记录变更**：复杂优化建议在 YAML front matter 中添加变更日志注释，方便回溯。
 5. **保留来源**：内容修改后务必检查正文末尾参考资料是否仍准确对应，必要时更新来源信息。

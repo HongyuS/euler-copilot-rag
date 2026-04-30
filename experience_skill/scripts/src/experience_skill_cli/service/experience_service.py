@@ -2,10 +2,10 @@
 
 import json
 import re
-from pathlib import Path
 
 import yaml
 
+from experience_skill_cli.common.exprience import SKILL_ROOT
 from experience_skill_cli.manager.experience_manager import ExperienceManager
 from experience_skill_cli.manager.keyword_manager import KeyWordManager
 from experience_skill_cli.schema.enum import ExperienceType
@@ -65,7 +65,7 @@ class ExperienceService:
         description = ""
         keywords = []
         if experience_type == ExperienceType.SKILL:
-            skill_md = Path(source) / "skill_def.md"
+            skill_md = SKILL_ROOT / source / "skill_def.md"
             if not skill_md.exists():
                 msg = f"skill_def.md not found in {source}"
                 raise FileNotFoundError(msg)
@@ -73,7 +73,7 @@ class ExperienceService:
                 skill_md.read_text(encoding="utf-8"),
             )
         elif experience_type == ExperienceType.WIKI:
-            wiki_md = Path(source)
+            wiki_md = SKILL_ROOT / source
             if not wiki_md.exists():
                 msg = f"WIKI file not found: {source}"
                 raise FileNotFoundError(msg)

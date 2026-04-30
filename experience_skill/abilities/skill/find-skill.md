@@ -28,7 +28,7 @@
 
 ```bash
 cd scripts
-uv run python main.py web
+uv run experience-skill web
 ```
 
 页面功能：
@@ -41,7 +41,7 @@ uv run python main.py web
 ### 基础搜索（全文检索）
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type SKILL \
     --top-k 10
@@ -54,7 +54,7 @@ uv run python main.py search-experiences \
 ### 按关键字过滤搜索
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type SKILL \
     --fields <关键词1> <关键词2> \
@@ -66,7 +66,7 @@ uv run python main.py search-experiences \
 ### 限制搜索范围
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type SKILL \
     --experience-ids <id1> <id2> \
@@ -78,7 +78,7 @@ uv run python main.py search-experiences \
 ### 排除特定 Skill
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type SKILL \
     --banned-ids <id1> <id2> \
@@ -90,7 +90,7 @@ uv run python main.py search-experiences \
 ### 热门优先搜索
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type SKILL \
     --is-hot true \
@@ -138,13 +138,13 @@ uv run python main.py search-experiences \
 3. 尝试使用 `list-experiences` 命令浏览全量 Skill 列表：
 
    ```bash
-   uv run python main.py list-experiences --type SKILL
+   uv run experience-skill list-experiences --type SKILL
    ```
 
 4. 或启动 Web 界面可视化浏览：
 
    ```bash
-   uv run python main.py web
+   uv run experience-skill web
    ```
 
 5. 若确实无相关 Skill，提示用户可考虑 create-skill 新建。

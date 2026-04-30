@@ -8,6 +8,8 @@ from multiprocessing import Lock as ProcessLock
 from pathlib import Path
 from typing import Any, Self
 
+from experience_skill_cli.common.exprience import SKILL_ROOT
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,6 +18,9 @@ logger = logging.getLogger(__name__)
 SCRIPT_DIR = Path(__file__).resolve().parent
 TOKENIZER_DIR = SCRIPT_DIR / "tokenizer"
 LIBSIMPLE_PATH = TOKENIZER_DIR / "libsimple"
+
+
+DATA_DIR = SKILL_ROOT / "data"
 
 
 # ====================== 表结构 ======================
@@ -123,7 +128,8 @@ class AsyncSQLiteSingleton:
         """初始化数据库连接与 tokenizer 扩展。"""
         if hasattr(self, "_init"):
             return
-        self.DB_PATH = str(SCRIPT_DIR / "experience.db")
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        self.DB_PATH = str(DATA_DIR / "experience.db")
         self._async_lock = asyncio.Lock()
         self._conn = None
         self._init = True
@@ -140,7 +146,7 @@ class AsyncSQLiteSingleton:
         # 加载 simple 分词器扩展（幂等：只加载一次）
         if self._ext_path is None:
             self._ext_path = _check_tokenizer()
-        self._conn.enable_load_extension(enabled=True)
+        self._conn.enable_load_extension(True)  # noqa: FBT003
         self._conn.load_extension(self._ext_path)
 
     def _run(self, sql: str, params: Sequence[Any] = ()) -> bool:

@@ -17,7 +17,7 @@
 
 ```bash
 cd scripts
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<待合并 Wiki 的核心关键词>" \
     --type WIKI \
     --top-k 10
@@ -61,7 +61,7 @@ merged = ExperienceService.merge_experiences(
 
 ### 第四步：整合源文件内容
 
-合并仅影响 DB 中的元信息，**不会自动修改 `wiki_hub/` 下的 `.md` 源文件**。合并完成后需手动或由智能体：
+合并仅影响 DB 中的元信息，**不会自动修改 `data/wiki_hub/` 下的 `.md` 源文件**。合并完成后需手动或由智能体：
 
 1. **整合正文**：读取所有被合并 Wiki 的 `.md` 文件，将其 Markdown 正文内容整合到 base 的 `.md` 文件中：
    - 按主题重新组织内容结构，用标题区分不同来源。
@@ -89,13 +89,13 @@ merged = ExperienceService.merge_experiences(
 
 ```bash
 # 确认 base Wiki 信息已更新
-uv run python main.py list-experiences --type WIKI --name "<合并后的名称>"
+uv run experience-skill list-experiences --type WIKI --name "<合并后的名称>"
 
 # 确认被合并 Wiki 已软删除（不再出现在正常列表）
-uv run python main.py search-experiences --query "<被合并 Wiki 名>" --type WIKI
+uv run experience-skill search-experiences --query "<被合并 Wiki 名>" --type WIKI
 
 # 确认合并后的 Wiki 可正常检索
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<合并后 Wiki 的关键词>" \
     --type WIKI \
     --top-k 5

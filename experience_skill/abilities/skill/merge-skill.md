@@ -16,7 +16,7 @@
 
 ```bash
 cd scripts
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<待合并 Skill 的核心关键词>" \
     --type SKILL \
     --top-k 10
@@ -59,7 +59,7 @@ merged = ExperienceService.merge_experiences(
 
 ### 第四步：更新源文件
 
-合并仅影响 DB 中的元信息，**不会自动修改 `skill_hub/` 下的 skill_def.md 源文件**。合并完成后需手动或由智能体：
+合并仅影响 DB 中的元信息，**不会自动修改 `data/skill_hub/` 下的 skill_def.md 源文件**。合并完成后需手动或由智能体：
 
 1. 更新 base Skill 目录下的 `skill_def.md`，反映合并后的 name、description、keywords。
 2. 可选：删除或归档被合并 Skill 的目录。
@@ -69,10 +69,10 @@ merged = ExperienceService.merge_experiences(
 
 ```bash
 # 确认 base Skill 信息已更新
-uv run python main.py list-experiences --type SKILL --name "<合并后的名称>"
+uv run experience-skill list-experiences --type SKILL --name "<合并后的名称>"
 
 # 确认被合并 Skill 已软删除（不再出现在正常列表）
-uv run python main.py search-experiences --query "<被合并 Skill 名>" --type SKILL
+uv run experience-skill search-experiences --query "<被合并 Skill 名>" --type SKILL
 ```
 
 ## 合并规则细节

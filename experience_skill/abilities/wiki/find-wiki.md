@@ -31,7 +31,7 @@
 
 ```bash
 cd scripts
-uv run python main.py web
+uv run experience-skill web
 ```
 
 页面功能：
@@ -44,7 +44,7 @@ uv run python main.py web
 ### 基础搜索（全文检索）
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --top-k 10
@@ -57,7 +57,7 @@ uv run python main.py search-experiences \
 ### 按关键字过滤搜索
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --fields <关键词1> <关键词2> \
@@ -69,7 +69,7 @@ uv run python main.py search-experiences \
 ### 限制搜索范围
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --experience-ids <id1> <id2> \
@@ -81,7 +81,7 @@ uv run python main.py search-experiences \
 ### 排除特定 Wiki
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --banned-ids <id1> <id2> \
@@ -93,7 +93,7 @@ uv run python main.py search-experiences \
 ### 热门优先搜索
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<搜索关键词>" \
     --type WIKI \
     --is-hot true \
@@ -149,13 +149,13 @@ cat <搜索结果中的 source 路径>
 3. 尝试使用 `list-experiences` 命令浏览全量 Wiki 列表：
 
    ```bash
-   uv run python main.py list-experiences --type WIKI
+   uv run experience-skill list-experiences --type WIKI
    ```
 
 4. 或启动 Web 界面可视化浏览：
 
    ```bash
-   uv run python main.py web
+   uv run experience-skill web
    ```
 
 5. 若确实无相关 Wiki，提示用户可考虑 create-wiki 新建。

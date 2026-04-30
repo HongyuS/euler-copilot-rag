@@ -28,7 +28,6 @@ experience_skill/
 │       ├── merge-wiki.md
 │       └── optimize-wiki.md
 ├── scripts
-│   ├── main.py
 │   ├── pyproject.toml
 │   ├── uv.lock
 │   └── src
@@ -52,27 +51,33 @@ experience_skill/
 │           │   ├── build.sh
 │           │   └── libsimple
 │           └── web_server.py
-├── skill_hub
-│   └── exmaple_skill
-│       ├── database.yaml
-│       ├── references
-│       ├── scripts
-│       └── skill_def.md
+├── example
+│   ├── skill
+│   │   └── example_skill
+│   │       ├── database.yaml
+│   │       ├── references
+│   │       ├── scripts
+│   │       └── skill_def.md
+│   └── wiki
+│       └── example.md
+├── data                          # 用户数据目录（不纳入版本控制）
+│   ├── experience.db             # SQLite 数据库
+│   ├── skill_hub                 # 用户 Skill
+│   └── wiki_hub                  # 用户 Wiki
 ├── SKILL.md
-└── wiki_hub
-    └── example.md
+└── .gitignore
 ```
 
 目录说明：
 
 1. `abilities`：核心能力目录，承载 Skill、Wiki 两类资源的创建、评估、检索、合并、优化能力定义；
-2. `scripts`：Python 项目目录，使用 `uv` 管理依赖。`main.py` 为 CLI 薄入口，`pyproject.toml` 为项目配置，`uv.lock` 为依赖锁定文件。所有 Python 源码位于 `src/experience_skill_cli/` 包内，`cli.py` 为主命令实现，其余模块包括核心服务、数据库交互、Web 服务、控制台工具等；
-3. `skill_hub`：存量 Skill 资源仓库，存放用户沉淀的所有工作流程技能；
-4. `wiki_hub`：存量 Wiki 资源仓库，集中保管资料类沉淀文档。
+2. `scripts`：Python 项目目录，使用 `uv` 管理依赖。`pyproject.toml` 为项目配置，通过 `uv run experience-skill` 调用，`uv.lock` 为依赖锁定文件。所有 Python 源码位于 `src/experience_skill_cli/` 包内，`cli.py` 为主命令实现，其余模块包括核心服务、数据库交互、Web 服务、控制台工具等；
+3. `example`：示例 Skill 与 Wiki，作为项目参考模板纳入版本控制；
+4. `data`：用户数据目录（已加入 `.gitignore`），存放 SQLite 数据库、`skill_hub`（用户 Skill 仓库）和 `wiki_hub`（用户 Wiki 仓库）。
 
 ## 约束规范
 
-- 所有新建 Skill、Wiki 必须统一存放至 `skill_hub`、`wiki_hub` 专属目录，禁止自定义存储路径；
+- 所有新建 Skill、Wiki 必须统一存放至 `data/skill_hub`、`data/wiki_hub` 专属目录，禁止自定义存储路径；
 - Skill 采用 `skill_def.md`（YAML front matter + Markdown 正文）格式，包含 name、description、keywords 等元信息；
 - Wiki 采用 `.md`（YAML front matter + Markdown 正文）格式，与 Skill 相同的文件结构，包含 name、description、keywords、references 等元信息；
 - 沉淀的 Skill 禁止包含恶意代码、敏感数据、隐私信息及违规内容；
@@ -90,16 +95,16 @@ experience_skill/
 本组件使用 `uv` 管理 Python 依赖。首次使用前执行：
 
 ```bash
-cd scripts
 uv sync
 ```
 
 ### CLI 命令概览
 
-所有 CLI 命令需在 `scripts/` 目录下通过 `uv run python main.py` 执行（或直接使用 `uv run experience-skill`）：
+所有 CLI 命令需在 `scripts/` 目录下通过 `uv run experience-skill` 执行：
 
 | 子命令               | 用途                                 |
 | -------------------- | ------------------------------------ |
+| `sync`               | 同步 data/ 中所有经验到数据库 |
 | `add-experiences`    | 添加 Skill/Wiki 经验到数据库         |
 | `list-experiences`   | 分页列出经验，支持类型/名称/热门过滤 |
 | `search-experiences` | 全文检索经验（FTS5 + 关键字）        |
@@ -111,8 +116,6 @@ uv sync
 查看子命令详细参数：
 
 ```bash
-uv run python main.py <子命令> --help
-# 或
 uv run experience-skill <子命令> --help
 ```
 
@@ -121,16 +124,13 @@ uv run experience-skill <子命令> --help
 通过 `web` 子命令启动 FastAPI Web 服务，提供图形化管理界面：
 
 ```bash
-cd scripts
-uv run python main.py web
-# 或
 uv run experience-skill web
 ```
 
 - **自动打开浏览器**：在 macOS 或有 `DISPLAY`/`WAYLAND_DISPLAY` 的 Linux 环境下自动调用系统浏览器打开 `http://127.0.0.1:8080`。
 - **纯 TTY 环境**：无图形环境时仅显示访问链接，用户手动复制到浏览器打开。
-- 自定义端口：`uv run python main.py web --port 9090`
-- 禁用自动打开：`uv run python main.py web --no-browser`
+- 自定义端口：`uv run experience-skill web --port 9090`
+- 禁用自动打开：`uv run experience-skill web --no-browser`
 
 Web 页面功能：
 
@@ -139,16 +139,6 @@ Web 页面功能：
 - **全文检索**：基于 FTS5 的关键词语义搜索
 - **热门筛选**：仅查看热门经验（Top 20）
 - **分页浏览**：上一页 / 下一页翻页
-
-### 旧版 CLI 运行方式（兼容）
-
-如果未使用 `uv`，也可直接通过系统 Python 运行（需手动安装依赖）：
-
-```bash
-python scripts/main.py <子命令> ...
-# 或
-PYTHONPATH=scripts/src python -m experience_skill_cli ...
-```
 
 ## 核心能力
 

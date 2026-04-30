@@ -2,3 +2,4 @@
 **/tokenizer/*.tar.gz
 **/tokenizer/lib*
 **/tokenizer/*-src/
+data/

@@ -13,6 +13,7 @@ import uvicorn
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from experience_skill_cli.common.exprience import SKILL_ROOT
 from experience_skill_cli.console import launch, link, rocket, warn
 from experience_skill_cli.manager.experience_manager import ExperienceManager
 from experience_skill_cli.manager.keyword_manager import KeyWordManager
@@ -21,9 +22,6 @@ from experience_skill_cli.schema.exprience import Experience
 from experience_skill_cli.service.experience_service import ExperienceService
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
-
-# Skill 安装根目录（SKILL.md 所在目录 = scripts/ 的父目录）
-SKILL_ROOT = Path(__file__).parent.parent.parent.parent
 
 app = FastAPI(title="经验管理", docs_url=None, redoc_url=None)
 

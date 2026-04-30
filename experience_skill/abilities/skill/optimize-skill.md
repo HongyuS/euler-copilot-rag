@@ -17,13 +17,13 @@
 ```bash
 # 按名称搜索
 cd scripts
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<Skill 名称或关键词>" \
     --type SKILL \
     --top-k 5
 
 # 或浏览全量列表
-uv run python main.py list-experiences --type SKILL
+uv run experience-skill list-experiences --type SKILL
 ```
 
 记录目标 Skill 的 ID（如 `a1b2c3d4-...`）和 source 路径。
@@ -33,8 +33,8 @@ uv run python main.py list-experiences --type SKILL
 读取 Skill 源文件，梳理优化点：
 
 ```bash
-cat <skill_hub/目标Skill目录/skill_def.md>
-cat <skill_hub/目标Skill目录/database.yaml>  # 如果存在
+cat <data/skill_hub/目标Skill目录/skill_def.md>
+cat <data/skill_hub/目标Skill目录/database.yaml>  # 如果存在
 ```
 
 常见优化维度：
@@ -54,7 +54,7 @@ cat <skill_hub/目标Skill目录/database.yaml>  # 如果存在
 
 #### 3a. 更新 skill_def.md 内容
 
-直接编辑 `skill_hub/<Skill 目录>/skill_def.md`：
+直接编辑 `data/skill_hub/<Skill 目录>/skill_def.md`：
 
 - 修正 front matter 中的 `name`、`description`、`keywords`（如有变更）。
 - 更新正文各章节内容。
@@ -88,10 +88,10 @@ updated = ExperienceService.optimize_experience(
 
 ```bash
 # 确认 DB 记录已更新
-uv run python main.py list-experiences --type SKILL --name "<Skill 名称>"
+uv run experience-skill list-experiences --type SKILL --name "<Skill 名称>"
 
 # 确认优化后的 Skill 可被检索召回
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<优化后的核心关键词>" \
     --type SKILL \
     --top-k 5

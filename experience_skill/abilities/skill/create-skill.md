@@ -6,7 +6,7 @@
 
 ## 前置约束
 
-- 所有新建 Skill 必须存放至 `skill_hub/` 目录下，以独立子目录形式组织。
+- 所有新建 Skill 必须存放至 `data/skill_hub/` 目录下，以独立子目录形式组织。
 - Skill 目录内必须包含 `skill_def.md` 文件，推荐包含 `database.yaml`（评测用例）、`references/`（参考资料）、`scripts/`（辅助脚本）等可选内容。
 - 禁止在 skill_def.md 内容中包含恶意代码、敏感数据、隐私信息。
 
@@ -20,7 +20,7 @@
 
 ```bash
 cd scripts
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<待创建Skill的核心关键词>" \
     --type SKILL \
     --top-k 5
@@ -88,7 +88,7 @@ keywords: [关键词1, 关键词2, 关键词3]
 
 ```bash
 cd scripts
-uv run python main.py add-experiences \
+uv run experience-skill add-experiences \
     --type SKILL \
     --source "<skill_hub下的子目录绝对路径>"
 ```
@@ -105,7 +105,7 @@ uv run python main.py add-experiences \
 注册成功后，执行一次检索验证 Skill 可被召回：
 
 ```bash
-uv run python main.py search-experiences \
+uv run experience-skill search-experiences \
     --query "<Skill核心关键词>" \
     --type SKILL \
     --top-k 3
