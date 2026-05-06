@@ -54,17 +54,18 @@ experience_skill/
 ├── example
 │   ├── skill
 │   │   └── example_skill
+│   │       ├── skill_def.md
 │   │       ├── database.yaml
-│   │       ├── references
-│   │       ├── scripts
-│   │       └── skill_def.md
+│   │       ├── scripts/
+│   │       ├── references/
+│   │       └── assets/
 │   └── wiki
 │       └── example.md
 ├── data                          # 用户数据目录（不纳入版本控制）
 │   ├── experience.db             # SQLite 数据库
-│   ├── skill_hub                 # 用户 Skill
-│   └── wiki_hub                  # 用户 Wiki
-├── SKILL.md
+│   ├── skill_hub                 # 用户 Skill 仓库
+│   └── wiki_hub                  # 用户 Wiki 仓库
+├── SKILL.md                      # 本组件自身的 Skill 入口
 └── .gitignore
 ```
 
@@ -78,7 +79,9 @@ experience_skill/
 ## 约束规范
 
 - 所有新建 Skill、Wiki 必须统一存放至 `data/skill_hub`、`data/wiki_hub` 专属目录，禁止自定义存储路径；
-- Skill 采用 `skill_def.md`（YAML front matter + Markdown 正文）格式，包含 name、description、keywords 等元信息；
+- Skill 采用 `skill_def.md`（YAML front matter + Markdown 正文）格式，内容结构遵循 [Agent Skills 规范](https://agentskills.io/specification)。包含 name、description 等必需字段，以及 license、compatibility、metadata（含 keywords）、allowed-tools 等可选字段；
+- Skill 目录结构：主文件 `skill_def.md`（必需）、`scripts/`（可执行脚本）、`references/`（参考文档）、`assets/`（静态资源）、`database.yaml`（评测用例）；
+- 使用 `skill_def.md` 而非 `SKILL.md` 命名，是为了防止部分 Agent 框架通过 `~/.agents/skills/` 递归扫描自动发现并加载 skill_hub 中的 Skill。格式完全遵循 Agent Skills 规范，仅文件名不同；
 - Wiki 采用 `.md`（YAML front matter + Markdown 正文）格式，与 Skill 相同的文件结构，包含 name、description、keywords、references 等元信息；
 - 沉淀的 Skill 禁止包含恶意代码、敏感数据、隐私信息及违规内容；
 - Wiki 内容仅限提炼、整合工作场景内查阅的网页、文档等资料，不得混入无关冗余信息；
