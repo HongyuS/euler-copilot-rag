@@ -7,11 +7,11 @@
 ## 前置约束
 
 - 所有新建 Skill 必须存放至 `data/skill_hub/` 目录下，以独立子目录形式组织。
-- Skill 目录内必须包含 `skill_def.md` 文件（YAML front matter + Markdown，格式遵循 Agent Skills 规范），可选包含 `database.yaml`（评测用例）、`scripts/`（可执行脚本）、`references/`（参考文档）、`assets/`（静态资源）等高级内容。
+- Skill 目录内必须包含 `skill_def.md` 文件（YAML front matter + Markdown，格式遵循 Agent Skills 规范）。`database.yaml`（评测用例）、`scripts/`（可执行脚本）、`references/`（参考文档）、`assets/`（静态资源）均为可选——**仅在确实需要时创建，默认不生成**。
 - 目录名称必须与 `skill_def.md` 中的 `name` 字段一致。
 - 禁止在 skill_def.md 内容中包含恶意代码、敏感数据、隐私信息。
 
-> **关于文件命名**：本项目中 `data/skill_hub/` 下的 Skill 使用 `skill_def.md` 而非标准 `SKILL.md`。原因是 `SKILL.md` 会被部分 Agent 框架自动发现并全量注入会话上下文（通过 `~/.agents/skills/` 递归扫描），而 skill_hub 中的 Skill 应通过 CLI 按需检索加载。`skill_def.md` 的格式（YAML front matter + Markdown 正文）完全遵循 Agent Skills 规范，仅文件名不同。
+> **关于文件命名**：本项目中 `data/skill_hub/` 下的 Skill 使用 `skill_def.md` 而非标准 `SKILL.md`。原因是 `SKILL.md` 会被 OpenCode 自动发现并全量注入会话上下文（通过 `~/.agents/skills/` 递归扫描），而 skill_hub 中的 Skill 应通过 CLI 按需检索加载。`skill_def.md` 的格式（YAML front matter + Markdown 正文）完全遵循 Agent Skills 规范，仅文件名不同。
 
 ## Skill 目录结构
 
@@ -156,11 +156,25 @@ description: 帮助处理 PDF。
 
 ### 第四步：按需创建高级内容
 
-根据 Skill 的实际需求，按需创建以下可选目录和文件。
+根据 Skill 的实际需求，**按需**创建以下可选目录和文件。
+
+> **核心原则：宁可缺失，不可滥生成。** 一个没有 scripts/ 和 database.yaml 但 skill_def.md 内容扎实的 Skill，远好过一个塞满空壳脚本和无效评测用例的 Skill。**默认不创建任何可选内容**——仅在明确存在对应需求时才生成。
 
 #### 4a. scripts/ — 可执行脚本
 
-当 Skill 涉及**可自动化的操作**（数据提取、格式转换、批量处理等）时，创建 `scripts/` 目录存放可执行代码：
+**默认不创建。** 仅在同时满足以下三项条件时才生成：
+
+1. Skill 流程中存在**可自动化执行的确定性操作**（如格式转换、日志解析），且脚本确实能显著简化 Agent 的操作。
+2. 脚本**真实可运行**——依赖声明完整、错误处理到位、有 `--help` 用法说明。
+3. 脚本逻辑**不是**从 skill_def.md 中摘抄命令——那毫无增量价值，Agent 可以直接执行那些命令。
+
+**禁止生成的典型场景**：
+
+- Skill 内容是纯诊断/排查/决策类的人工指导（不涉及可自动化操作）。
+- 只能产出"模板空壳"——参数解析框架写了，但实际逻辑为空、或者变量赋值在 `echo "完成"` 之后永远不可达。
+- 无法保证脚本在目标环境中正确执行（不确定依赖是否存在）。
+
+当确定需要脚本时：
 
 ```bash
 mkdir -p data/skill_hub/<skill-name>/scripts
@@ -275,7 +289,17 @@ options:
 
 #### 4d. database.yaml — 评测用例
 
-在 Skill 目录下创建 `database.yaml`，存放评测用例供 `eval-skill` 质量评估使用。
+**默认不创建。** database.yaml 是为 `eval-skill` 自动化评测服务的——如果 Skill 没有自动化评测需求，或者评测用例只是把 skill_def.md 中的 Q&A 改写格式塞进去，就不要生成。
+
+**仅在以下情况创建**：
+- Skill 有明确的、可自动化验证的输入→输出断言。
+- 评测用例覆盖了 skill_def.md 正文中**未充分体现**的边界条件或异常路径。
+- 用例不是从正文内容的简单改写——必须有独立的测试价值。
+
+**禁止生成的典型场景**：
+- 用例内容就是"skill_def.md 中某个步骤的问答对"——这只是格式转换，无增量价值。
+- 用例的 answer 是模糊描述（如"成功完成"、"正常输出"），无法自动化判断通过/失败。
+- YAML 格式错误（参见下方常见格式错误）。
 
 **文件结构**：YAML 数组，每个元素是以用例名称为 key 的映射，包含 `question` 和 `answer` 字段。
 
