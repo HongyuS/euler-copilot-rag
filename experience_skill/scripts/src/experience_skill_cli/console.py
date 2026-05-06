@@ -3,10 +3,49 @@
 from __future__ import annotations
 
 import sys
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from experience_skill_cli.schema.exprience import Experience
+
+# ---------------------------------------------------------------------------
+# Enum 值 -> 可读文本的映射
+# ---------------------------------------------------------------------------
+
+# 延迟导入以避免循环依赖，模块加载时通过 _build_enum_display_map() 填充
+_ENUM_DISPLAY_MAP: dict[Enum, str] = {}
+
+
+def _build_enum_display_map() -> None:
+    """构建 Enum 成员到可读文本的映射。"""
+    if _ENUM_DISPLAY_MAP:
+        return  # 已初始化
+
+    from experience_skill_cli.schema.enum import (  # noqa: PLC0415
+        ExperienceStatus,
+        ExperienceType,
+    )
+
+    _ENUM_DISPLAY_MAP.update(
+        {
+            ExperienceType.SKILL: "SKILL",
+            ExperienceType.WIKI: "WIKI",
+            ExperienceStatus.EXISTED: "存在",
+            ExperienceStatus.DELETED: "已删除",
+        }
+    )
+
+
+def _format_value(value: Any) -> str:
+    """将字段值格式化为可读文本，特别处理 Enum 类型。"""
+    if isinstance(value, Enum):
+        _build_enum_display_map()
+        return _ENUM_DISPLAY_MAP.get(value, value.value)
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value)
+    return str(value) if value is not None else ""
+
 
 # ---------------------------------------------------------------------------
 # 内部基础函数
@@ -103,7 +142,7 @@ def print_experience(exp: Experience, index: int | None = None) -> None:
     else:
         section("经验详情")
     for label, attr in _EXPERIENCE_FIELDS:
-        echo(f"{label:<12}: {getattr(exp, attr, '')}")
+        echo(f"{label:<12}: {_format_value(getattr(exp, attr, ''))}")
 
 
 def print_experience_list(exps: list[Experience], total: int | None = None) -> None:
