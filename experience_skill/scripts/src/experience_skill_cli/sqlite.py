@@ -5,6 +5,7 @@ import logging
 import sqlite3
 from collections.abc import Sequence
 from multiprocessing import Lock as ProcessLock
+from multiprocessing.synchronize import Lock as ProcessLockType
 from pathlib import Path
 from typing import Any, Self
 
@@ -108,9 +109,9 @@ class AsyncSQLiteSingleton:
     """SQLite 异步安全单例管理器。"""
 
     _instance: "AsyncSQLiteSingleton | None" = None
-    _process_lock: ProcessLock = ProcessLock()
+    _process_lock: ProcessLockType = ProcessLock()
 
-    DB_PATH: str
+    db_path: str
     _async_lock: asyncio.Lock
     _conn: sqlite3.Connection | None
     _init: bool
@@ -129,27 +130,14 @@ class AsyncSQLiteSingleton:
         if hasattr(self, "_init"):
             return
         DATA_DIR.mkdir(parents=True, exist_ok=True)
-        self.DB_PATH = str(DATA_DIR / "experience.db")
+        self.db_path = str(DATA_DIR / "experience.db")
         self._async_lock = asyncio.Lock()
         self._conn = None
         self._init = True
         self._ext_path = None
         self._connect()
 
-    def _connect(self) -> None:
-        """建立 SQLite 连接并加载 simple 分词器扩展。"""
-        if self._conn:
-            return
-        self._conn = sqlite3.connect(self.DB_PATH, check_same_thread=False, timeout=30)
-        self._conn.execute("PRAGMA journal_mode=WAL")
-
-        # 加载 simple 分词器扩展（幂等：只加载一次）
-        if self._ext_path is None:
-            self._ext_path = _check_tokenizer()
-        self._conn.enable_load_extension(True)  # noqa: FBT003
-        self._conn.load_extension(self._ext_path)
-
-    def _run(self, sql: str, params: Sequence[Any] = ()) -> bool:
+    def run(self, sql: str, params: Sequence[Any] = ()) -> bool:
         """执行写操作 SQL。"""
         self._connect()
         assert self._conn is not None
@@ -164,7 +152,7 @@ class AsyncSQLiteSingleton:
         else:
             return True
 
-    def _query(self, sql: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
+    def query(self, sql: str, params: Sequence[Any] = ()) -> list[dict[str, Any]]:
         """执行查询操作 SQL，返回字典列表。"""
         self._connect()
         assert self._conn is not None
@@ -177,19 +165,10 @@ class AsyncSQLiteSingleton:
             logger.exception("SQL query error: sql=%s, params=%s", sql, params)
             return []
 
-    def _ensure_column(self, table: str, column: str, col_type: str) -> None:
-        """检查表是否包含指定列，没有则添加（用于旧表迁移）。"""
-        self._connect()
-        assert self._conn is not None
-        cur = self._conn.execute(f"PRAGMA table_info({table})")
-        cols = [r[1] for r in cur.fetchall()]
-        if column not in cols:
-            self._run(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-
     def init(self) -> None:
         """初始化数据库表结构。"""
         for sql in table_ddl_list.values():
-            self._run(sql)
+            self.run(sql)
         # 兼容旧表：动态添加列（如果尚不存在）
         self._ensure_column("experience_table", "name", "TEXT")
         self._ensure_column("experience_table", "references", "TEXT")
@@ -200,6 +179,28 @@ class AsyncSQLiteSingleton:
             self._conn.close()
             self._conn = None
         for suffix in ["", "-wal", "-shm"]:
-            path = Path(self.DB_PATH + suffix)
+            path = Path(self.db_path + suffix)
             if path.exists():
                 path.unlink()
+
+    def _connect(self) -> None:
+        """建立 SQLite 连接并加载 simple 分词器扩展。"""
+        if self._conn:
+            return
+        self._conn = sqlite3.connect(self.db_path, check_same_thread=False, timeout=30)
+        self._conn.execute("PRAGMA journal_mode=WAL")
+
+        # 加载 simple 分词器扩展（幂等：只加载一次）
+        if self._ext_path is None:
+            self._ext_path = _check_tokenizer()
+        self._conn.enable_load_extension(True)  # noqa: FBT003
+        self._conn.load_extension(self._ext_path)
+
+    def _ensure_column(self, table: str, column: str, col_type: str) -> None:
+        """检查表是否包含指定列，没有则添加（用于旧表迁移）。"""
+        self._connect()
+        assert self._conn is not None
+        cur = self._conn.execute(f"PRAGMA table_info({table})")
+        cols = [r[1] for r in cur.fetchall()]
+        if column not in cols:
+            self.run(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")

@@ -12,7 +12,7 @@ class KeyWordManager:
         """为指定经验添加关键词。"""
         db = AsyncSQLiteSingleton()
         for keyword in keywords:
-            db._run(
+            db.run(
                 "INSERT INTO keyword_table (experience_id, name) VALUES (?, ?)",
                 (experience_id, keyword),
             )
@@ -21,7 +21,7 @@ class KeyWordManager:
     def get_keywords_by_experience_id(experience_id: str) -> list[str]:
         """获取指定经验的所有关键词。"""
         db = AsyncSQLiteSingleton()
-        rows = db._query(
+        rows = db.query(
             "SELECT name FROM keyword_table WHERE experience_id = ?",
             (experience_id,),
         )
@@ -31,14 +31,14 @@ class KeyWordManager:
     def delete_keywords_by_experience_id(experience_id: str) -> None:
         """删除指定经验的所有关键词。"""
         db = AsyncSQLiteSingleton()
-        db._run("DELETE FROM keyword_table WHERE experience_id = ?", (experience_id,))
+        db.run("DELETE FROM keyword_table WHERE experience_id = ?", (experience_id,))
 
     @staticmethod
     def get_all_keywords(experience_type: ExperienceType | None = None) -> list[str]:
         """获取所有不重复的关键词名，可按经验类型过滤。"""
         db = AsyncSQLiteSingleton()
         if experience_type is not None:
-            rows = db._query(
+            rows = db.query(
                 """
                 SELECT DISTINCT k.name
                 FROM keyword_table k
@@ -49,7 +49,7 @@ class KeyWordManager:
                 (experience_type.value, ExperienceStatus.EXISTED.value),
             )
         else:
-            rows = db._query(
+            rows = db.query(
                 """
                 SELECT DISTINCT k.name
                 FROM keyword_table k
@@ -68,7 +68,7 @@ class KeyWordManager:
             return []
         db = AsyncSQLiteSingleton()
         placeholders = ",".join(["?"] * len(keywords))
-        rows = db._query(
+        rows = db.query(
             f"""
             SELECT DISTINCT k.experience_id
             FROM keyword_table k

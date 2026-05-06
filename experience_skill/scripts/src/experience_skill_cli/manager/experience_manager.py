@@ -39,7 +39,7 @@ class ExperienceManager:
         """批量添加经验记录。"""
         db = AsyncSQLiteSingleton()
         for experience in experiences:
-            db._run(
+            db.run(
                 """
                 INSERT INTO experience_table
                     (id, type, name, description, "references", status, is_hot, source, created_at, updated_at)
@@ -64,7 +64,7 @@ class ExperienceManager:
         """按 ID 列表软删除经验。"""
         db = AsyncSQLiteSingleton()
         placeholders = ",".join(["?"] * len(experience_ids))
-        db._run(
+        db.run(
             f"""
             UPDATE experience_table
             SET status = ?
@@ -77,7 +77,7 @@ class ExperienceManager:
     def update_experience(experience: Experience) -> None:
         """更新经验记录。"""
         db = AsyncSQLiteSingleton()
-        db._run(
+        db.run(
             """
             UPDATE experience_table
             SET type = ?, name = ?, description = ?, "references" = ?, status = ?, source = ?, updated_at = ?
@@ -100,7 +100,7 @@ class ExperienceManager:
         """更新经验热度（最多保留 20 条热门）。"""
         db = AsyncSQLiteSingleton()
         # 先查当前的experience是否存在
-        experience = db._query(
+        experience = db.query(
             """
             SELECT * FROM experience_table WHERE id = ? AND status = ?
             """,
@@ -109,7 +109,7 @@ class ExperienceManager:
         if experience:
             if experience[0]["is_hot"] == 1:
                 # 更新updated_at
-                db._run(
+                db.run(
                     """
                     UPDATE experience_table
                     SET updated_at = ?
@@ -122,7 +122,7 @@ class ExperienceManager:
                 )
                 return
             experience_type = experience[0]["type"]
-            hot_experience_cnt = db._query(
+            hot_experience_cnt = db.query(
                 """\
                 SELECT COUNT(*) as cnt FROM experience_table
                 WHERE type = ? AND is_hot = 1 AND status = ?
@@ -131,7 +131,7 @@ class ExperienceManager:
             )[0]["cnt"]
             if hot_experience_cnt >= HOT_EXPRINCE_CNT_LIMIT:
                 # 将最早的热门经验取消热门标记
-                db._run(
+                db.run(
                     """
                     UPDATE experience_table
                     SET is_hot = 0
@@ -143,7 +143,7 @@ class ExperienceManager:
                     """,
                     (experience_type, ExperienceStatus.EXISTED.value),
                 )
-            db._run(
+            db.run(
                 """
                     UPDATE experience_table
                     SET is_hot = 1, updated_at = ?
@@ -192,14 +192,14 @@ class ExperienceManager:
             where_clauses.append(f"id IN ({placeholders})")
             params.extend(experience_ids)
         where_clause = " AND ".join(where_clauses)
-        total_cnt = db._query(
+        total_cnt = db.query(
             f"""
             SELECT COUNT(*) as cnt FROM experience_table
             WHERE {where_clause}
             """,
             params,
         )[0]["cnt"]
-        experience_rows = db._query(
+        experience_rows = db.query(
             f"""
             SELECT * FROM experience_table
             WHERE {where_clause}
@@ -308,7 +308,7 @@ class ExperienceManager:
             use_simple_query=True,
         )
 
-        experience_rows = db._query(sql, params)
+        experience_rows = db.query(sql, params)
         experiences = [ExperienceManager._row_to_experience(r) for r in experience_rows]
 
         # 已查到的ID加入排除
@@ -324,8 +324,10 @@ class ExperienceManager:
                 use_simple_query=False,
             )
 
-            experience_rows = db._query(sql, params)
-            experiences.extend(ExperienceManager._row_to_experience(r) for r in experience_rows)
+            experience_rows = db.query(sql, params)
+            experiences.extend(
+                ExperienceManager._row_to_experience(r) for r in experience_rows
+            )
 
         return experiences
 
@@ -333,7 +335,7 @@ class ExperienceManager:
     def query_experience_ids_by_source(source: str) -> list[str]:
         """按来源路径查询经验 ID 列表。"""
         db = AsyncSQLiteSingleton()
-        rows = db._query(
+        rows = db.query(
             "SELECT id FROM experience_table WHERE source = ? AND status = ?",
             (source, ExperienceStatus.EXISTED.value),
         )
@@ -346,7 +348,7 @@ class ExperienceManager:
             return []
         db = AsyncSQLiteSingleton()
         placeholders = ",".join(["?"] * len(experience_ids))
-        rows = db._query(
+        rows = db.query(
             f"SELECT * FROM experience_table WHERE id IN ({placeholders}) AND status = ?",
             (*experience_ids, ExperienceStatus.EXISTED.value),
         )
@@ -356,7 +358,7 @@ class ExperienceManager:
     def query_experience_by_source(source: str) -> list[Experience]:
         """按来源路径查询经验列表。"""
         db = AsyncSQLiteSingleton()
-        rows = db._query(
+        rows = db.query(
             "SELECT * FROM experience_table WHERE source = ? AND status = ?",
             (source, ExperienceStatus.EXISTED.value),
         )
