@@ -48,6 +48,19 @@ def extract_core_words(processed_text: str, max_words: int = 5) -> List[str]:
     return words if words else []
 
 
+def _fallback_issue_items(issue_candidates: List[Dict[str, Any]], top_k: int) -> List[Dict[str, Any]]:
+    """向量不可用时，补齐 similarity 字段，避免下游 KeyError。"""
+    return [
+        {
+            "repo": item["repo"],
+            "title": item["title"],
+            "api_url": item.get("api_url"),
+            "similarity": 0.0,
+        }
+        for item in issue_candidates[:top_k]
+    ]
+
+
 async def fetch_github_issues_page(
     session: aiohttp.ClientSession,
     headers: Dict[str, str],
@@ -156,11 +169,11 @@ async def rerank_issue_candidates(
     if not issue_candidates:
         return []
     if not Embedding.is_configured():
-        return issue_candidates[:top_k]
+        return _fallback_issue_items(issue_candidates, top_k)
     try:
         query_vector = await Embedding.vectorize_embedding(preprocess_text(query))
         if not query_vector:
-            return issue_candidates[:top_k]
+            return _fallback_issue_items(issue_candidates, top_k)
         issue_texts = [preprocess_text(issue["text"]) for issue in issue_candidates]
         issue_vectors = await Embedding.vectorize_embeddings_batch(issue_texts, max_concurrent=5)
         similarities = []
@@ -178,7 +191,7 @@ async def rerank_issue_candidates(
         ]
     except Exception as e:
         logger.warning(f"[OnlineIssue] 向量精排失败: {e}")
-        return issue_candidates[:top_k]
+        return _fallback_issue_items(issue_candidates, top_k)
 
 
 async def search_issues_online(
