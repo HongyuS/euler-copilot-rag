@@ -197,7 +197,36 @@ async def delete_task(
     success = await LogTaskHandleService.delete_task(task_id)
     return json.dumps({"success": success})
 
-
+@mcp.tool(
+    name="get_task_queue",
+    description="""
+    这是获取任务队列情况的工具函数，前端会调用这个接口来获取所有任务的状态信息。
+    这个函数会返回所有任务的列表，每个任务包含：任务ID、任务完成百分比、任务状态。返回格式如下：
+    {
+        "tasks": [
+            {
+                "task_id": "任务ID，uuid4格式",
+                "completion_percent": "任务完成百分比，float类型",
+                "status": "任务状态"
+            },
+            ...
+        ]
+    }
+    """,
+)
+async def get_task_queue() -> str:
+    task_models = await LogTaskHandleService.get_all_tasks()
+    return json.dumps({
+        "tasks": [
+            {
+                "task_id": task_model.task_id,
+                "status": task_model.status,
+                "completion_percent": task_model.completion_precent
+            }
+            for task_model in task_models
+        ],
+    })
+    
 # 定义异步主函数，统一管理异步任务和MCP服务器启动
 
 

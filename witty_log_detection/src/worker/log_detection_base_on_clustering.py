@@ -80,6 +80,7 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         # 百分制
         return (cosine_similarity + 1) / 2 * 100
 
+    @staticmethod
     async def cal_keyword_similarity(str1: str, keywords: list[str]) -> float:
         """计算jaccard相似度"""
         words = list(jieba.cut(str1))
@@ -89,7 +90,6 @@ class LogDetectionBasedOnClusteringWorker(BaseWorker):
         keywords = set(new_keywords)
         words_set = set(words)
         intersection = words_set & keywords
-        print(intersection)
         return (len(intersection) / len(keywords) if len(keywords) > 0 else 0.0)*100
 
     @staticmethod

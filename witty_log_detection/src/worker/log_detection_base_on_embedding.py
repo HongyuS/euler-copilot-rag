@@ -269,7 +269,7 @@ class LogDetectionBasedOnEmbeddingWorker(BaseWorker):
                 final_score = semantic_similarity * 0.5 + sentiment_score * 0.35 + keyword_similarity * 0.15
             
             # 过滤低分日志
-            if final_score >= 20:  # 最低阈值20分
+            if final_score >= 10:  # 最低阈值40分（从20分提高，减少误报）
                 log_model.anomaly_score = final_score
                 candidate_unnormal_log_models.append(log_model)
         

@@ -219,6 +219,31 @@ class LogParser:
         return log_lines
 
     @staticmethod
+    def _add_log_model_if_valid(
+        log_models: list[LogModel],
+        file_path: str,
+        log_type: LogTypeEnum,
+        offset: int,
+        content: str,
+    ) -> int:
+        """
+        辅助方法：如果内容有效（非空非空白），则添加到 log_models
+        返回新的 offset（如果添加则 +1，否则不变）
+        """
+        stripped_content = content.strip()
+        if stripped_content:
+            log_models.append(
+                LogModel(
+                    file_path=file_path,
+                    log_type=log_type,
+                    offset=offset,
+                    content=stripped_content,
+                )
+            )
+            return offset + 1
+        return offset
+
+    @staticmethod
     async def mask_log_content(log_model: LogModel) -> str:
         """对日志内容进行脱敏处理"""
         # 这里实现日志内容脱敏的具体逻辑
@@ -244,11 +269,11 @@ class LogParser:
     ) -> None:
         """获取日志模板"""
         # 这里实现获取日志模板的具体逻辑
-        logger.info(f"开始获取{len(log_models)}个日志模板")
+        # logger.info(f"开始获取{len(log_models)}个日志模板")
         log_templates = []
         for i in range(0, len(log_models), batch_size):
             batch_log_models = log_models[i : i + batch_size]
-            logger.info(f"开始处理第{i+1}个批次，包含{len(batch_log_models)}个日志模型")
+            # logger.info(f"开始处理第{i+1}个批次，包含{len(batch_log_models)}个日志模型")
             masked_contents = await asyncio.gather(
                 *[
                     LogParser.mask_log_content(log_model)
@@ -257,16 +282,15 @@ class LogParser:
             )
             log_templates += masked_contents
         if need_embedding:
-            # 过滤空字符串、空白文本
-            log_templates = [t for t in log_templates if t and t.strip()]
-            logger.info(f"开始对{len(log_templates)}个日志模板进行嵌入向量化")
+            # logger.info(f"开始对{len(log_templates)}个日志模板进行嵌入向量化")
             log_template_embeddings = await Embedding.vectorize_embedding(log_templates)
+        
         for i in range(len(log_models)):
-            logger.info(f"开始处理第{i+1}个日志模型")
+            # logger.info(f"开始处理第{i+1}个日志模型")
             log_models[i].template = log_templates[i]
             if need_embedding:
                 log_models[i].template_vector = log_template_embeddings[i]
-        logger.info(f"获取到{len(log_models)}个日志模板")
+        # logger.info(f"获取到{len(log_models)}个日志模板")
     @staticmethod
     async def filter_log_models_not_in_time_range(
         log_models: list[LogModel],
@@ -382,7 +406,6 @@ class LogParser:
         if need_split_by_regex:
             index = 0
             while index < len(log_lines):
-                logger.info(f"当前处理索引: {index}")
                 log_line = log_lines[index]
                 # 提取时间戳
                 log_type = LogParser.get_log_line_type(log_line)
@@ -403,55 +426,48 @@ class LogParser:
                             if re.search(continuous_regex, log_lines[index]):
                                 is_continuous = True
                                 break
-                        if is_continuous:
+                        if is_continuous and len(current) < chunk_size:
                             current += log_lines[index] + "\n"
                             index += 1
                         else:
                             break
-                    log_models.append(
-                        LogModel(
-                            file_path=file_path,
-                            log_type=log_type,
-                            offset=offset,
-                            content=current.strip(),
-                        )
+                    offset = LogParser._add_log_model_if_valid(
+                        log_models,
+                        file_path,
+                        log_type,
+                        offset,
+                        current,
                     )
-                    offset += 1
                 else:
-                    log_models.append(
-                        LogModel(
-                            file_path=file_path,
-                            log_type=log_type,
-                            offset=offset,
-                            content=log_line,
-                        )
+                    offset = LogParser._add_log_model_if_valid(
+                        log_models,
+                        file_path,
+                        log_type,
+                        offset,
+                        log_line,
                     )
                     index += 1
-                    offset += 1
         else:
             for log_line in log_lines:
                 if len(current) + len(log_line) > chunk_size:
-                    log_models.append(
-                        LogModel(
-                            file_path=file_path,
-                            log_type=LogParser.get_log_line_type(current),
-                            offset=offset,
-                            content=current,
-                        )
+                    log_type_for_current = LogParser.get_log_line_type(current)
+                    offset = LogParser._add_log_model_if_valid(
+                        log_models,
+                        file_path,
+                        log_type_for_current,
+                        offset,
+                        current,
                     )
-                    offset += 1
                     current = ""
                 current += log_line + "\n"
-            if current.strip() != "":
-                log_models.append(
-                    LogModel(
-                        file_path=file_path,
-                        log_type=LogParser.get_log_line_type(current),
-                        offset=offset,
-                        content=current,
-                    )
-                )
-                offset += 1
+            log_type_for_current = LogParser.get_log_line_type(current)
+            offset = LogParser._add_log_model_if_valid(
+                log_models,
+                file_path,
+                log_type_for_current,
+                offset,
+                current,
+            )
         if time_start is not None or time_end is not None:
             log_models = await LogParser.filter_log_models_not_in_time_range(
                 log_models, time_start, time_end

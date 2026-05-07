@@ -72,6 +72,13 @@ class LogTaskHandleService:
         """删除指定的任务"""
         # 先尝试停止任务（如果任务正在运行）
         await BaseWorker.stop(task_id)
+        # 删除关联的日志解析结果
+        await LogParseResultManager.delete_log_parse_results_by_task_id(task_id)
         # 然后从数据库中删除任务记录
         success = await TaskManager.delete_task_by_id(task_id)
         return success
+        
+    @staticmethod
+    async def get_all_tasks() -> list[TaskModel]:
+        """获取所有任务"""
+        return await TaskManager.get_all_tasks()
