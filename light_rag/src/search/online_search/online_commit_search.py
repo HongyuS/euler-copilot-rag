@@ -52,6 +52,18 @@ def extract_core_words(processed_text: str, max_words: int = 5) -> List[str]:
     return words if words else []
 
 
+def _fallback_commit_items(commit_candidates: List[Dict[str, Any]], top_k: int) -> List[Dict[str, Any]]:
+    """向量不可用时，补齐 similarity 字段，避免下游 KeyError。"""
+    return [
+        {
+            "summary": item["summary"],
+            "api_url": item.get("api_url"),
+            "similarity": 0.0,
+        }
+        for item in commit_candidates[:top_k]
+    ]
+
+
 def _local_result_is_good(results: List[Dict[str, Any]]) -> bool:
     if len(results) < get_commit_local_min_hits():
         return False
@@ -141,11 +153,11 @@ async def rerank_commit_candidates(
     if not commit_candidates:
         return []
     if not Embedding.is_configured():
-        return commit_candidates[:top_k]
+        return _fallback_commit_items(commit_candidates, top_k)
     try:
         query_vector = await Embedding.vectorize_embedding(preprocess_text(query))
         if not query_vector:
-            return commit_candidates[:top_k]
+            return _fallback_commit_items(commit_candidates, top_k)
         commit_texts = [preprocess_text(commit["text"]) for commit in commit_candidates]
         commit_vectors = await Embedding.vectorize_embeddings_batch(commit_texts, max_concurrent=5)
         similarities = []
@@ -162,7 +174,7 @@ async def rerank_commit_candidates(
         ]
     except Exception as e:
         logger.warning(f"[OnlineCommit] 向量精排失败: {e}")
-        return commit_candidates[:top_k]
+        return _fallback_commit_items(commit_candidates, top_k)
 
 
 async def _fetch_commit_content(
