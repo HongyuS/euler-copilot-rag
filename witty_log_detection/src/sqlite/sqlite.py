@@ -53,107 +53,75 @@ table_ddl_list = {
 }
 
 
-class AsyncSQLiteSingleton:
-    # 类级别的单例实例（按进程ID存储）
-    _instances: dict[int, 'AsyncSQLiteSingleton'] = {}
-    # 进程级锁（跨进程保护）
+class _SQLiteConnBase:
+    """SQLite 连接管理基类
+
+    提供进程级单例、连接复用、异步 SQL 接口等公共能力。
+    子类需指定数据库路径，并可选择是否启用外键约束。
+    """
+    _instances: dict[tuple[type, int], '_SQLiteConnBase'] = {}
     _process_lock = ProcessLock()
-    # 类级锁（单例创建保护）
-    _class_lock = asyncio.Lock()
 
     def __new__(cls):
         """实现单例模式（支持多进程）"""
         pid = os.getpid()
-        
-        if pid not in cls._instances:
+        key = (cls, pid)
+        if key not in cls._instances:
             with cls._process_lock:
-                if pid not in cls._instances:
-                    logger.debug(f"为进程 {pid} 创建新的数据库实例")
-                    cls._instances[pid] = super().__new__(cls)
-        
-        return cls._instances[pid]
+                if key not in cls._instances:
+                    logger.debug(f"为进程 {pid} 创建新的 {cls.__name__} 实例")
+                    cls._instances[key] = super().__new__(cls)
+        return cls._instances[key]
 
-    def __init__(self):
+    def __init__(self, db_path: str, *, enable_foreign_keys: bool = False, log_prefix: str = ""):
         # 防止重复初始化
         if hasattr(self, '_initialized') and self._initialized:
             return
-        
-        # 数据库配置
-        self.DB_PATH = Config().get_config().sql_lite_db_path
-        # 异步锁（协程级）
+
+        self.DB_PATH = db_path
         self._async_lock = asyncio.Lock()
-        # 数据库连接（复用连接，避免频繁创建/关闭）
         self._conn: Optional[sqlite3.Connection] = None
-        # 初始化标记
         self._initialized = False
-        
-        # 初始化数据库连接
+        self._enable_foreign_keys = enable_foreign_keys
+        self._log_prefix = log_prefix
+
         self._init_connection()
 
     def _init_connection(self):
         """初始化数据库连接（复用连接）"""
         try:
-            # 增加超时时间到30秒，关闭自动提交
             self._conn = sqlite3.connect(
                 self.DB_PATH,
                 check_same_thread=False,
-                timeout=30.0,  # 增加超时时间
-                isolation_level=None  # 关闭自动提交，手动控制事务
+                timeout=30.0,
+                isolation_level=None
             )
-            # 启用外键约束
-            self._conn.execute("PRAGMA foreign_keys = ON")
-            # 启用 WAL 模式（提高并发性能）
+            if self._enable_foreign_keys:
+                self._conn.execute("PRAGMA foreign_keys = ON")
             self._conn.execute("PRAGMA journal_mode=WAL")
-            # 设置同步模式为NORMAL（平衡性能和安全性）
             self._conn.execute("PRAGMA synchronous=NORMAL")
-            
-            logger.debug(f"进程 {os.getpid()} 数据库连接初始化成功")
+
+            prefix = f"{self._log_prefix} " if self._log_prefix else ""
+            logger.debug(f"进程 {os.getpid()} {prefix}数据库连接初始化成功")
         except sqlite3.Error as e:
-            logger.error(f"数据库连接初始化失败: {e}")
+            prefix = f"{self._log_prefix}" if self._log_prefix else "数据库"
+            logger.error(f"{prefix}连接初始化失败: {e}")
             raise
-
-    # -------------------------- 同步操作函数（所有操作都在同一个连接执行） --------------------------
-    def _sync_init_database(self) -> bool:
-        """同步初始化数据库（复用连接）"""
-        # 确保连接存在
-        if not self._conn:
-            logger.debug(f"进程 {os.getpid()} 重新初始化连接")
-            self._init_connection()
-        
-        # 再次检查连接
-        if not self._conn:
-            logger.error("无法建立数据库连接")
-            return False
-
-        try:
-            # 初始化所有表
-            for table_name, ddl in table_ddl_list.items():
-                self._conn.execute(ddl)
-            self._conn.commit()
-            logger.info(f"进程 {os.getpid()} 数据库初始化成功，表创建完成")
-            self._initialized = True
-            return True
-        except sqlite3.Error as e:
-            try:
-                self._conn.rollback()
-            except:
-                pass
-            logger.error(f"数据库初始化失败: {e}")
-            return False
 
     def _ensure_connection(self):
         """确保数据库连接可用"""
         if not self._conn:
-            logger.debug(f"进程 {os.getpid()} 连接为空，正在重新初始化")
+            prefix = f"{self._log_prefix} " if self._log_prefix else ""
+            logger.debug(f"进程 {os.getpid()} {prefix}连接为空，正在重新初始化")
             self._init_connection()
             return True
-        
+
         try:
-            # 测试连接是否有效
             self._conn.execute("SELECT 1")
             return True
         except (sqlite3.Error, sqlite3.ProgrammingError):
-            logger.warning(f"进程 {os.getpid()} 连接失效，正在重新初始化")
+            prefix = f"{self._log_prefix} " if self._log_prefix else ""
+            logger.warning(f"进程 {os.getpid()} {prefix}连接失效，正在重新初始化")
             self._init_connection()
             return True
 
@@ -166,21 +134,22 @@ class AsyncSQLiteSingleton:
             cursor = self._conn.cursor()
             cursor.execute(sql, params)
             results = [dict(row) for row in cursor.fetchall()]
-            logger.debug(f"执行查询成功，返回 {len(results)} 条记录")
+            prefix = f"{self._log_prefix} " if self._log_prefix else ""
+            logger.debug(f"{prefix}查询成功，返回 {len(results)} 条记录")
             return results
         except (sqlite3.Error, sqlite3.ProgrammingError) as e:
-            logger.warning(f"查询失败，尝试重新连接: {e}")
-            # 如果连接有问题，重新初始化
+            prefix = f"{self._log_prefix} " if self._log_prefix else ""
+            logger.warning(f"{prefix}查询失败，尝试重新连接: {e}")
             self._init_connection()
             try:
                 self._conn.row_factory = sqlite3.Row
                 cursor = self._conn.cursor()
                 cursor.execute(sql, params)
                 results = [dict(row) for row in cursor.fetchall()]
-                logger.debug(f"重试查询成功，返回 {len(results)} 条记录")
+                logger.debug(f"{prefix}重试查询成功，返回 {len(results)} 条记录")
                 return results
             except Exception as e2:
-                logger.error(f"重试查询也失败: {e2} (SQL: {sql}, params: {params})")
+                logger.error(f"{prefix}重试查询也失败: {e2} (SQL: {sql})")
                 return []
 
     def _sync_execute_modify(self, sql: str, params: Any = ()) -> bool:
@@ -195,28 +164,25 @@ class AsyncSQLiteSingleton:
         try:
             cursor = self._conn.cursor()
 
-            # 判断是否为批量操作
             if isinstance(params, list) and len(params) > 0 and isinstance(params[0], (tuple, list)):
-                # 批量操作：使用 executemany
                 cursor.executemany(sql, params)
-                logger.debug(f"批量执行修改成功，影响行数: {cursor.rowcount}")
+                prefix = f"{self._log_prefix} " if self._log_prefix else ""
+                logger.debug(f"{prefix}批量修改成功，影响行数: {cursor.rowcount}")
             else:
-                # 单条操作：使用 execute
                 cursor.execute(sql, params)
-                logger.debug(f"单条执行修改成功，影响行数: {cursor.rowcount}")
+                prefix = f"{self._log_prefix} " if self._log_prefix else ""
+                logger.debug(f"{prefix}单条修改成功，影响行数: {cursor.rowcount}")
 
             self._conn.commit()
             return True
         except (sqlite3.Error, sqlite3.ProgrammingError) as e:
-            logger.warning(f"修改失败，尝试重新连接: {e}")
-            # 尝试回滚
+            prefix = f"{self._log_prefix} " if self._log_prefix else ""
+            logger.warning(f"{prefix}修改失败，尝试重新连接: {e}")
             try:
                 self._conn.rollback()
             except:
                 pass
-            # 重新初始化
             self._init_connection()
-            # 重试
             try:
                 cursor = self._conn.cursor()
                 if isinstance(params, list) and len(params) > 0 and isinstance(params[0], (tuple, list)):
@@ -224,10 +190,10 @@ class AsyncSQLiteSingleton:
                 else:
                     cursor.execute(sql, params)
                 self._conn.commit()
-                logger.debug("重试修改成功")
+                logger.debug(f"{prefix}重试修改成功")
                 return True
             except Exception as e2:
-                logger.error(f"重试修改也失败: {e2} (SQL: {sql}, params: {params})")
+                logger.error(f"{prefix}重试修改也失败: {e2} (SQL: {sql})")
                 return False
 
     # -------------------------- 异步封装接口 --------------------------
@@ -263,11 +229,107 @@ class AsyncSQLiteSingleton:
                 if self._conn:
                     self._conn.close()
                     self._conn = None
-                    logger.info("数据库连接已关闭")
+                    prefix = f"{self._log_prefix} " if self._log_prefix else ""
+                    logger.info(f"{prefix}数据库连接已关闭")
             await asyncio.to_thread(_close)
 
     def __del__(self):
         """析构函数：确保连接关闭"""
         if self._conn:
-            self._conn.close()
-            logger.info("析构函数中关闭数据库连接")
+            try:
+                self._conn.close()
+                prefix = f"{self._log_prefix} " if self._log_prefix else ""
+                logger.info(f"析构函数中关闭{prefix}数据库连接")
+            except:
+                pass
+
+
+class AsyncSQLiteSingleton(_SQLiteConnBase):
+    """主业务数据库单例"""
+
+    def __init__(self):
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        config = Config().get_config()
+        super().__init__(
+            db_path=config.sql_lite_db_path,
+            enable_foreign_keys=True,
+            log_prefix=""
+        )
+        self._sync_init_database()
+
+    def _sync_init_database(self) -> bool:
+        """同步初始化数据库（复用连接）"""
+        if not self._conn:
+            logger.debug(f"进程 {os.getpid()} 重新初始化连接")
+            self._init_connection()
+
+        if not self._conn:
+            logger.error("无法建立数据库连接")
+            return False
+
+        try:
+            for table_name, ddl in table_ddl_list.items():
+                self._conn.execute(ddl)
+            self._conn.commit()
+            logger.info(f"进程 {os.getpid()} 数据库初始化成功，表创建完成")
+            self._initialized = True
+            return True
+        except sqlite3.Error as e:
+            try:
+                self._conn.rollback()
+            except:
+                pass
+            logger.error(f"数据库初始化失败: {e}")
+            return False
+
+
+class EmbeddingCacheSQLite(_SQLiteConnBase):
+    """Embedding缓存专用的SQLite数据库单例
+
+    与主数据库分离，独立管理embedding缓存
+    """
+
+    def __init__(self):
+        if hasattr(self, '_initialized') and self._initialized:
+            return
+        config = Config().get_config()
+        super().__init__(
+            db_path=config.embedding_cache_db_path,
+            enable_foreign_keys=False,
+            log_prefix="Embedding缓存"
+        )
+        self._sync_init_database()
+
+    def _sync_init_database(self) -> bool:
+        """同步初始化数据库（复用连接）"""
+        self._ensure_connection()
+
+        try:
+            self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS embedding_cache_table (
+                    text_hash TEXT PRIMARY KEY,
+                    text_content TEXT NOT NULL,
+                    embedding_vector TEXT NOT NULL,
+                    model_name TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    last_accessed_at TEXT NOT NULL,
+                    access_count INTEGER DEFAULT 0
+                )
+            """)
+
+            self._conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_embedding_model ON embedding_cache_table (model_name)
+            """)
+
+            self._conn.commit()
+            logger.info(f"进程 {os.getpid()} Embedding缓存数据库初始化成功")
+            self._initialized = True
+            return True
+        except sqlite3.Error as e:
+            try:
+                self._conn.rollback()
+            except:
+                pass
+            logger.error(f"Embedding缓存数据库初始化失败: {e}")
+            return False

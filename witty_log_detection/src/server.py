@@ -231,7 +231,7 @@ async def get_task_queue() -> str:
 
 
 def init():
-    AsyncSQLiteSingleton()._sync_init_database()
+    AsyncSQLiteSingleton()
     asyncio.run(TaskService.update_running_tasks_to_pending_tasks())
 
 

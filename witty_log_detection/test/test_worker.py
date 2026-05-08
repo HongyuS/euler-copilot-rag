@@ -34,7 +34,7 @@ from src.sqlite.sqlite import AsyncSQLiteSingleton
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
     """初始化数据库"""
-    AsyncSQLiteSingleton()._sync_init_database()
+    AsyncSQLiteSingleton()
     yield
 
 

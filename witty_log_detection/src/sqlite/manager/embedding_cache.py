@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 import logging
-from src.sqlite.embedding_cache_db import EmbeddingCacheSQLite
+from src.sqlite.sqlite import EmbeddingCacheSQLite
 from src.config.config import Config
 
 logger = logging.getLogger(__name__)
