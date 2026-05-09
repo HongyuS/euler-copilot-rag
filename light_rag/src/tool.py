@@ -24,7 +24,7 @@ from schema import (
     ListDocumentsData, DocumentInfo,
     DeleteDocumentData,
     SearchData, SearchChunk, GitHubSearchResult, GitHubIssue, GitHubCommit,
-    GetDocumentChunksData, DocumentChunkInfo
+    GetDocumentChunksData, DocumentChunkInfo, ShowDocumentData
 )
 
 logging.basicConfig(
@@ -566,6 +566,38 @@ def get_document_chunks(doc_name: str, kb_name: str) -> Dict[str, Any]:
         return create_error_response(f"获取文档解析结果失败: {str(e)}").model_dump()
 
 
+def show_document(doc_name: str, kb_name: str) -> Dict[str, Any]:
+    """获取已导入文档的完整正文"""
+    if not doc_name:
+        return create_error_response("文档名称不能为空").model_dump()
+    if not kb_name:
+        return create_error_response("知识库名称不能为空").model_dump()
+    try:
+        db = _get_db()
+        temp_result = {"success": False, "message": "", "data": {}}
+        kb_id = get_kb_id_by_name(db, kb_name, temp_result)
+        if not kb_id:
+            return create_error_response(temp_result["message"]).model_dump()
+        session = db.get_session()
+        try:
+            manager = DocumentManager(session)
+            ok, msg, payload = manager.show_document_text(kb_id, doc_name)
+            if not ok or not payload:
+                return create_error_response(msg).model_dump()
+            data = ShowDocumentData(
+                doc_id=payload["doc_id"],
+                doc_name=payload["doc_name"],
+                kb_name=kb_name,
+                content=payload["content"],
+            )
+            return create_success_response(data=data, message="获取文档正文成功").model_dump()
+        finally:
+            session.close()
+    except Exception as e:
+        logger.exception(f"[show_document] 失败: {e}")
+        return create_error_response(f"获取文档正文失败: {str(e)}").model_dump()
+
+
 def knowledge_base_manager(
     action: str,
     kb_name: Optional[str] = None,
@@ -606,7 +638,7 @@ async def document_manager(
     task_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    文档管理器：add 创建导入任务，getstatus 查询状态，cancel 取消，getchunks 获取解析结果
+    文档管理器：add、getstatus、cancel、getchunks、show
     """
     if action == "add":
         if not file_paths or not kb_name:
@@ -623,7 +655,13 @@ async def document_manager(
     if action == "getchunks":
         if not doc_name or not kb_name:
             return create_error_response("获取解析结果时 doc_name 和 kb_name 必填").model_dump()
-        return get_document_chunks(doc_name, kb_name)  
-    return create_error_response(f"不支持的操作: {action}，支持: add, getstatus, cancel, getchunks").model_dump()
+        return get_document_chunks(doc_name, kb_name)
+    if action == "show":
+        if not doc_name or not kb_name:
+            return create_error_response("查看全文时 doc_name 和 kb_name 必填").model_dump()
+        return show_document(doc_name, kb_name)
+    return create_error_response(
+        f"不支持的操作: {action}，支持: add, getstatus, cancel, getchunks, show"
+    ).model_dump()
 
 
