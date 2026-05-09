@@ -18,7 +18,7 @@ if current_dir not in sys.path:
 from tool import (
     knowledge_base_manager,
     document_manager,
-    search
+    search,
 )
 
 # 导入本地配置

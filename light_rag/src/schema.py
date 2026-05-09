@@ -186,6 +186,14 @@ class GetDocumentChunksData(BaseModel):
     count: int = Field(..., description="chunk数量")
 
 
+class ShowDocumentData(BaseModel):
+    """整篇文档正文"""
+    doc_id: str = Field(..., description="文档ID（UUID格式）")
+    doc_name: str = Field(..., description="文档名称")
+    kb_name: str = Field(..., description="知识库名称")
+    content: str = Field(..., description="文档完整文本")
+
+
 # 知识库相关响应类型
 CreateKnowledgeBaseResponse = BaseResponse[CreateKnowledgeBaseData]
 DeleteKnowledgeBaseResponse = BaseResponse[DeleteKnowledgeBaseData]
@@ -201,4 +209,5 @@ SearchResponse = BaseResponse[SearchData]
 
 # 文档解析结果相关响应类型
 GetDocumentChunksResponse = BaseResponse[GetDocumentChunksData]
+ShowDocumentResponse = BaseResponse[ShowDocumentData]
 
