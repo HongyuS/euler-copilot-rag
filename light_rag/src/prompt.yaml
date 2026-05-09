@@ -45,37 +45,39 @@ tools:
         - data: Dictionary containing knowledge base list (knowledge_bases, count, keyword)
   document_manager:
     zh: |
-      文档管理器，通过 action 控制操作：add 创建导入任务（立即返回 task_id），getstatus 查询任务状态，cancel 取消任务，getchunks 获取文档解析结果。
+      文档管理器，通过 action 控制操作：add 创建导入任务（立即返回 task_id），getstatus 查询任务状态，cancel 取消任务，getchunks 获取文档分块解析结果，show 获取已导入文档的完整正文。
       
       参数说明：
-      - action：操作类型（必填）。"add" 创建导入任务；"getstatus" 查询任务状态；"cancel" 取消任务；"getchunks" 获取解析结果
+      - action：操作类型（必填）。"add" 创建导入任务；"getstatus" 查询任务状态；"cancel" 取消任务；"getchunks" 获取分块结果；"show" 获取整篇文本
       - file_paths：文件路径列表（绝对路径），add 时必填
-      - kb_name：知识库名称，add 和 getchunks 时必填
+      - kb_name：知识库名称，add、getchunks、show 时必填
       - chunk_size：chunk 大小（token），add 时可选，默认使用知识库配置
       - task_id：任务 ID，getstatus 和 cancel 时必填
-      - doc_name：文档名称，getchunks 时必填
+      - doc_name：文档名称，getchunks 与 show 时必填
       
       返回值：
       - action="add"：立即返回 task_id、file_count，任务在后台导入，不阻塞
       - action="getstatus"：返回 status、completion_precent、success_count、failed_count、success_files、failed_files
       - action="cancel"：返回 canceled、message
       - action="getchunks"：返回 doc_id、doc_name、chunks、count
+      - action="show"：返回 doc_id、doc_name、kb_name、content（完整正文，可能很长，注意上下文窗口）
     en: |
-      Document manager. Use action: "add" to create import task (returns task_id immediately), "getstatus" to query task status, "cancel" to cancel task, "getchunks" to get document parsing results.
+      Document manager. Actions: "add" import task (returns task_id), "getstatus" task status, "cancel" cancel task, "getchunks" chunk list, "show" full document plain text.
       
       Parameters:
-      - action: Operation type (required). "add" create import task; "getstatus" query status; "cancel" cancel task; "getchunks" get parsing results
+      - action: Operation type (required). "add" / "getstatus" / "cancel" / "getchunks" / "show"
       - file_paths: List of file paths (absolute), required for add
-      - kb_name: Knowledge base name, required for add and getchunks
+      - kb_name: Knowledge base name, required for add, getchunks, and show
       - chunk_size: Chunk size in tokens, optional for add
       - task_id: Task ID, required for getstatus and cancel
-      - doc_name: Document name, required for getchunks
+      - doc_name: Document name, required for getchunks and show
       
       Return value:
       - action="add": Returns task_id, file_count immediately; import runs in background
       - action="getstatus": Returns status, completion_precent, success_count, failed_count, success_files, failed_files
       - action="cancel": Returns canceled, message
       - action="getchunks": Returns doc_id, doc_name, chunks, count
+      - action="show": Returns doc_id, doc_name, kb_name, content (full text; may be very long)
   search:
     zh: |
       在指定知识库列表中进行混合检索。结合关键词检索（FTS5）和向量检索（sqlite-vec），使用加权方式合并结果，去重后使用Jaccard相似度重排序，返回最相关的top-k个结果。可以在多个知识库中同时搜索。

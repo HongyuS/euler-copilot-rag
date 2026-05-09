@@ -108,6 +108,20 @@ class DocumentManager:
     def get_document_chunks(self, doc_id: str) -> List[Chunk]:
         """获取文档的所有chunks（按chunk_index排序）"""
         return self.session.query(Chunk).filter_by(doc_id=doc_id).order_by(Chunk.chunk_index.asc()).all()
+
+    def show_document_text(self, kb_id: str, doc_name: str) -> Tuple[bool, str, Optional[dict]]:
+        """返回知识库下指定文档的完整正文（优先 documents.content，否则拼接 chunks）"""
+        doc = self.session.query(Document).filter_by(
+            kb_id=kb_id, name=doc_name, status="excited"
+        ).first()
+        if not doc:
+            return False, f"文档 '{doc_name}' 不存在", None
+        text = doc.content if doc.content and doc.content.strip() else ""
+        if not text:
+            text = "".join(c.content for c in self.get_document_chunks(doc.id))
+        if not text:
+            return False, "文档正文为空", None
+        return True, "", {"doc_id": doc.id, "doc_name": doc.name, "content": text}
     
     def add_chunk(self, chunk_id: str, doc_id: str, content: str, tokens: int, chunk_index: int, 
                   embedding: Optional[List[float]] = None) -> bool:
