@@ -69,39 +69,6 @@ class Document(BaseModel):
     )
 
 
-class DocKnowledgeBase(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
-    name: str = Field(..., description="知识库名称")
-    author_name: str = Field(..., description="知识库作者名称")
-    access_key: str = Field(..., description="知识库访问密钥")
-    language: Language = Field(Language.ZH, description="知识库语言")
-    description: str = Field("", description="知识库描述")
-    special_characters: str = Field(
-        "", description="知识库分块特殊字符（如换行符、逗号等）"
-    )
-    default_chunk_size: int = Field(1024, description="知识库默认分块大小")
-    default_parse_mode: ParseMode = Field(
-        ParseMode.GENERAL, description="知识库默认解析模式"
-    )
-    doc_count: int = Field(0, description="知识库中文档数量")
-    doc_size: int = Field(0, description="知识库中文档总大小，单位为字节")
-    embedding_model_id: Optional[str] = Field(
-        None, description="知识库使用的文本嵌入模型ID"
-    )
-    rerank_model_id: Optional[str] = Field(None, description="知识库使用的重排序模型ID")
-    chat_model_id: Optional[str] = Field(None, description="知识库使用的聊天模型ID")
-    upload_count_limit: int = Field(128, description="单次更新文档数量限制")
-    upload_size_limit: int = Field(512, description="单次更新文档大小限制，单位为MB")
-    created_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="知识库创建时间",
-    )
-    updated_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="知识库更新时间",
-    )
-
-
 class Json(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
     kb_id: str = Field(..., description="所属知识库ID")
@@ -117,15 +84,29 @@ class Json(BaseModel):
     )
 
 
-class JsonKnowledgeBase(BaseModel):
+class DocKnowledgeBase(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
     name: str = Field(..., description="知识库名称")
     author_name: str = Field(..., description="知识库作者名称")
     access_key: str = Field(..., description="知识库访问密钥")
+    language: Language = Field(Language.ZH, description="知识库语言")
+    description: str = Field("", description="知识库描述")
+    special_characters: Optional[str] = Field(
+        None, description="知识库分块特殊字符（如换行符、逗号等）"
+    )
+    default_chunk_size: int = Field(1024, description="知识库默认分块大小")
+    default_parse_mode: ParseMode = Field(
+        ParseMode.GENERAL, description="知识库默认解析模式"
+    )
+    doc_count: int = Field(0, description="知识库中文档数量")
+    doc_size: int = Field(0, description="知识库中文档总大小，单位为字节")
     embedding_model_id: Optional[str] = Field(
         None, description="知识库使用的文本嵌入模型ID"
     )
     rerank_model_id: Optional[str] = Field(None, description="知识库使用的重排序模型ID")
+    chat_model_id: Optional[str] = Field(None, description="知识库使用的聊天模型ID")
+    upload_count_limit: int = Field(128, description="单次更新文档数量限制")
+    upload_size_limit: int = Field(512, description="单次更新文档大小限制，单位为MB")
     created_at: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         description="知识库创建时间",
