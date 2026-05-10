@@ -123,3 +123,14 @@ class TaskManager:
         params = {"status": status}
         result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
         return result
+
+    @staticmethod
+    async def get_all_tasks() -> list[TaskModel]:
+        """获取所有任务"""
+        sql_str = """
+            SELECT task_id, pid, task_name, task_type, completion_precent, status, task_related_params, created_at
+            FROM task_table
+            ORDER BY created_at DESC
+        """
+        results = await AsyncSQLiteSingleton().execute_query(sql_str)
+        return [TaskModel(**result) for result in results]

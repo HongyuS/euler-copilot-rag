@@ -6,6 +6,8 @@ from src.enum.log import LogTypeEnum
 
 
 class EmbeddingModelConfig(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     provider: ProviderEnum = Field(
         default=ProviderEnum.OPENAPI, 
         description="embedding模型的供应商", 
@@ -29,6 +31,8 @@ class EmbeddingModelConfig(BaseModel):
 
 
 class LLMModelConfig(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     provider: ProviderEnum = Field(
         default=ProviderEnum.OPENAPI, 
         description="LLM模型的供应商", 
@@ -117,6 +121,10 @@ class ConfigModel(BaseModel):
         default="log_detection_multi_process.db", 
         description="SQLite数据库文件路径", 
         alias="SQL_LITE_DB_PATH")
+    embedding_cache_db_path: str = Field(
+        default="embedding_cache.db", 
+        description="Embedding缓存单独使用的SQLite数据库文件路径", 
+        alias="EMBEDDING_CACHE_DB_PATH")
     top_core_words_per_line: int = Field(
         default=4, 
         description="每行日志提取的核心词数量，用于减少embedding调用量", 

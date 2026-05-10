@@ -23,6 +23,7 @@ class LogTypeEnum(str, Enum):
     JS = "javascript"
     C = "c"
     CPP = "cpp"
+    HDFS = "hdfs"
     UNKNOWN = "unknown"
 
 

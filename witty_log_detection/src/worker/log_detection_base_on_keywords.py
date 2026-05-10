@@ -22,15 +22,22 @@ class LogDetectionBasedOnKeywordsWorker(BaseWorker):
 
     @staticmethod
     async def cal_keyword_similarity(str1: str, keywords: list[str]) -> float:
-        """计算jaccard相似度"""
+        """计算关键词匹配分数，使用ln型曲线：命中1个及格(60分)，命中越多分数越高，趋近100分"""
         words = list(jieba.cut(str1))
-        new_keywords = []
-        for keyword in keywords:
-            new_keywords.extend(jieba.cut(keyword)) 
-        keywords = set(new_keywords)
         words_set = set(words)
-        intersection = words_set & keywords
-        return (len(intersection) / len(keywords) if len(keywords) > 0 else 0.0)*100
+        keywords_set = set(keywords)
+        # 统计匹配到的关键词数量（不去重，每个关键词单独算）
+        matched_count = 0
+        for keyword in keywords_set:
+            keyword_parts = set(jieba.cut(keyword))
+            if words_set & keyword_parts:
+                matched_count += 1
+        
+        if matched_count == 0:
+            return 0.0
+        
+        # ln型曲线：命中1个=60分，命中5个趋近100分
+        return min(100.0, 60.0 + 40.0 * math.log(matched_count) / math.log(5))
 
     @staticmethod
     async def cal_sentiment_score(log_type: LogTypeEnum, log_content: str) -> float:

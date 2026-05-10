@@ -5,6 +5,17 @@ from src.sqlite.sqlite import AsyncSQLiteSingleton
 class LogParseResultManager:
     """日志解析结果管理类"""
     @staticmethod
+    async def delete_log_parse_results_by_task_id(task_id: str) -> bool:
+        """根据任务ID删除关联的日志解析结果"""
+        sql_str = """
+            DELETE FROM log_parse_result_table
+            WHERE task_id = :task_id
+        """
+        params = {"task_id": task_id}
+        result = await AsyncSQLiteSingleton().execute_modify(sql_str, params)
+        return result
+
+    @staticmethod
     async def get_log_parse_results_by_task_id(
         task_id: str,
         limit: int | None = None,
