@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Any
 from uuid import uuid4
-from ENUM.parse_result import ParseResultTopology, ChunkType, ChunkParseTopology
+from ENUM.parse import ParseResultTopology, ChunkType, ChunkParseTopology
 
 
 class ParseNode(BaseModel):
