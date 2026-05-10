@@ -9,6 +9,7 @@ class TaskType(str, Enum):
     KNOWLEDGE_BASE_IMPORT_TASK = "knowledge_base_import_task"
     KNOWLEDGE_BASE_EXPORT_TASK = "knowledge_base_export_task"
     DOCUMENT_PARSE_TASK = "document_parse_task"
+    JSON_PARSE_TASK = "json_parse_task"
 
 
 class TaskStatus(str, Enum):

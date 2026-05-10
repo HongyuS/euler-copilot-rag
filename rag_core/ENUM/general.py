@@ -1,6 +1,13 @@
 from enum import Enum
 
 
+class SuccessStatus(str, Enum):
+    """成功状态"""
+
+    SUCCESS = "success"
+    PENDING = "pending"
+
+
 class OnlineStatus(str, Enum):
     """在线状态"""
 

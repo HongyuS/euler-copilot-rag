@@ -1,10 +1,10 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Any
 from uuid import uuid4
 from ENUM.parse import (
     ParseResultTopology,
     ChunkType,
-    ChunkParseTopology,
     ParseMode,
     Language,
 )
@@ -29,8 +29,14 @@ class Chunk(BaseModel):
     local_offset: int = Field(0, description="知识块在所属页面中的局部偏移位置")
     enabled: bool = Field(default=True, description="知识块是否启用")
     status: ExistedStatus = Field(ExistedStatus.EXISTED, description="知识块存在状态")
-    created_at: Optional[str] = Field(None, description="知识块创建时间")
-    updated_at: Optional[str] = Field(None, description="知识块更新时间")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="知识块创建时间",
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="知识块更新时间",
+    )
 
 
 class Document(BaseModel):
@@ -53,19 +59,40 @@ class Document(BaseModel):
         default=None, description="文档摘要向量"
     )
     content: str = Field("", description="文档内容")
-    created_at: Optional[str] = Field(None, description="文档创建时间")
-    updated_at: Optional[str] = Field(None, description="文档更新时间")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="文档创建时间",
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="文档更新时间",
+    )
 
 
-class KnowledgeBase(BaseModel):
+class Json(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
+    kb_id: str = Field(..., description="所属知识库ID")
+    name: str = Field(..., description="JSON名称")
+    content: Any = Field(..., description="JSON内容")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="创建时间",
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="更新时间",
+    )
+
+
+class DocKnowledgeBase(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
     name: str = Field(..., description="知识库名称")
     author_name: str = Field(..., description="知识库作者名称")
     access_key: str = Field(..., description="知识库访问密钥")
     language: Language = Field(Language.ZH, description="知识库语言")
     description: str = Field("", description="知识库描述")
-    special_characters: str = Field(
-        "", description="知识库分块特殊字符（如换行符、逗号等）"
+    special_characters: Optional[str] = Field(
+        None, description="知识库分块特殊字符（如换行符、逗号等）"
     )
     default_chunk_size: int = Field(1024, description="知识库默认分块大小")
     default_parse_mode: ParseMode = Field(
@@ -80,5 +107,11 @@ class KnowledgeBase(BaseModel):
     chat_model_id: Optional[str] = Field(None, description="知识库使用的聊天模型ID")
     upload_count_limit: int = Field(128, description="单次更新文档数量限制")
     upload_size_limit: int = Field(512, description="单次更新文档大小限制，单位为MB")
-    created_at: Optional[str] = Field(None, description="知识库创建时间")
-    updated_at: Optional[str] = Field(None, description="知识库更新时间")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="知识库创建时间",
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="知识库更新时间",
+    )

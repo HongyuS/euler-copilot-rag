@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Any
 from uuid import uuid4
@@ -26,7 +27,13 @@ class TaskReport(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
     task_id: str = Field(..., description="任务ID")
     message: str = Field(..., description="报告消息")
-    staus: TaskStatus = Field(..., description="报告状态")
+    status: TaskStatus = Field(..., description="报告状态")
     progress: float = Field(0.0, description="任务完成进度，范围0.0-1.0")
-    created_at: Optional[str] = Field(None, description="报告创建时间")
-    updated_at: Optional[str] = Field(None, description="报告更新时间")
+    created_at: Optional[str] = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="报告创建时间",
+    )
+    updated_at: Optional[str] = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="报告更新时间",
+    )

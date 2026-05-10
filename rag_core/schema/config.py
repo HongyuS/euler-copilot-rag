@@ -4,6 +4,11 @@ from ENUM.general import OnlineStatus, LogLevel
 from ENUM.model import ModelLabel, ModelProvider
 
 
+class StaticSourceConfig(BaseModel):
+    stop_words_path: str = Field(None, description="停用词文件路径")
+    prompt_template_path: str = Field(None, description="提示词模板文件路径")
+
+
 class ServiceConfig(BaseModel):
     is_debug: bool = Field(default=False, description="是否启用调试模式")
     uvicorn_ip: str = Field(None, description="FastAPI 服务的IP地址")
@@ -54,6 +59,7 @@ class DictBaseModel(BaseModel):
 
 
 class ConfigModel(DictBaseModel):
+    static_source: StaticSourceConfig = Field(..., description="静态资源配置")
     service: ServiceConfig = Field(..., description="服务配置")
     scalar_db: DatabaseConfig = Field(..., description="标量数据库配置")
     vector_db: DatabaseConfig = Field(..., description="向量数据库配置")
@@ -63,6 +69,7 @@ class ConfigModel(DictBaseModel):
     embedding_model: ModelConfig | None = Field(..., description="文本嵌入模型配置")
     rerank_model: ModelConfig | None = Field(..., description="重排序模型配置")
     ocr_model: ModelConfig = Field(..., description="OCR模型配置")
+    multi_modal_model: ModelConfig | None = Field(..., description="多模态模型配置")
     voice_to_text_model: ModelConfig | None = Field(
         ..., description="语音转文本模型配置"
     )
