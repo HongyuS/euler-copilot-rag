@@ -77,6 +77,7 @@ class KnowledgeBase(BaseModel):
         None, description="知识库使用的文本嵌入模型ID"
     )
     rerank_model_id: Optional[str] = Field(None, description="知识库使用的重排序模型ID")
+    chat_model_id: Optional[str] = Field(None, description="知识库使用的聊天模型ID")
     upload_count_limit: int = Field(128, description="单次更新文档数量限制")
     upload_size_limit: int = Field(512, description="单次更新文档大小限制，单位为MB")
     created_at: Optional[str] = Field(None, description="知识库创建时间")
