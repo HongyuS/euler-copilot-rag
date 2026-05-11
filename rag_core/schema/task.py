@@ -35,9 +35,10 @@ class Task(BaseModel):
     """
 
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
+    access_key: str = Field("", description="任务所属访问密钥")
     type: TaskType = Field(..., description="任务类型")
     status: TaskStatus = Field(TaskStatus.PENDING, description="任务状态")
-    params: dict = Field(default_factory=dict, description="任务参数")
+    op_id: Optional[str] = Field(None, description="关联操作ID")
     retry_times: int = Field(0, description="任务重试次数")
     task_resports: Optional[list[TaskReport]] = Field(
         default_factory=list, description="任务报告列表"
