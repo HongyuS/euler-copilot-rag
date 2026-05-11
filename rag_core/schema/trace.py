@@ -14,7 +14,7 @@ from ENUM.general import ExistedStatus, SuccessStatus
 class Trace(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
     access_key: str = Field(..., description="跟踪访问密钥")
-    created_at: str = Field(
+    created_at: Optional[str] = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         description="创建时间",
     )

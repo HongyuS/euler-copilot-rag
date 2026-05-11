@@ -2,12 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, Any
 from uuid import uuid4
-from ENUM.parse import (
-    ParseResultTopology,
-    ChunkType,
-    ParseMode,
-    Language,
-)
+from ENUM.parse import ParseResultTopology, ChunkType, ParseMode, Language, MetaDataType
 from ENUM.general import ExistedStatus
 
 
@@ -84,13 +79,30 @@ class Json(BaseModel):
     )
 
 
-class DocKnowledgeBase(BaseModel):
+class KnowledgeBase(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
     name: str = Field(..., description="知识库名称")
-    author_name: str = Field(..., description="知识库作者名称")
-    access_key: str = Field(..., description="知识库访问密钥")
+    owner_id: str = Field("", description="知识库所属用户ID")
+    owner_name: str = Field("", description="知识库作者名称")
+    access_key: str = Field("", description="知识库访问密钥")
     language: Language = Field(Language.ZH, description="知识库语言")
     description: str = Field("", description="知识库描述")
+    meta_data_type: MetaDataType = Field(
+        MetaDataType.DOCUMENT, description="知识库元数据类型"
+    )
+    upload_count_limit: int = Field(128, description="单次更新文档数量限制")
+    upload_size_limit: int = Field(512, description="单次更新文档大小限制，单位为MB")
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="知识库创建时间",
+    )
+    updated_at: str = Field(
+        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        description="知识库更新时间",
+    )
+
+
+class DocKnowledgeBase(KnowledgeBase):
     special_characters: Optional[str] = Field(
         None, description="知识库分块特殊字符（如换行符、逗号等）"
     )
@@ -105,13 +117,16 @@ class DocKnowledgeBase(BaseModel):
     )
     rerank_model_id: Optional[str] = Field(None, description="知识库使用的重排序模型ID")
     chat_model_id: Optional[str] = Field(None, description="知识库使用的聊天模型ID")
-    upload_count_limit: int = Field(128, description="单次更新文档数量限制")
-    upload_size_limit: int = Field(512, description="单次更新文档大小限制，单位为MB")
-    created_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="知识库创建时间",
+    # 多模态配置项
+    multimodal_model_id: Optional[str] = Field(
+        None, description="知识库使用的多模态模型ID"
     )
-    updated_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="知识库更新时间",
+
+
+class JsonKnowledgeBase(KnowledgeBase):
+    json_count: int = Field(0, description="知识库中JSON数量")
+    json_size: int = Field(0, description="知识库中JSON总大小，单位为字节")
+    embedding_model_id: Optional[str] = Field(
+        None, description="知识库使用的文本嵌入模型ID"
     )
+    rerank_model_id: Optional[str] = Field(None, description="知识库使用的重排序模型ID")

@@ -68,3 +68,10 @@ class ChunkParseTopology(str, Enum):
     TREENORMAL = "treenormal"
     TREELEAF = "treeleaf"
     GRAPHNODE = "graphnode"
+
+
+class MetaDataType(str, Enum):
+    """元数据类型"""
+
+    DOCUMENT = "document"
+    JSON = "json"
