@@ -19,72 +19,14 @@ from uuid import uuid4
 import urllib.parse
 from rag_core.config.config import Config
 from rag_core.database.db_vector.base.engine import BaseVectorDataBase
-from rag_core.ENUM.parse import ParseResultTopology, ChunkType, ParseMode, MetaDataType
+from rag_core.database.db_vector.postgres.manager.chunk_manager import ChunkManager
+from rag_core.database.db_vector.postgres.manager.doc_manager import DocManager
+from rag_core.database.db_vector.postgres.manager.json_manager import JsonManager
+from rag_core.database.db_vector.postgres.convertor import Convertor
 from rag_core.ENUM.general import ExistedStatus
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()
-
-
-class Chunk(BaseModel):
-    """
-    知识块
-    """
-
-    id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
-    knowledge_base_id: str = Field(..., description="所属知识库ID")
-    document_id: str = Field(..., description="所属文档ID")
-    content: str = Field(..., description="知识块内容")
-    tokens: int = Field(..., description="知识块的token数量")
-    type: ChunkType = Field(..., description="知识块类型")
-    text: str = Field(default="", description="知识块文本")
-    vector: Optional[list[float]] = Field(default=None, description="知识块向量")
-    global_offset: int = Field(0, description="知识块在原始数据中的全局偏移位置")
-    local_offset: int = Field(0, description="知识块在所属页面中的局部偏移位置")
-    enabled: bool = Field(default=True, description="知识块是否启用")
-    status: ExistedStatus = Field(ExistedStatus.EXISTED, description="知识块存在状态")
-    hit_count: int = Field(0, description="知识块被检索命中的次数")
-    created_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="知识块创建时间",
-    )
-    updated_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="知识块更新时间",
-    )
-
-
-class Document(BaseModel):
-    """
-    文档
-    """
-
-    id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
-    kb_id: str = Field(..., description="所属知识库ID")
-    name: str = Field(..., description="文档名称")
-    owner_id: str = Field("", description="文档所属用户ID")
-    owner_name: str = Field("", description="文档作者名称")
-    extension: str = Field(..., description="文档扩展名")
-    size: int = Field(..., description="文档大小，单位为字节")
-    parse_mode: ParseMode = Field(..., description="文档解析模式")
-    chunk_size: int = Field(..., description="文档分块大小")
-    topology: ParseResultTopology = Field(..., description="文档解析结果拓扑")
-    enabled: bool = Field(default=True, description="文档是否启用")
-    status: ExistedStatus = Field(ExistedStatus.EXISTED, description="文档存在状态")
-    abstract: str = Field("", description="文档摘要")
-    abstract_vector: Optional[list[float]] = Field(
-        default=None, description="文档摘要向量"
-    )
-    content: str = Field("", description="文档内容")
-    hit_count: int = Field(0, description="文档被检索命中的次数")
-    created_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="文档创建时间",
-    )
-    updated_at: str = Field(
-        default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        description="文档更新时间",
-    )
 
 
 class DocumentEntity(Base):
@@ -132,8 +74,8 @@ class ChunkEntity(Base):
     __tablename__ = "chunk"
 
     id = Column(Text, default=lambda: str(uuid4()), primary_key=True)  # 知识块id
-    knowledge_base_id = Column(Text)  # 所属知识库id
-    document_id = Column(Text)  # 所属文档id
+    kb_id = Column(Text)  # 所属知识库id
+    doc_id = Column(Text)  # 所属文档id
     content = Column(Text)  # 知识块内容
     tokens = Column(BigInteger)  # 知识块的token数量
     type = Column(Text)  # 知识块类型
@@ -154,8 +96,8 @@ class ChunkEntity(Base):
         onupdate=func.current_timestamp(),
     )
     __table_args__ = (
-        Index("chunk_kb_id_index", knowledge_base_id),
-        Index("chunk_doc_id_index", document_id),
+        Index("chunk_kb_id_index", kb_id),
+        Index("chunk_doc_id_index", doc_id),
         Index("chunk_text_ts_vector_index", text_ts_vector, postgresql_using="gin"),
         Index(
             "chunk_vector_index",
@@ -185,7 +127,8 @@ class JsonEntity(Base):
     )
 
 
-class JsonValue(Base):
+class JsonValueEntity(Base):
+    __tablename__ = "json_value"
     id = Column(Text, default=lambda: str(uuid4()), primary_key=True)  # JSON值id
     json_id = Column(Text)  # 所属JSON id
     key = Column(Text)  # JSON键
@@ -215,7 +158,10 @@ class JsonValue(Base):
 
 
 class Postgres(BaseVectorDataBase):
-
+    doc_manager = DocManager
+    chunk_manager = ChunkManager
+    json_manager = JsonManager
+    convertor = Convertor
     # 对密码进行 URL 编码
     password = Config().get_config().database_password
     encoded_password = urllib.parse.quote_plus(password)

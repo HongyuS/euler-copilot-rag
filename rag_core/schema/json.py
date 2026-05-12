@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Any
-from rag_core.ENUM.json import LogicOperator, OperationType, FieldType
+from rag_core.ENUM.json import LogicOperator, OperationType
 
 
 class Condition(BaseModel):
@@ -9,7 +9,6 @@ class Condition(BaseModel):
     )
     operator: OperationType = Field(..., description="条件运算符")
     value: Any = Field(..., description="条件值")
-    field_type: FieldType = Field(..., description="条件字段类型")
 
 
 class LogicalExpression(BaseModel):

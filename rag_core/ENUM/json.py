@@ -34,7 +34,7 @@ class OperationType(str, Enum):
     BETWEEN = "between"
 
 
-class FieldType(str, Enum):
+class SchemaType(str, Enum):
     """
     完整字段类型枚举（JSON查询 + 数据库 + 接口全场景通用）
     支持多层嵌套查询的类型校验
@@ -43,10 +43,8 @@ class FieldType(str, Enum):
     # 基础类型
     STRING = "string"  # 字符串
     number = "number"  # 数字（整数或浮点数）
+    INTEGER = "integer"  # 整数
     BOOLEAN = "boolean"  # 布尔
-
-    # 时间日期
-    TIMESTAMP = "timestamp"  # 时间戳（毫秒/秒）
 
     # 集合/数组
     ARRAY = "array"  # 数组/列表

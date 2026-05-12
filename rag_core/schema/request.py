@@ -216,8 +216,7 @@ class SwitchChunkEnabledRequest(BaseModel):
 
 
 class ListChunkRequest(BaseModel):
-    doc_id: str = Field(..., description="所属文档ID")
-    content: Optional[str] = Field(None, description="分块内容")
+    text: Optional[str] = Field(None, description="分块文本内容")
     chunk_type: Optional[ChunkType] = Field(None, description="分块类型")
     enabled: Optional[bool] = Field(None, description="分块是否启用")
     page_size: int = Field(10, description="每页记录数")
@@ -291,6 +290,7 @@ class ListTraceDetailsRequest(BaseModel):
 class ListTaskRequest(BaseModel):
     type: Optional[TaskType] = Field(None, description="任务类型")
     status: Optional[TaskStatus] = Field(None, description="任务状态")
+    op_ids: Optional[list[str]] = Field(None, description="关联操作ID列表")
     page_size: int = Field(10, description="每页记录数")
     page_num: int = Field(1, description="页码")
     created_at_start: Optional[str] = Field(

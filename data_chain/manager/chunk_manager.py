@@ -1,5 +1,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from sqlalchemy import select, update, func, text, or_, and_, bindparam, literal_column, Float
+from sqlalchemy import (
+    select,
+    update,
+    func,
+    text,
+    or_,
+    and_,
+    bindparam,
+    literal_column,
+    Float,
+)
 from typing import List, Tuple, Dict, Optional
 import uuid
 from datetime import datetime
@@ -13,7 +23,7 @@ from data_chain.parser.tools.token_tool import TokenTool
 import logging
 
 
-class ChunkManager():
+class ChunkManager:
     @staticmethod
     async def add_chunk(chunk: ChunkEntity) -> ChunkEntity:
         """添加文档"""
@@ -43,10 +53,7 @@ class ChunkManager():
         """根据文档ID查询文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = (
-                    select(ChunkEntity)
-                    .where(ChunkEntity.id == chunk_id)
-                )
+                stmt = select(ChunkEntity).where(ChunkEntity.id == chunk_id)
                 result = await session.execute(stmt)
                 return result.scalars().first()
         except Exception as e:
@@ -122,26 +129,25 @@ class ChunkManager():
             raise e
 
     async def list_chunk(
-            req: ListChunkRequest,
+        req: ListChunkRequest,
     ) -> Tuple[int, List[ChunkEntity]]:
         """根据文档ID查询文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
-                stmt = (
-                    select(ChunkEntity)
-                    .where(ChunkEntity.status != ChunkStatus.DELETED.value)
+                stmt = select(ChunkEntity).where(
+                    ChunkEntity.status != ChunkStatus.DELETED.value
                 )
                 if req.doc_id is not None:
                     stmt = stmt.where(ChunkEntity.doc_id == req.doc_id)
                 if req.text is not None:
                     stmt = stmt.where(ChunkEntity.text.ilike(f"%{req.text}%"))
                 if req.types is not None:
-                    stmt = stmt.where(ChunkEntity.type.in_(
-                        [t.value for t in req.types]))
+                    stmt = stmt.where(
+                        ChunkEntity.type.in_([t.value for t in req.types])
+                    )
                 count_stmt = select(func.count()).select_from(stmt.subquery())
                 total = (await session.execute(count_stmt)).scalar()
-                stmt = stmt.offset(
-                    (req.page - 1) * req.page_size).limit(req.page_size)
+                stmt = stmt.offset((req.page - 1) * req.page_size).limit(req.page_size)
                 stmt = stmt.order_by(ChunkEntity.global_offset)
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()
@@ -158,8 +164,12 @@ class ChunkManager():
             async with await DataBase.get_session() as session:
                 stmt = (
                     select(ChunkEntity)
-                    .where(and_(ChunkEntity.doc_id == doc_id,
-                                ChunkEntity.status != ChunkStatus.DELETED.value))
+                    .where(
+                        and_(
+                            ChunkEntity.doc_id == doc_id,
+                            ChunkEntity.status != ChunkStatus.DELETED.value,
+                        )
+                    )
                     .order_by(ChunkEntity.global_offset)
                 )
                 result = await session.execute(stmt)
@@ -171,9 +181,14 @@ class ChunkManager():
 
     @staticmethod
     async def get_top_k_chunk_by_kb_id_vector(
-            kb_id: uuid.UUID, vector: List[float],
-            top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
-            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
+        kb_id: uuid.UUID,
+        vector: List[float],
+        top_k: int,
+        doc_ids: list[uuid.UUID] = None,
+        banned_ids: list[uuid.UUID] = [],
+        chunk_to_type: str = None,
+        pre_ids: list[uuid.UUID] = None,
+    ) -> List[ChunkEntity]:
         """根据知识库ID和向量查询文档解析结果（适配OpenGauss强制索引）"""
         try:
             if top_k <= 0:
@@ -189,21 +204,17 @@ class ChunkManager():
                     "chunk.kb_id = :kb_id",
                     "chunk.enabled = true",
                     "chunk.status != 'deleted'",
-                    "chunk.text_vector IS NOT NULL"
+                    "chunk.text_vector IS NOT NULL",
                 ]
 
                 # 处理向量格式兼容性：PostgreSQL需要字符串格式，OpenGauss可以直接使用列表
-                if config['DATABASE_TYPE'].lower() == 'opengauss':
+                if config["DATABASE_TYPE"].lower() == "opengauss":
                     vector_param = vector
                 else:
                     # PostgreSQL需要将向量转换为字符串格式
                     vector_param = str(vector)
 
-                params = {
-                    "vector": vector_param,
-                    "kb_id": kb_id,
-                    "limit": top_k
-                }
+                params = {"vector": vector_param, "kb_id": kb_id, "limit": top_k}
 
                 if banned_ids:
                     banned_placeholders = []
@@ -212,7 +223,8 @@ class ChunkManager():
                         banned_placeholders.append(f":{param_name}")
                         params[param_name] = banned_id
                     where_conditions.append(
-                        f"chunk.id NOT IN ({','.join(banned_placeholders)})")
+                        f"chunk.id NOT IN ({','.join(banned_placeholders)})"
+                    )
 
                 if doc_ids is not None:
                     doc_placeholders = []
@@ -221,11 +233,13 @@ class ChunkManager():
                         doc_placeholders.append(f":{param_name}")
                         params[param_name] = doc_id
                     where_conditions.append(
-                        f"document.id IN ({','.join(doc_placeholders)})")
+                        f"document.id IN ({','.join(doc_placeholders)})"
+                    )
 
                 if chunk_to_type is not None:
                     where_conditions.append(
-                        "chunk.parse_topology_type = :chunk_to_type")
+                        "chunk.parse_topology_type = :chunk_to_type"
+                    )
                     params["chunk_to_type"] = chunk_to_type
 
                 if pre_ids is not None:
@@ -237,7 +251,8 @@ class ChunkManager():
                         pre_placeholders.append(f":{param_name}")
                         params[param_name] = pre_id
                     where_conditions.append(
-                        f"chunk.pre_id_in_parse_topology IN ({','.join(pre_placeholders)})")
+                        f"chunk.pre_id_in_parse_topology IN ({','.join(pre_placeholders)})"
+                    )
 
                 where_clause = " AND ".join(where_conditions)
 
@@ -295,7 +310,7 @@ class ChunkManager():
                         enabled=row.enabled,
                         status=row.status,
                         created_time=row.created_time,
-                        updated_time=row.updated_time
+                        updated_time=row.updated_time,
                     )
                     chunk_entities.append(chunk_entity)
 
@@ -311,26 +326,34 @@ class ChunkManager():
 
     @staticmethod
     async def get_top_k_chunk_by_kb_id_keyword(
-            kb_id: uuid.UUID, query: str,
-            top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
-            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None, is_tight: bool = True) -> List[ChunkEntity]:
+        kb_id: uuid.UUID,
+        query: str,
+        top_k: int,
+        doc_ids: list[uuid.UUID] = None,
+        banned_ids: list[uuid.UUID] = [],
+        chunk_to_type: str = None,
+        pre_ids: list[uuid.UUID] = None,
+        is_tight: bool = True,
+    ) -> List[ChunkEntity]:
         """根据知识库ID和向量查询文档解析结果"""
         try:
             st = datetime.now()
             async with await DataBase.get_session() as session:
-                kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+                kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(
+                    kb_id
+                )
                 if kb_entity.tokenizer == Tokenizer.ZH.value:
-                    if config['DATABASE_TYPE'].lower() == 'opengauss':
-                        tokenizer = 'chparser'
+                    if config["DATABASE_TYPE"].lower() == "opengauss":
+                        tokenizer = "chparser"
                     else:
-                        tokenizer = 'zhparser'
+                        tokenizer = "zhparser"
                 elif kb_entity.tokenizer == Tokenizer.EN.value:
-                    tokenizer = 'english'
+                    tokenizer = "english"
                 else:
-                    if config['DATABASE_TYPE'].lower() == 'opengauss':
-                        tokenizer = 'chparser'
+                    if config["DATABASE_TYPE"].lower() == "opengauss":
+                        tokenizer = "chparser"
                     else:
-                        tokenizer = 'zhparser'
+                        tokenizer = "zhparser"
 
                 # -------------------------- 新增：提前生成 tsquery（复用逻辑，避免重复计算） --------------------------
                 if is_tight:
@@ -340,8 +363,7 @@ class ChunkManager():
                     # 与原similarity_score中的tsquery逻辑完全一致
                     tsquery = func.to_tsquery(
                         func.replace(
-                            func.text(func.plainto_tsquery(tokenizer, query)),
-                            '&', '|'
+                            func.text(func.plainto_tsquery(tokenizer, query)), "&", "|"
                         )
                     )
                 # ---------------------------------------------------------------------------------------------------
@@ -349,16 +371,14 @@ class ChunkManager():
                 # 计算相似度分数并选择它（逻辑不变，复用上面生成的tsquery）
                 similarity_score = func.ts_rank_cd(
                     ChunkEntity.text_ts_vector,
-                    tsquery  # 替换原重复的tsquery生成逻辑，直接用提前生成的
+                    tsquery,  # 替换原重复的tsquery生成逻辑，直接用提前生成的
                 ).label("similarity_score")
 
                 stmt = (
                     select(ChunkEntity, similarity_score)
-                    .join(DocumentEntity,
-                          DocumentEntity.id == ChunkEntity.doc_id
-                          )
+                    .join(DocumentEntity, DocumentEntity.id == ChunkEntity.doc_id)
                     # -------------------------- 核心新增：通过 @@ 条件强制触发 GIN 索引 --------------------------
-                    .where(ChunkEntity.text_ts_vector.op('@@')(tsquery))
+                    .where(ChunkEntity.text_ts_vector.op("@@")(tsquery))
                     # ---------------------------------------------------------------------------------------------------
                     .where(similarity_score > 0)  # 原条件保留，顺序不变
                     .where(DocumentEntity.enabled == True)
@@ -372,20 +392,19 @@ class ChunkManager():
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 if chunk_to_type is not None:
-                    stmt = stmt.where(
-                        ChunkEntity.parse_topology_type == chunk_to_type)
+                    stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
                 if pre_ids is not None:
                     if not pre_ids:
                         return []
-                    stmt = stmt.where(
-                        ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
+                    stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
                 # 按相似度分数排序（逻辑不变）
                 stmt = stmt.order_by(similarity_score.desc())
                 stmt = stmt.limit(top_k)
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()
                 logging.info(
-                    f"[ChunkManager] get_top_k_chunk_by_kb_id_keyword cost: {(datetime.now()-st).total_seconds()}s")
+                    f"[ChunkManager] get_top_k_chunk_by_kb_id_keyword cost: {(datetime.now()-st).total_seconds()}s"
+                )
                 return chunk_entities
         except Exception as e:
             err = f"根据知识库ID和向量查询文档解析结果失败: {str(e)}"
@@ -393,9 +412,15 @@ class ChunkManager():
             return []
 
     @staticmethod
-    async def get_top_k_chunk_by_kb_id_bm25(kb_id: uuid.UUID, query: str,  # 关键词列表改为单查询文本
-                                            top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
-                                            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
+    async def get_top_k_chunk_by_kb_id_bm25(
+        kb_id: uuid.UUID,
+        query: str,  # 关键词列表改为单查询文本
+        top_k: int,
+        doc_ids: list[uuid.UUID] = None,
+        banned_ids: list[uuid.UUID] = [],
+        chunk_to_type: str = None,
+        pre_ids: list[uuid.UUID] = None,
+    ) -> List[ChunkEntity]:
         """根据知识库ID和查询文本查询文档解析结果（使用BM25直接打分）"""
         try:
             st = datetime.now()
@@ -410,8 +435,9 @@ class ChunkManager():
                     select(
                         ChunkEntity,
                         # 计算查询文本与chunk的BM25分数
-                        ChunkEntity.text.op('<&>')(
-                            query_param).label("similarity_score")
+                        ChunkEntity.text.op("<&>")(query_param).label(
+                            "similarity_score"
+                        ),
                     )
                     # 关联文档表
                     .join(DocumentEntity, DocumentEntity.id == ChunkEntity.doc_id)
@@ -422,7 +448,7 @@ class ChunkManager():
                     .where(ChunkEntity.enabled == True)
                     .where(ChunkEntity.status != ChunkStatus.DELETED.value)
                     # 过滤BM25分数大于0的结果（确保有相关性）
-                    .where(ChunkEntity.text.op('<&>')(query_param) > 0)
+                    .where(ChunkEntity.text.op("<&>")(query_param) > 0)
                 )
 
                 # 3. 动态条件：禁用ID
@@ -433,19 +459,14 @@ class ChunkManager():
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 if chunk_to_type is not None:
-                    stmt = stmt.where(
-                        ChunkEntity.parse_topology_type == chunk_to_type)
+                    stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
                 if pre_ids is not None:
-                    stmt = stmt.where(
-                        ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
+                    stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
 
                 # 5. 排序、限制（直接使用BM25分数排序）
-                stmt = (stmt
-                        .order_by(
-                            ChunkEntity.text.op('<&>')(query_param).desc()
-                        )
-                        .limit(top_k)
-                        )
+                stmt = stmt.order_by(
+                    ChunkEntity.text.op("<&>")(query_param).desc()
+                ).limit(top_k)
 
                 # 6. 执行查询与结果处理
                 await session.execute(text("SET enable_seqscan = off;"))
@@ -467,13 +488,18 @@ class ChunkManager():
             return []
 
     @staticmethod
-    async def get_top_k_chunk_by_kb_id_jieba(kb_id: uuid.UUID, query: str,  # 关键词列表改为单查询文本
-                                             top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
-                                             chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
+    async def get_top_k_chunk_by_kb_id_jieba(
+        kb_id: uuid.UUID,
+        query: str,  # 关键词列表改为单查询文本
+        top_k: int,
+        doc_ids: list[uuid.UUID] = None,
+        banned_ids: list[uuid.UUID] = [],
+        chunk_to_type: str = None,
+        pre_ids: list[uuid.UUID] = None,
+    ) -> List[ChunkEntity]:
         """根据知识库ID和关键词权重查询文档解析结果（修复NoneType报错+强制索引）"""
         try:
-            keywords, weights = TokenTool.get_top_k_keywords_and_weights(
-                query)
+            keywords, weights = TokenTool.get_top_k_keywords_and_weights(query)
             if len(keywords) == 0:
                 return []
             if len(keywords) != len(weights):
@@ -484,15 +510,23 @@ class ChunkManager():
             st = datetime.now()
             async with await DataBase.get_session() as session:
                 # 1. 分词器选择（保留原逻辑）
-                kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(kb_id)
+                kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(
+                    kb_id
+                )
                 if kb_entity.tokenizer == Tokenizer.ZH.value:
-                    tokenizer = 'chparser' if config['DATABASE_TYPE'].lower(
-                    ) == 'opengauss' else 'zhparser'
+                    tokenizer = (
+                        "chparser"
+                        if config["DATABASE_TYPE"].lower() == "opengauss"
+                        else "zhparser"
+                    )
                 elif kb_entity.tokenizer == Tokenizer.EN.value:
-                    tokenizer = 'english'
+                    tokenizer = "english"
                 else:
-                    tokenizer = 'chparser' if config['DATABASE_TYPE'].lower(
-                    ) == 'opengauss' else 'zhparser'
+                    tokenizer = (
+                        "chparser"
+                        if config["DATABASE_TYPE"].lower() == "opengauss"
+                        else "zhparser"
+                    )
 
                 # 2. 构建加权关键词CTE（保留原逻辑）
                 params = {}
@@ -501,12 +535,13 @@ class ChunkManager():
                     params[f"term_{idx}"] = term
                     params[f"weight_{idx}"] = weight
                     values_clause.append(
-                        f"(CAST(:term_{idx} AS TEXT), CAST(:weight_{idx} AS FLOAT8))")
+                        f"(CAST(:term_{idx} AS TEXT), CAST(:weight_{idx} AS FLOAT8))"
+                    )
                 values_text = f"(VALUES {', '.join(values_clause)}) AS t(term, weight)"
                 weighted_terms = (
                     select(
                         literal_column("t.term").label("term"),
-                        literal_column("t.weight").cast(Float).label("weight")
+                        literal_column("t.weight").cast(Float).label("weight"),
                     )
                     .select_from(text(values_text))
                     .cte("weighted_terms")
@@ -517,18 +552,21 @@ class ChunkManager():
                     select(
                         ChunkEntity,
                         func.sum(
-                            func.ts_rank_cd(ChunkEntity.text_ts_vector, func.to_tsquery(
-                                tokenizer, weighted_terms.c.term))
+                            func.ts_rank_cd(
+                                ChunkEntity.text_ts_vector,
+                                func.to_tsquery(tokenizer, weighted_terms.c.term),
+                            )
                             * weighted_terms.c.weight
-                        ).label("similarity_score")
+                        ).label("similarity_score"),
                     )
                     # 关联文档表
                     .join(DocumentEntity, DocumentEntity.id == ChunkEntity.doc_id)
                     .join(  # 关联CTE+强制触发GIN索引（核心优化）
                         weighted_terms,
-                        ChunkEntity.text_ts_vector.op(
-                            '@@')(func.to_tsquery(tokenizer, weighted_terms.c.term)),
-                        isouter=False
+                        ChunkEntity.text_ts_vector.op("@@")(
+                            func.to_tsquery(tokenizer, weighted_terms.c.term)
+                        ),
+                        isouter=False,
                     )
                     # 基础过滤条件
                     .where(DocumentEntity.enabled == True)
@@ -546,24 +584,24 @@ class ChunkManager():
                 if doc_ids is not None:
                     stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
                 if chunk_to_type is not None:
-                    stmt = stmt.where(
-                        ChunkEntity.parse_topology_type == chunk_to_type)
+                    stmt = stmt.where(ChunkEntity.parse_topology_type == chunk_to_type)
                 if pre_ids is not None:
-                    stmt = stmt.where(
-                        ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
+                    stmt = stmt.where(ChunkEntity.pre_id_in_parse_topology.in_(pre_ids))
 
                 # 6. 分组、过滤分数、排序、限制行数（链式调用安全）
-                stmt = (stmt
-                        .group_by(ChunkEntity.id)  # 按chunk分组计算总权重
-                        .order_by(  # 按总分数降序
-                            func.sum(
-                                func.ts_rank_cd(ChunkEntity.text_ts_vector, func.to_tsquery(
-                                    tokenizer, weighted_terms.c.term))
-                                * weighted_terms.c.weight
-                            ).desc()
-                        )
-                        .limit(top_k)  # 限制返回数量
-                        )
+                stmt = (
+                    stmt.group_by(ChunkEntity.id)  # 按chunk分组计算总权重
+                    .order_by(  # 按总分数降序
+                        func.sum(
+                            func.ts_rank_cd(
+                                ChunkEntity.text_ts_vector,
+                                func.to_tsquery(tokenizer, weighted_terms.c.term),
+                            )
+                            * weighted_terms.c.weight
+                        ).desc()
+                    )
+                    .limit(top_k)  # 限制返回数量
+                )
 
                 # 7. 执行查询与结果处理（保留原逻辑）
                 result = await session.execute(stmt, params=params)
@@ -585,30 +623,48 @@ class ChunkManager():
 
     @staticmethod
     async def get_top_k_chunk_by_kb_id_dynamic_weighted_keyword(
-            kb_id: uuid.UUID, query: str,
-            top_k: int, doc_ids: list[uuid.UUID] = None, banned_ids: list[uuid.UUID] = [],
-            chunk_to_type: str = None, pre_ids: list[uuid.UUID] = None) -> List[ChunkEntity]:
+        kb_id: uuid.UUID,
+        query: str,
+        top_k: int,
+        doc_ids: list[uuid.UUID] = None,
+        banned_ids: list[uuid.UUID] = [],
+        chunk_to_type: str = None,
+        pre_ids: list[uuid.UUID] = None,
+    ) -> List[ChunkEntity]:
         """根据知识库ID和关键词权重查询文档解析结果（动态加权关键词）"""
-        if config['DATABASE_TYPE'].lower() == 'postgres':
+        if config["DATABASE_TYPE"].lower() == "postgres":
             return await ChunkManager.get_top_k_chunk_by_kb_id_jieba(
-                kb_id, query, top_k, doc_ids, banned_ids, chunk_to_type, pre_ids)
+                kb_id, query, top_k, doc_ids, banned_ids, chunk_to_type, pre_ids
+            )
         else:
             return await ChunkManager.get_top_k_chunk_by_kb_id_bm25(
-                kb_id, query, top_k, doc_ids, banned_ids, chunk_to_type, pre_ids)
+                kb_id, query, top_k, doc_ids, banned_ids, chunk_to_type, pre_ids
+            )
 
     @staticmethod
     async def fetch_surrounding_chunk_by_doc_id_and_global_offset(
-            doc_id: uuid.UUID, global_offset: int,
-            top_k: int = 50, banned_ids: list[uuid.UUID] = []) -> List[ChunkEntity]:
+        doc_id: uuid.UUID,
+        global_offset: int,
+        top_k: int = 50,
+        banned_ids: list[uuid.UUID] = [],
+    ) -> List[ChunkEntity]:
         """根据文档ID和全局偏移量查询文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
                 stmt = (
                     select(ChunkEntity)
-                    .where(and_(ChunkEntity.doc_id == doc_id,
-                                ChunkEntity.status != ChunkStatus.DELETED.value))
-                    .where(and_(ChunkEntity.global_offset >= global_offset - top_k,
-                                ChunkEntity.global_offset <= global_offset + top_k))
+                    .where(
+                        and_(
+                            ChunkEntity.doc_id == doc_id,
+                            ChunkEntity.status != ChunkStatus.DELETED.value,
+                        )
+                    )
+                    .where(
+                        and_(
+                            ChunkEntity.global_offset >= global_offset - top_k,
+                            ChunkEntity.global_offset <= global_offset + top_k,
+                        )
+                    )
                     .where(ChunkEntity.id.notin_(banned_ids))
                     .order_by(ChunkEntity.global_offset)
                 )
@@ -621,33 +677,39 @@ class ChunkManager():
             raise e
 
     @staticmethod
-    async def update_chunk_text_ts_vector_by_chunk_ids(chunk_ids: List[uuid.UUID]) -> None:
+    async def update_chunk_text_ts_vector_by_chunk_ids(
+        chunk_ids: List[uuid.UUID],
+    ) -> None:
         """根据文档ID更新文档解析结果"""
         if not chunk_ids:
             return
         try:
             kb_entity = await KnowledgeBaseManager.get_knowledge_base_by_kb_id(
-                (await ChunkManager.get_chunk_by_chunk_id(chunk_ids[0])).kb_id)
+                (await ChunkManager.get_chunk_by_chunk_id(chunk_ids[0])).kb_id
+            )
             if kb_entity.tokenizer == Tokenizer.ZH.value:
-                if config['DATABASE_TYPE'].lower() == 'opengauss':
-                    tokenizer = 'chparser'
+                if config["DATABASE_TYPE"].lower() == "opengauss":
+                    tokenizer = "chparser"
                 else:
-                    tokenizer = 'zhparser'
+                    tokenizer = "zhparser"
             elif kb_entity.tokenizer == Tokenizer.EN.value:
-                tokenizer = 'english'
+                tokenizer = "english"
             else:
-                if config['DATABASE_TYPE'].lower() == 'opengauss':
-                    tokenizer = 'chparser'
+                if config["DATABASE_TYPE"].lower() == "opengauss":
+                    tokenizer = "chparser"
                 else:
-                    tokenizer = 'zhparser'
+                    tokenizer = "zhparser"
             async with await DataBase.get_session() as session:
                 stmt = (
                     update(ChunkEntity)
                     .where(ChunkEntity.id.in_(chunk_ids))
-                    .values({
-                        ChunkEntity.text_ts_vector: func.to_tsvector(
-                            tokenizer, ChunkEntity.text)
-                    })
+                    .values(
+                        {
+                            ChunkEntity.text_ts_vector: func.to_tsvector(
+                                tokenizer, ChunkEntity.text
+                            )
+                        }
+                    )
                 )
                 await session.execute(stmt)
                 await session.commit()
@@ -657,7 +719,9 @@ class ChunkManager():
             logging.exception("[ChunkManager] %s", err)
 
     @staticmethod
-    async def update_chunk_by_doc_id(doc_id: uuid.UUID, chunk_dict: Dict[str, str]) -> bool:
+    async def update_chunk_by_doc_id(
+        doc_id: uuid.UUID, chunk_dict: Dict[str, str]
+    ) -> bool:
         """根据文档ID更新文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
@@ -674,7 +738,9 @@ class ChunkManager():
             logging.exception("[ChunkManager] %s", err)
 
     @staticmethod
-    async def update_chunk_by_chunk_id(chunk_id: uuid.UUID, chunk_dict: Dict[str, str]) -> ChunkEntity:
+    async def update_chunk_by_chunk_id(
+        chunk_id: uuid.UUID, chunk_dict: Dict[str, str]
+    ) -> ChunkEntity:
         """根据文档ID更新文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
@@ -685,10 +751,7 @@ class ChunkManager():
                 )
                 await session.execute(stmt)
                 await session.commit()
-                stmt = (
-                    select(ChunkEntity)
-                    .where(ChunkEntity.id == chunk_id)
-                )
+                stmt = select(ChunkEntity).where(ChunkEntity.id == chunk_id)
                 result = await session.execute(stmt)
                 chunk_entity = result.scalars().first()
                 return chunk_entity
@@ -697,7 +760,9 @@ class ChunkManager():
             logging.exception("[ChunkManager] %s", err)
 
     @staticmethod
-    async def update_chunk_by_chunk_ids(chunk_ids: List[uuid.UUID], chunk_dict: Dict[str, str]) -> list[ChunkEntity]:
+    async def update_chunk_by_chunk_ids(
+        chunk_ids: List[uuid.UUID], chunk_dict: Dict[str, str]
+    ) -> list[ChunkEntity]:
         """根据文档ID更新文档解析结果"""
         try:
             async with await DataBase.get_session() as session:
@@ -708,10 +773,7 @@ class ChunkManager():
                 )
                 await session.execute(stmt)
                 await session.commit()
-                stmt = (
-                    select(ChunkEntity)
-                    .where(ChunkEntity.id.in_(chunk_ids))
-                )
+                stmt = select(ChunkEntity).where(ChunkEntity.id.in_(chunk_ids))
                 result = await session.execute(stmt)
                 chunk_entities = result.scalars().all()
                 return chunk_entities
