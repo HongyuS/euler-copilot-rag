@@ -9,6 +9,7 @@ from experience_skill_cli.console import (
     info,
     print_experience,
     print_experience_list,
+    print_hybrid_search_results,
     search_result,
     success,
     warn,
@@ -92,24 +93,61 @@ def delete_experience_source_cli(args: argparse.Namespace) -> None:
 
 
 def search_experiences_cli(args: argparse.Namespace) -> None:
-    """搜索经验"""
+    """搜索经验（默认混合检索，支持纯元数据 / 纯正文模式）。"""
     experience_type = ExperienceType[args.type.upper()]
-    exps = ExperienceService.search_experiences(
-        query=args.query,
-        exp_type=experience_type,
-        top_k=args.top_k,
-        fields=args.fields if args.fields is not None else None,
-        is_hot=args.is_hot,
-        banned_experience_ids=args.banned_ids if args.banned_ids is not None else None,
-        experience_ids=(args.experience_ids if args.experience_ids is not None else None),
-    )
-    search_result(f"搜索「{args.query}」找到 {len(exps)} 条结果")
-    blank()
 
-    for idx, exp in enumerate(exps, 1):
-        if idx > 1:
-            blank()
-        print_experience(exp, idx)
+    if args.content_only:
+        # 仅正文搜索
+        results = ExperienceService.search_content_only(
+            query=args.query,
+            exp_type=experience_type,
+            top_k=args.top_k,
+            is_hot=args.is_hot,
+            experience_ids=(args.experience_ids if args.experience_ids is not None else None),
+        )
+        search_result(f"搜索「{args.query}」（仅正文）找到 {len(results)} 条结果")
+        blank()
+        print_hybrid_search_results(results)
+    elif args.metadata_only:
+        # 仅元数据搜索（旧默认行为）
+        exps = ExperienceService.search_experiences(
+            query=args.query,
+            exp_type=experience_type,
+            top_k=args.top_k,
+            fields=args.fields if args.fields is not None else None,
+            is_hot=args.is_hot,
+            banned_experience_ids=(args.banned_ids if args.banned_ids is not None else None),
+            experience_ids=(args.experience_ids if args.experience_ids is not None else None),
+        )
+        search_result(f"搜索「{args.query}」（仅元数据）找到 {len(exps)} 条结果")
+        blank()
+
+        for idx, exp in enumerate(exps, 1):
+            if idx > 1:
+                blank()
+            print_experience(exp, idx)
+    else:
+        # 默认：混合检索（元数据 + 正文）
+        results = ExperienceService.search_with_content(
+            query=args.query,
+            exp_type=experience_type,
+            top_k=args.top_k,
+            fields=args.fields if args.fields is not None else None,
+            is_hot=args.is_hot,
+            banned_experience_ids=(args.banned_ids if args.banned_ids is not None else None),
+            experience_ids=(args.experience_ids if args.experience_ids is not None else None),
+        )
+        # 统计各匹配类型数量
+        both_cnt = sum(1 for r in results if r.match_type == "both")
+        meta_cnt = sum(1 for r in results if r.match_type == "metadata")
+        content_cnt = sum(1 for r in results if r.match_type == "content")
+        msg = (
+            f"搜索「{args.query}」找到 {len(results)} 条结果"
+            f"（元数据+正文: {both_cnt}, 仅元数据: {meta_cnt}, 仅正文: {content_cnt}）"
+        )
+        search_result(msg)
+        blank()
+        print_hybrid_search_results(results)
 
 
 def delete_all_experiences_cli(_args: argparse.Namespace) -> None:
@@ -219,6 +257,18 @@ def main() -> None:
         help="仅搜索指定经验ID列表，空格分隔，默认为全部",
     )
     search_parser.add_argument("--top-k", type=int, default=5, help="返回条数")
+    search_parser.add_argument(
+        "--metadata-only",
+        action="store_true",
+        default=False,
+        help="仅搜索元数据（FTS5），跳过正文内容搜索",
+    )
+    search_parser.add_argument(
+        "--content-only",
+        action="store_true",
+        default=False,
+        help="仅搜索正文内容，跳过 FTS5 元数据检索",
+    )
     search_parser.set_defaults(func=search_experiences_cli)
 
     # delete-all

@@ -1,15 +1,44 @@
 """经验业务服务层。"""
 
+from __future__ import annotations
+
 import json
+import logging
 import re
+from dataclasses import dataclass, field
 
 import yaml
 
 from experience_skill_cli.common.exprience import SKILL_ROOT
+from experience_skill_cli.manager.content_searcher import (
+    ContentMatch,
+    ContentSearcher,
+    ContentSnippet,
+)
 from experience_skill_cli.manager.experience_manager import ExperienceManager
 from experience_skill_cli.manager.keyword_manager import KeyWordManager
 from experience_skill_cli.schema.enum import ExperienceType
 from experience_skill_cli.schema.exprience import Experience
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# 混合检索结果模型
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class HybridSearchResult:
+    """混合检索结果，包含 Experience 和正文匹配信息。"""
+
+    experience: Experience
+    match_type: str  # "metadata" | "content" | "both"
+    db_score: float  # 0.0 ~ 1.0 元数据匹配得分
+    content_score: float  # 0.0 ~ 1.0 正文匹配得分
+    final_score: float  # 0.0 ~ 1.0 加权融合得分
+    snippets: list[ContentSnippet] = field(default_factory=list)
+    content_hit_count: int = 0
 
 
 class ExperienceService:
@@ -42,7 +71,7 @@ class ExperienceService:
         if match:
             try:
                 result = yaml.safe_load(match.group(1)) or {}
-            except Exception:  # noqa: BLE001
+            except Exception:
                 result = {}
         return result
 
@@ -324,3 +353,198 @@ class ExperienceService:
         for experience in experiences:
             ExperienceManager.update_hot_experience(experience.id)
         return experiences
+
+    # ------------------------------------------------------------------
+    # 混合检索（元数据 + 正文内容）
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def search_with_content(
+        query: str,
+        exp_type: ExperienceType,
+        top_k: int = 5,
+        fields: list[str] | None = None,
+        is_hot: bool | None = None,
+        banned_experience_ids: list[str] | None = None,
+        experience_ids: list[str] | None = None,
+        *,
+        db_weight: float = 0.75,
+    ) -> list[HybridSearchResult]:
+        """混合检索：FTS5 元数据搜索 + 正文 grep 搜索，加权融合排序。
+
+        流程：
+        1. 执行 DB FTS5 检索（元数据）
+        2. 对所有已注册经验执行正文 grep 检索
+        3. 加权融合：final_score = db_weight * db_score + (1-db_weight) * content_score
+        4. 按 final_score 降序返回 top_k 条
+
+        Args:
+            query: 搜索关键词
+            exp_type: 经验类型
+            top_k: 返回条数
+            fields: 关键字标签过滤
+            is_hot: 热门过滤
+            banned_experience_ids: 排除 ID 列表
+            experience_ids: 限定 ID 范围
+            db_weight: 元数据得分权重（默认 0.75）
+
+        Returns:
+            HybridSearchResult 列表，按 final_score 降序排列
+
+        """
+        if not query.strip():
+            return []
+
+        # 1. DB 元数据检索
+        db_results = ExperienceService.search_experiences(
+            query=query,
+            exp_type=exp_type,
+            fields=fields,
+            top_k=top_k * 2,  # 多取一些以留出融合空间
+            is_hot=is_hot,
+            banned_experience_ids=banned_experience_ids,
+            experience_ids=experience_ids,
+        )
+
+        # 构建 DB 结果的位置得分映射（#1 = 1.0, #n = 1/n）
+        db_score_map: dict[str, float] = {}
+        for rank, exp in enumerate(db_results, start=1):
+            db_score_map[exp.id] = 1.0 / rank
+
+        # 2. 正文内容检索（搜索全部已注册经验的正文）
+        all_sources = ContentSearcher.get_all_sources(exp_type)
+        content_matches = ContentSearcher.search(query, all_sources, exp_type)
+
+        # 构建 source -> ContentMatch 的映射
+        content_map: dict[str, ContentMatch] = {}
+        for cm in content_matches:
+            content_map[cm.source] = cm
+
+        # 3. 加权融合
+        merged: dict[str, HybridSearchResult] = {}
+
+        # 3a. 处理 DB 命中的结果
+        for exp in db_results:
+            db_score = db_score_map.get(exp.id, 0.0)
+            cm = content_map.get(exp.source)
+            if cm:
+                # 元数据 + 正文双重命中
+                content_score = cm.score
+                final_score = db_weight * db_score + (1 - db_weight) * content_score
+                merged[exp.id] = HybridSearchResult(
+                    experience=exp,
+                    match_type="both",
+                    db_score=round(db_score, 4),
+                    content_score=round(content_score, 4),
+                    final_score=round(final_score, 4),
+                    snippets=cm.snippets,
+                    content_hit_count=cm.hit_count,
+                )
+            else:
+                # 仅元数据命中
+                final_score = db_weight * db_score
+                merged[exp.id] = HybridSearchResult(
+                    experience=exp,
+                    match_type="metadata",
+                    db_score=round(db_score, 4),
+                    content_score=0.0,
+                    final_score=round(final_score, 4),
+                    snippets=[],
+                    content_hit_count=0,
+                )
+
+        # 3b. 处理仅正文命中（DB 未命中的）
+        for cm in content_matches:
+            # 查找该 source 对应的 Experience
+            exp_list = ExperienceManager.query_experience_by_source(cm.source)
+            if not exp_list:
+                continue
+            exp = exp_list[0]
+            exp.keywords = KeyWordManager.get_keywords_by_experience_id(exp.id)
+
+            if exp.id in merged:
+                continue  # 已在 3a 中处理
+
+            # 检查是否被过滤条件排除
+            if banned_experience_ids and exp.id in banned_experience_ids:
+                continue
+            if experience_ids and exp.id not in experience_ids:
+                continue
+            if is_hot is not None and exp.is_hot != int(is_hot):
+                continue
+
+            content_score = cm.score
+            final_score = (1 - db_weight) * content_score
+            merged[exp.id] = HybridSearchResult(
+                experience=exp,
+                match_type="content",
+                db_score=0.0,
+                content_score=round(content_score, 4),
+                final_score=round(final_score, 4),
+                snippets=cm.snippets,
+                content_hit_count=cm.hit_count,
+            )
+
+        # 4. 按 final_score 降序，返回 top_k
+        sorted_results = sorted(
+            merged.values(),
+            key=lambda x: x.final_score,
+            reverse=True,
+        )
+        return sorted_results[:top_k]
+
+    @staticmethod
+    def search_content_only(
+        query: str,
+        exp_type: ExperienceType,
+        top_k: int = 5,
+        *,
+        is_hot: bool | None = None,
+        experience_ids: list[str] | None = None,
+    ) -> list[HybridSearchResult]:
+        """仅搜索正文内容（跳过 FTS5 元数据检索）。
+
+        Args:
+            query: 搜索关键词
+            exp_type: 经验类型
+            top_k: 返回条数
+            is_hot: 热门过滤
+            experience_ids: 限定 ID 范围
+
+        Returns:
+            HybridSearchResult 列表，按 content_score 降序排列
+
+        """
+        if not query.strip():
+            return []
+
+        content_matches = ContentSearcher.search_all(query, exp_type)
+
+        results: list[HybridSearchResult] = []
+        for cm in content_matches:
+            exp_list = ExperienceManager.query_experience_by_source(cm.source)
+            if not exp_list:
+                continue
+            exp = exp_list[0]
+            exp.keywords = KeyWordManager.get_keywords_by_experience_id(exp.id)
+
+            if is_hot is not None and exp.is_hot != int(is_hot):
+                continue
+            if experience_ids and exp.id not in experience_ids:
+                continue
+
+            results.append(
+                HybridSearchResult(
+                    experience=exp,
+                    match_type="content",
+                    db_score=0.0,
+                    content_score=cm.score,
+                    final_score=cm.score,
+                    snippets=cm.snippets,
+                    content_hit_count=cm.hit_count,
+                ),
+            )
+
+        # 取 top_k
+        results.sort(key=lambda x: x.final_score, reverse=True)
+        return results[:top_k]

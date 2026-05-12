@@ -52,6 +52,10 @@ uv run experience-skill search-experiences \
     --top-k 5
 ```
 
+> 默认启用**混合检索**：同时搜索元数据（FTS5）和正文内容（grep）。结果中会标注匹配来源（元数据+正文 / 仅元数据 / 仅正文）。
+>
+> 如需仅搜索元数据（旧行为），添加 `--metadata-only`；如需仅搜索正文，添加 `--content-only`。
+
 如果问题涉及文档参考资料，同时检索 Wiki：
 
 ```bash
@@ -122,7 +126,7 @@ uv sync
 | `sync` | 同步 data/ 中所有经验到数据库 |
 | `add-experiences` | 添加 Skill/Wiki 经验到数据库 |
 | `list-experiences` | 分页列出经验，支持类型/名称/热门过滤 |
-| `search-experiences` | **全文检索经验**（FTS5 + 关键字） |
+| `search-experiences` | **全文检索经验**（默认混合：FTS5 + 正文 grep） |
 | `delete-by-ids` | 按 ID 列表删除经验 |
 | `delete-by-source` | 按来源路径删除经验 |
 | `delete-all` | 清空所有经验数据 |
