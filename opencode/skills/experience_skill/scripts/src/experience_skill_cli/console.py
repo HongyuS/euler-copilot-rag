@@ -197,9 +197,6 @@ def print_hybrid_search_results(
         # 匹配信息
         match_label = _MATCH_TYPE_LABELS.get(sr.match_type, sr.match_type)
         echo(f"{'匹配方式':<12}: {match_label}")
-        echo(
-            f"{'匹配得分':<12}: {sr.final_score} (元数据: {sr.db_score}, 正文: {sr.content_score})",
-        )
 
         # 正文匹配摘要
         if sr.snippets:

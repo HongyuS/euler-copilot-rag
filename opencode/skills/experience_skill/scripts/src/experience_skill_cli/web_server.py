@@ -251,19 +251,6 @@ def _hybrid_result_to_dict(sr: HybridSearchResult) -> dict[str, object]:
     result.update(
         {
             "match_type": sr.match_type,
-            "db_score": sr.db_score,
-            "content_score": sr.content_score,
-            "final_score": sr.final_score,
-            "content_hit_count": sr.content_hit_count,
-            "snippets": [
-                {
-                    "line_num": s.line_num,
-                    "content": s.content,
-                    "match_start": s.match_start,
-                    "match_end": s.match_end,
-                }
-                for s in sr.snippets
-            ],
         },
     )
     return result

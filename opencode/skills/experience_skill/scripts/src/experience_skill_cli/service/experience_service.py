@@ -368,7 +368,7 @@ class ExperienceService:
         banned_experience_ids: list[str] | None = None,
         experience_ids: list[str] | None = None,
         *,
-        db_weight: float = 0.75,
+        db_weight: float = 0.6,
     ) -> list[HybridSearchResult]:
         """混合检索：FTS5 元数据搜索 + 正文 grep 搜索，加权融合排序。
 
@@ -386,7 +386,7 @@ class ExperienceService:
             is_hot: 热门过滤
             banned_experience_ids: 排除 ID 列表
             experience_ids: 限定 ID 范围
-            db_weight: 元数据得分权重（默认 0.75）
+            db_weight: 元数据得分权重（默认 0.6）
 
         Returns:
             HybridSearchResult 列表，按 final_score 降序排列

@@ -15,8 +15,8 @@
 
             body {
                 font-family:
-                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                    "Helvetica Neue", Arial, "Noto Sans SC", sans-serif;
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC",
+                    sans-serif;
                 background: #f8f9fa;
                 color: #333;
                 line-height: 1.6;
@@ -93,6 +93,7 @@
             /* 搜索框 */
             .search-box {
                 display: flex;
+                flex: 1;
                 gap: 6px;
             }
 
@@ -101,7 +102,8 @@
                 border-radius: 6px;
                 padding: 6px 12px;
                 font-size: 0.875rem;
-                width: 200px;
+                flex: 1;
+                min-width: 150px;
                 outline: none;
                 transition: border-color 0.15s;
             }
@@ -137,6 +139,31 @@
 
             .toggle-label input {
                 accent-color: #555;
+            }
+
+            .match-badge {
+                display: inline-block;
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+            .match-badge.both {
+                background: #dcfce7;
+                color: #166534;
+            }
+            .match-badge.metadata {
+                background: #dbeafe;
+                color: #1e40af;
+            }
+            .match-badge.content {
+                background: #fef3c7;
+                color: #92400e;
+            }
+            .score-cell {
+                font-variant-numeric: tabular-nums;
+                font-size: 0.85rem;
             }
 
             /* 关键词勾选区 */
@@ -304,6 +331,7 @@
                 text-transform: uppercase;
                 letter-spacing: 0.03em;
                 background: #fafbfc;
+                white-space: nowrap;
             }
 
             tr:hover td {
@@ -687,12 +715,14 @@
                 </div>
 
                 <div class="search-box">
-                    <input
-                        type="text"
-                        id="name-filter"
-                        placeholder="名称搜索…"
-                    />
+                    <input type="text" id="name-filter" placeholder="名称搜索…" />
                     <button id="search-btn">搜索</button>
+                </div>
+
+                <div class="tag-group" id="mode-selector">
+                    <button data-mode="hybrid" class="active">混合</button>
+                    <button data-mode="metadata">元数据</button>
+                    <button data-mode="content">正文</button>
                 </div>
 
                 <label class="toggle-label">
@@ -705,20 +735,9 @@
             <div class="kw-section">
                 <div class="kw-section-header">
                     <span>关键词过滤</span>
-                    <input
-                        type="text"
-                        class="kw-search-input"
-                        id="kw-search"
-                        placeholder="搜索关键词…"
-                    />
+                    <input type="text" class="kw-search-input" id="kw-search" placeholder="搜索关键词…" />
                     <button id="kw-clear">清除勾选</button>
-                    <button
-                        class="kw-toggle-btn"
-                        id="kw-toggle"
-                        title="折叠/展开"
-                    >
-                        ▲
-                    </button>
+                    <button class="kw-toggle-btn" id="kw-toggle" title="折叠/展开">▲</button>
                     <span class="kw-count" id="kw-info"></span>
                 </div>
                 <div class="kw-list" id="kw-list">加载中…</div>
@@ -735,9 +754,7 @@
             <div class="modal">
                 <div class="modal-header">
                     <h2 id="modal-title"></h2>
-                    <button class="modal-close" id="modal-close">
-                        &times;
-                    </button>
+                    <button class="modal-close" id="modal-close">&times;</button>
                 </div>
                 <div class="modal-meta" id="modal-meta"></div>
                 <div class="modal-body" id="modal-body">
@@ -757,8 +774,21 @@
                 page: 1,
                 pageSize: 20,
                 selectedKw: new Set(),
+                searchMode: "hybrid",
             };
 
+            const modeSelector = document.getElementById("mode-selector");
+            modeSelector.querySelectorAll("button").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    modeSelector.querySelectorAll("button").forEach((b) => b.classList.remove("active"));
+                    btn.classList.add("active");
+                    state.searchMode = btn.dataset.mode;
+                    if (state.name) {
+                        state.page = 1;
+                        loadList();
+                    }
+                });
+            });
             const typeBtns = document.querySelectorAll("#type-filter button");
             const nameInput = document.getElementById("name-filter");
             const searchBtn = document.getElementById("search-btn");
@@ -844,8 +874,7 @@
                     if (kwSearch) kwSearch.value = "";
                     renderKeywords(allKeywords);
                 } catch (e) {
-                    kwList.innerHTML =
-                        '<span class="kw-empty" style="color:#c0392b">加载关键词失败</span>';
+                    kwList.innerHTML = '<span class="kw-empty" style="color:#c0392b">加载关键词失败</span>';
                 }
             }
 
@@ -853,9 +882,7 @@
                 // 过滤：根据搜索词
                 let filtered = keywords;
                 if (kwSearchTerm) {
-                    filtered = keywords.filter((k) =>
-                        k.toLowerCase().includes(kwSearchTerm),
-                    );
+                    filtered = keywords.filter((k) => k.toLowerCase().includes(kwSearchTerm));
                 }
 
                 // 更新计数：显示 过滤后数量 / 总数量
@@ -870,8 +897,7 @@
                 }
 
                 if (!filtered.length) {
-                    kwList.innerHTML =
-                        '<span class="kw-empty">暂无匹配关键词</span>';
+                    kwList.innerHTML = '<span class="kw-empty">暂无匹配关键词</span>';
                     return;
                 }
 
@@ -903,21 +929,52 @@
             async function loadList() {
                 content.innerHTML = '<div class="loading">加载中…</div>';
                 try {
-                    const params = new URLSearchParams({
-                        page: state.page,
-                        page_size: state.pageSize,
-                    });
-                    if (state.type) params.set("exp_type", state.type);
-                    if (state.name) params.set("name", state.name);
-                    if (state.isHot) params.set("is_hot", "true");
-                    for (const kw of state.selectedKw) {
-                        params.append("kw", kw);
-                    }
+                    // 有搜索关键词时走搜索 API
+                    if (state.name) {
+                        const params = new URLSearchParams({
+                            query: state.name,
+                            exp_type: state.type || "SKILL",
+                            top_k: String(state.pageSize),
+                        });
+                        if (state.isHot) params.set("is_hot", "true");
+                        if (state.searchMode) params.set("search_mode", state.searchMode);
+                        for (const kw of state.selectedKw) {
+                            params.append("kw", kw);
+                        }
 
-                    const resp = await fetch(`/api/experiences?${params}`);
-                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                    const data = await resp.json();
-                    renderList(data);
+                        const resp = await fetch(`/api/experiences/search?${params}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const data = await resp.json();
+                        // 转换为统一格式，补全缺失字段
+                        const items = (data.items || []).map((r) => ({
+                            ...r,
+                            _search: true,
+                            match_type: r.match_type || data.mode || "metadata",
+                        }));
+                        renderList({
+                            items,
+                            total: items.length,
+                            page: 1,
+                            page_size: items.length,
+                            _searchMode: data.mode,
+                        });
+                    } else {
+                        const params = new URLSearchParams({
+                            page: state.page,
+                            page_size: state.pageSize,
+                        });
+                        if (state.type) params.set("exp_type", state.type);
+                        if (state.isHot) params.set("is_hot", "true");
+                        for (const kw of state.selectedKw) {
+                            params.append("kw", kw);
+                        }
+
+                        const resp = await fetch(`/api/experiences?${params}`);
+                        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                        const data = await resp.json();
+                        data.items = (data.items || []).map((r) => ({ ...r, _search: false }));
+                        renderList(data);
+                    }
                 } catch (e) {
                     content.innerHTML = `<div class="error">加载失败: ${e.message}</div>`;
                 }
@@ -929,14 +986,20 @@
                     content.innerHTML = '<div class="empty">暂无数据</div>';
                     return;
                 }
-                content.innerHTML =
-                    buildTable(data.items) + buildPagination(data);
+                content.innerHTML = buildTable(data.items) + buildPagination(data);
             }
 
             function buildTable(items) {
+                const isSearch = items.length > 0 && items[0]._search;
+                const matchLabels = { both: "元数据+正文", metadata: "仅元数据", content: "仅正文" };
                 const rows = items
-                    .map(
-                        (e) => `
+                    .map((e) => {
+                        let matchCol = "";
+                        if (isSearch && e.match_type) {
+                            const label = matchLabels[e.match_type] || e.match_type;
+                            matchCol = `<td><span class="match-badge ${e.match_type}">${label}</span></td>`;
+                        }
+                        return `
     <tr data-id="${esc(e.id)}">
       <td><span class="badge badge-${e.type}">${e.type}</span>${e.is_hot ? '<span class="badge badge-hot">热</span>' : ""}</td>
       <td class="name-cell">${esc(e.name)}</td>
@@ -945,16 +1008,18 @@
           .slice(0, 5)
           .map((k) => `<span class="kw-tag" title="${esc(k)}">${esc(k)}</span>`)
           .join("")}</td>
+      ${matchCol}
       <td class="source-cell" title="${esc(e.source)}">${esc(e.source)}</td>
     </tr>
-  `,
-                    )
+  `;
+                    })
                     .join("");
 
+                const searchCols = isSearch ? "<th>匹配方式</th>" : "";
                 return `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>类型</th><th>名称</th><th>描述</th><th>关键词</th><th>来源</th></tr></thead>
+        <thead><tr><th>类型</th><th>名称</th><th>描述</th><th>关键词</th>${searchCols}<th>来源</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -1011,10 +1076,7 @@
                 if (e.target === modalOverlay) closeModal();
             });
             document.addEventListener("keydown", (e) => {
-                if (
-                    e.key === "Escape" &&
-                    modalOverlay.classList.contains("active")
-                ) {
+                if (e.key === "Escape" && modalOverlay.classList.contains("active")) {
                     closeModal();
                 }
             });
@@ -1033,13 +1095,10 @@
                 document.body.style.overflow = "hidden";
                 modalTitle.textContent = "";
                 modalMeta.innerHTML = "";
-                modalBody.innerHTML =
-                    '<div class="modal-loading">加载中…</div>';
+                modalBody.innerHTML = '<div class="modal-loading">加载中…</div>';
 
                 try {
-                    const resp = await fetch(
-                        `/api/experiences/${encodeURIComponent(expId)}`,
-                    );
+                    const resp = await fetch(`/api/experiences/${encodeURIComponent(expId)}`);
                     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const exp = await resp.json();
                     renderPreview(exp);
@@ -1051,17 +1110,13 @@
             function renderPreview(exp) {
                 // 标题
                 const typeLabel = exp.type === "skill" ? "Skill" : "Wiki";
-                const badgeClass =
-                    exp.type === "skill" ? "badge-skill" : "badge-wiki";
+                const badgeClass = exp.type === "skill" ? "badge-skill" : "badge-wiki";
                 modalTitle.innerHTML = `<span class="badge ${badgeClass}">${typeLabel}</span> ${esc(exp.name)}${exp.is_hot ? ' <span class="badge badge-hot">热</span>' : ""}`;
 
                 // 元信息
                 const allKw = exp.keywords || [];
                 const kwTagsHtml = allKw
-                    .map(
-                        (k) =>
-                            `<span class="meta-kw-tag" title="${esc(k)}">${esc(k)}</span>`,
-                    )
+                    .map((k) => `<span class="meta-kw-tag" title="${esc(k)}">${esc(k)}</span>`)
                     .join("");
                 modalMeta.innerHTML = `
                     <div class="meta-row">
