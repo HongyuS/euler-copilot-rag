@@ -1,7 +1,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
+from re import A
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import Index
-from sqlalchemy import Boolean, Column, ForeignKey, BigInteger, Float, Text, func
+from sqlalchemy import (
+    Boolean,
+    Column,
+    ForeignKey,
+    BigInteger,
+    Float,
+    Text,
+    func,
+    JSON,
+    ARRAY,
+)
 from sqlalchemy.types import TIMESTAMP, UUID
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import (
@@ -23,7 +35,9 @@ from rag_core.database.db_vector.postgres.manager.chunk_manager import ChunkMana
 from rag_core.database.db_vector.postgres.manager.doc_manager import DocManager
 from rag_core.database.db_vector.postgres.manager.json_manager import JsonManager
 from rag_core.database.db_vector.postgres.convertor import Convertor
+from rag_core.schema.json import LogicalExpression, Condition
 from rag_core.ENUM.general import ExistedStatus
+from rag_core.ENUM.json import LogicOperatorType, OperationType
 
 logger = logging.getLogger(__name__)
 Base = declarative_base()
@@ -115,7 +129,7 @@ class JsonEntity(Base):
     id = Column(Text, default=lambda: str(uuid4()), primary_key=True)  # JSON id
     kb_id = Column(Text)  # 所属知识库id
     name = Column(Text)  # JSON名称
-    content = Column(Text)  # JSON内容，存储为字符串格式
+    content = Column(JSON)  # JSON内容
     hit_count = Column(BigInteger)  # JSON被检索命中的次数
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp()
@@ -131,7 +145,7 @@ class JsonValueEntity(Base):
     __tablename__ = "json_value"
     id = Column(Text, default=lambda: str(uuid4()), primary_key=True)  # JSON值id
     json_id = Column(Text)  # 所属JSON id
-    key = Column(Text)  # JSON键
+    key = Column(Array(Text))  # JSON值对应的JSON字段路径，支持多级路径
     value_ts_vector = Column(TSVECTOR)  # JSON值词向量
     value_vector = Column(Vector(1024))  # JSON值向量
     created_at = Column(
@@ -183,3 +197,90 @@ class Postgres(BaseVectorDataBase):
     async def get_session(cls):
         connection = async_sessionmaker(cls.engine, expire_on_commit=False)()
         return cls._ConnectionManager(connection)
+
+    @staticmethod
+    async def change_logical_expression_to_sqlalchemy_filter(
+        logical_expression: LogicalExpression,
+    ) -> any:
+        if isinstance(logical_expression, Condition):
+            field_path = logical_expression.field
+            operator = logical_expression.operator
+            value = logical_expression.value
+
+            # 解析多级JSON路径：支持 str / list[str]
+            def get_json_path(expr, path):
+                if isinstance(path, str):
+                    path = [path]
+                for key in path:
+                    expr = expr[key]
+                return expr
+
+            json_field = get_json_path(JsonEntity.content, field_path)
+            json_text = json_field.astext
+
+            if operator == OperationType.EQ:
+                return json_text == str(value)
+            elif operator == OperationType.NE:
+                return json_text != str(value)
+            elif operator == OperationType.GT:
+                return json_text > str(value)
+            elif operator == OperationType.GTE:
+                return json_text >= str(value)
+            elif operator == OperationType.LT:
+                return json_text < str(value)
+            elif operator == OperationType.LTE:
+                return json_text <= str(value)
+            elif operator == OperationType.LIKE:
+                return json_text.ilike(f"%{value}%")
+            elif operator == OperationType.LIKE_LEFT:
+                return json_text.ilike(f"%{value}")
+            elif operator == OperationType.LIKE_RIGHT:
+                return json_text.ilike(f"{value}%")
+            elif operator == OperationType.IN:
+                if not isinstance(value, list):
+                    raise ValueError("IN 操作的值必须是列表")
+                return json_text.in_([str(v) for v in value])
+            elif operator == OperationType.NOT_IN:
+                if not isinstance(value, list):
+                    raise ValueError("NOT IN 操作的值必须是列表")
+                return ~json_text.in_([str(v) for v in value])
+            elif operator == OperationType.IS_NULL:
+                return json_field.is_(None)
+            elif operator == OperationType.IS_NOT_NULL:
+                return json_field.isnot(None)
+            elif operator == OperationType.BETWEEN:
+                if not (
+                    isinstance(value, list) and len(value) == 2 and None not in value
+                ):
+                    raise ValueError("BETWEEN 必须是两个非空值的列表")
+                return func.and_(json_text >= str(value[0]), json_text <= str(value[1]))
+            elif operator == OperationType.LENGTH_EQ:
+                return func.length(json_text) == int(value)
+            elif operator == OperationType.LENGTH_GT:
+                return func.length(json_text) > int(value)
+            elif operator == OperationType.LENGTH_GTE:
+                return func.length(json_text) >= int(value)
+            elif operator == OperationType.LENGTH_LT:
+                return func.length(json_text) < int(value)
+            elif operator == OperationType.LENGTH_LTE:
+                return func.length(json_text) <= int(value)
+            else:
+                raise ValueError(f"不支持的操作符: {operator}")
+        else:
+            operator = logical_expression.operator
+            conditions = logical_expression.conditions
+            filters = [
+                await Postgres.change_logical_expression_to_sqlalchemy_filter(cond)
+                for cond in conditions
+            ]
+
+            if operator == LogicOperatorType.AND:
+                return func.and_(*filters)
+            elif operator == LogicOperatorType.OR:
+                return func.or_(*filters)
+            elif operator == LogicOperatorType.AND_NOT:
+                return ~func.and_(*filters)
+            elif operator == LogicOperatorType.OR_NOT:
+                return ~func.or_(*filters)
+            else:
+                raise ValueError(f"不支持的逻辑运算符: {operator}")
