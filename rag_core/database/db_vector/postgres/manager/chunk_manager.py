@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
     String,
@@ -48,7 +49,7 @@ class ChunkManager:
         return added_ids
 
     @staticmethod
-    async def delete_deleted_chunks() -> None:
+    async def delete_chunks_deleted() -> None:
         """删除存在状态为DELETED的知识块，一次删除1024条目录"""
         batch_size = 1024
         while True:
@@ -249,7 +250,7 @@ class ChunkManager:
             return 0
 
     @staticmethod
-    async def list_chunks_by_document_id(
+    async def list_chunks(
         document_id: str, req: ListChunkRequest
     ) -> tuple[int, list[Chunk]]:
         """根据文档ID分页查询知识块列表"""
@@ -267,9 +268,19 @@ class ChunkManager:
                 if req.enabled is not None:
                     stmt = stmt.where(ChunkEntity.enabled == req.enabled)
                 if req.created_at_start:
-                    stmt = stmt.where(ChunkEntity.created_at >= req.created_at_start)
+                    stmt = stmt.where(
+                        ChunkEntity.created_at
+                        >= datetime.strptime(
+                            req.created_at_start, "%Y-%m-%d %H:%M"
+                        ).replace(tzinfo=timezone.utc)
+                    )
                 if req.created_at_end:
-                    stmt = stmt.where(ChunkEntity.created_at <= req.created_at_end)
+                    stmt = stmt.where(
+                        ChunkEntity.created_at
+                        <= datetime.strptime(
+                            req.created_at_end, "%Y-%m-%d %H:%M"
+                        ).replace(tzinfo=timezone.utc)
+                    )
                 total = await session.execute(
                     stmt.with_only_columns(func.count()).order_by(None)
                 )
@@ -328,7 +339,8 @@ class ChunkManager:
         query: str,
         top_k: int,
         doc_ids: Optional[list[str]] = None,
-        banned_ids: Optional[list[str]] = None,
+        banned_doc_ids: Optional[list[str]] = None,
+        banned_chunk_ids: Optional[list[str]] = None,
         is_tight: bool = True,
     ) -> list[Chunk]:
         """根据知识库ID列表和查询内容搜索知识块"""
@@ -364,8 +376,10 @@ class ChunkManager:
             )
             if doc_ids:
                 stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-            if banned_ids:
-                stmt = stmt.where(ChunkEntity.id.notin_(banned_ids))
+            if banned_doc_ids:
+                stmt = stmt.where(DocumentEntity.id.notin_(banned_doc_ids))
+            if banned_chunk_ids:
+                stmt = stmt.where(ChunkEntity.id.notin_(banned_chunk_ids))
             stmt = stmt.order_by(similarity_score.desc())
             stmt = stmt.limit(top_k)
             result = await session.execute(stmt)
@@ -382,8 +396,9 @@ class ChunkManager:
         vector: list[float],
         top_k: int,
         doc_ids: Optional[list[str]] = None,
-        banned_ids: Optional[list[str]] = None,
-    ):
+        banned_doc_ids: Optional[list[str]] = None,
+        banned_chunk_ids: Optional[list[str]] = None,
+    ) -> list[Chunk]:
         """根据知识库ID列表和查询向量搜索知识块"""
         if not kb_ids:
             return []
@@ -408,8 +423,10 @@ class ChunkManager:
             )
             if doc_ids:
                 stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
-            if banned_ids:
-                stmt = stmt.where(ChunkEntity.id.notin_(banned_ids))
+            if banned_doc_ids:
+                stmt = stmt.where(DocumentEntity.id.notin_(banned_doc_ids))
+            if banned_chunk_ids:
+                stmt = stmt.where(ChunkEntity.id.notin_(banned_chunk_ids))
             stmt = stmt.order_by(similarity_score.desc())
             stmt = stmt.limit(top_k)
             result = await session.execute(stmt)
