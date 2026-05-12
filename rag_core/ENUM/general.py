@@ -30,3 +30,14 @@ class LogLevel(str, Enum):
     WARNING = "WARNING"
     ERROR = "ERROR"
     CRITICAL = "CRITICAL"
+
+
+class TmpFilePath(str, Enum):
+    """临时文件路径"""
+
+    FILE_UPLOAD_PATH = "rag_core/tmp/file_upload/"
+    FILE_PARSE_PATH = "rag_core/tmp/file_parse/"
+    FILE_PARSE_RESULT_PATH = "rag_core/tmp/file_parse_result/"
+    KNOWLEDGE_BASE_UPLOAD_PATH = "rag_core/tmp/knowledge_base_upload/"
+    KNOWLEDGE_BASE_EXPORT_PATH = "rag_core/tmp/knowledge_base_export/"
+    KNOWLEDGE_BASE_IMPORT_PATH = "rag_core/tmp/knowledge_base_import/"

@@ -14,7 +14,6 @@ class ParseNode(BaseModel):
     content: str = Field(..., description="节点内容")
     type: ChunkType = Field(..., description="节点类型")
     text: str = Field(default="", description="节点文本")
-    content: Any = Field(..., description="节点内容")
     text_feature: str = Field(default="", description="节点特征")
     vector: Optional[list[float]] = Field(default=None, description="节点向量")
     bbox: Optional[tuple[float, float, float, float]] = Field(
