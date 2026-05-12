@@ -1,16 +1,10 @@
 from datetime import datetime, timezone
-from math import log
 from sqlalchemy import (
-    Column,
-    String,
-    Text,
-    BigInteger,
-    DateTime,
     func,
-    Index,
-    update,
     delete,
+    update,
     select,
+    false,
 )
 from typing import Optional
 import logging
@@ -50,6 +44,57 @@ class JsonManager:
         return added_ids
 
     @staticmethod
+    async def add_json_values(
+        json_id: str, key_path_and_value_list: list[tuple[list[str], str, list[float]]]
+    ) -> bool:
+        """批量添加JSON值"""
+        json_value_entities = []
+        for key_path, value, vector in key_path_and_value_list:
+            json_value_entity = JsonValueEntity(
+                json_id=json_id,
+                key=key_path,
+                value=value,
+                value_vector=vector,
+            )
+            json_value_entities.append(json_value_entity)
+        batch_size = 1024
+        for i in range(0, len(json_value_entities), batch_size):
+            batch = json_value_entities[i : i + batch_size]
+            try:
+                async with await Postgres.get_session() as session:
+                    session.add_all(batch)
+                    await session.commit()
+            except Exception as e:
+                err = "批量添加JSON值失败"
+                logger.error(f"{err}: {e}")
+                return False
+        return True
+
+    @staticmethod
+    async def update_jsons_value_value_ts_vector_by_json_id(json_id: str) -> bool:
+        """根据JSON ID更新JSON值的ts_vector，默认使用zhparser分词器"""
+        try:
+            async with await Postgres.get_session() as session:
+                stmt = (
+                    update(JsonValueEntity)
+                    .where(JsonValueEntity.json_id == json_id)
+                    .values(
+                        {
+                            JsonValueEntity.value_ts_vector: func.to_tsvector(
+                                "zhparser", JsonValueEntity.value
+                            )
+                        }
+                    )
+                )
+                await session.execute(stmt)
+                await session.commit()
+                return True
+        except Exception as e:
+            err = "根据JSON ID更新JSON值的ts_vector失败"
+            logger.error(f"{err}: {e}")
+            return False
+
+    @staticmethod
     async def delete_jsons_by_json_ids(json_ids: list[str]) -> list[str]:
         """根据JSON ID批量删除JSON"""
         batch_size = 1024
@@ -59,7 +104,7 @@ class JsonManager:
             try:
                 async with await Postgres.get_session() as session:
                     stmt = delete(JsonEntity).where(JsonEntity.id.in_(batch))
-                    result = await session.execute(stmt)
+                    await session.execute(stmt)
                     await session.commit()
                     deleted_ids.extend(batch)
             except Exception as e:
@@ -118,7 +163,11 @@ class JsonManager:
             return []
         stmt = select(JsonEntity).where(JsonEntity.kb_id.in_(kb_ids))
         logical_expression_filter = (
-            Postgres.change_logical_expression_to_sqlalchemy_filter(logical_expression)
+            await (
+                Postgres.change_logical_expression_to_sqlalchemy_filter(
+                    logical_expression
+                )
+            )
         )
         stmt = stmt.where(logical_expression_filter)
         if banned_json_ids:
@@ -165,8 +214,10 @@ class JsonManager:
         )
         if logical_expression:
             logical_expression_filter = (
-                Postgres.change_logical_expression_to_sqlalchemy_filter(
-                    logical_expression
+                await (
+                    Postgres.change_logical_expression_to_sqlalchemy_filter(
+                        logical_expression
+                    )
                 )
             )
             stmt = stmt.where(logical_expression_filter)
@@ -174,7 +225,7 @@ class JsonManager:
             stmt = stmt.where(JsonEntity.id.notin_(banned_json_ids))
         if semantic_keys:
             # 构造语义检索条件，JsonValueEntity.key与semantic_keys中的任一列表匹配即可
-            semantic_filter = False
+            semantic_filter = false()
             for key_list in semantic_keys:
                 semantic_filter = semantic_filter | JsonValueEntity.key.op("&&")(
                     key_list
@@ -191,6 +242,7 @@ class JsonManager:
             jsons.append(json)
         return jsons
 
+    @staticmethod
     async def search_jsons_by_vector(
         kb_ids: list[str],
         vector: list[float],
@@ -221,8 +273,10 @@ class JsonManager:
         )
         if logical_expression:
             logical_expression_filter = (
-                Postgres.change_logical_expression_to_sqlalchemy_filter(
-                    logical_expression
+                await (
+                    Postgres.change_logical_expression_to_sqlalchemy_filter(
+                        logical_expression
+                    )
                 )
             )
             stmt = stmt.where(logical_expression_filter)
@@ -230,7 +284,7 @@ class JsonManager:
             stmt = stmt.where(JsonEntity.id.notin_(banned_json_ids))
         if semantic_keys:
             # 构造语义检索条件，JsonValueEntity.key与semantic_keys中的任一列表匹配即可
-            semantic_filter = False
+            semantic_filter = false()
             for key_list in semantic_keys:
                 semantic_filter = semantic_filter | JsonValueEntity.key.op("&&")(
                     key_list
@@ -246,4 +300,3 @@ class JsonManager:
             json = await Postgres.convertor.json_entity_to_json(json_entity)
             jsons.append(json)
         return jsons
-    

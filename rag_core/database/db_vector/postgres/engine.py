@@ -1,32 +1,20 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2023-2024. All rights reserved.
-from re import A
-
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import Index
 from sqlalchemy import (
     Boolean,
     Column,
-    ForeignKey,
     BigInteger,
-    Float,
     Text,
     func,
     JSON,
     ARRAY,
 )
-from sqlalchemy.types import TIMESTAMP, UUID
+from sqlalchemy.types import TIMESTAMP
 from sqlalchemy.dialects.postgresql import TSVECTOR
-from sqlalchemy.orm import (
-    declarative_base,
-    DeclarativeBase,
-    MappedAsDataclass,
-    Mapped,
-    mapped_column,
-)
+from sqlalchemy.orm import declarative_base
 from pgvector.sqlalchemy import Vector
-from datetime import datetime
 import logging
-import uuid
 from uuid import uuid4
 import urllib.parse
 from rag_core.config.config import Config
@@ -130,6 +118,8 @@ class JsonEntity(Base):
     kb_id = Column(Text)  # 所属知识库id
     name = Column(Text)  # JSON名称
     content = Column(JSON)  # JSON内容
+    enabled = Column(Boolean)  # JSON是否启用
+    status = Column(Text, default=ExistedStatus.EXISTED.value)  # JSON状态
     hit_count = Column(BigInteger)  # JSON被检索命中的次数
     created_at = Column(
         TIMESTAMP(timezone=True), nullable=True, server_default=func.current_timestamp()
@@ -145,7 +135,8 @@ class JsonValueEntity(Base):
     __tablename__ = "json_value"
     id = Column(Text, default=lambda: str(uuid4()), primary_key=True)  # JSON值id
     json_id = Column(Text)  # 所属JSON id
-    key = Column(Array(Text))  # JSON值对应的JSON字段路径，支持多级路径
+    key = Column(ARRAY(Text))  # JSON值对应的JSON字段路径，支持多级路径
+    value = Column(Text)  # JSON值文本
     value_ts_vector = Column(TSVECTOR)  # JSON值词向量
     value_vector = Column(Vector(1024))  # JSON值向量
     created_at = Column(
@@ -179,7 +170,11 @@ class Postgres(BaseVectorDataBase):
     # 对密码进行 URL 编码
     password = Config().get_config().database_password
     encoded_password = urllib.parse.quote_plus(password)
-    database_url = f"postgresql+asyncpg://{Config().get_config().database_user}:{encoded_password}@{Config().get_config().database_host}:{Config().get_config().database_port}/{Config().get_config().database_db}"
+    db_config = Config().get_config()
+    database_url = (
+        f"postgresql+asyncpg://{db_config.database_user}:{encoded_password}"
+        f"@{db_config.database_host}:{db_config.database_port}/{db_config.database_db}"
+    )
     engine = create_async_engine(
         database_url,
         echo=False,

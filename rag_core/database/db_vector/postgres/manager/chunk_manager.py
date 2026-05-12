@@ -1,12 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column,
-    String,
-    Text,
-    BigInteger,
-    DateTime,
     func,
-    Index,
     update,
     delete,
     select,
@@ -14,7 +8,7 @@ from sqlalchemy import (
 from typing import Optional
 import logging
 from rag_core.ENUM.general import ExistedStatus
-from rag_core.schema.request import ListChunkRequest, SearchChunkRequest
+from rag_core.schema.request import ListChunkRequest
 from rag_core.schema.knowledge_base import Chunk
 from rag_core.database.db_vector.postgres.engine import (
     Postgres,
@@ -57,7 +51,7 @@ class ChunkManager:
                 async with await Postgres.get_session() as session:
                     stmt = (
                         delete(ChunkEntity)
-                        .where(ChunkEntity.existed_status == ExistedStatus.DELETED)
+                        .where(ChunkEntity.status == ExistedStatus.DELETED.value)
                         .limit(batch_size)
                     )
                     result = await session.execute(stmt)
@@ -219,7 +213,7 @@ class ChunkManager:
                 stmt = (
                     update(ChunkEntity)
                     .where(ChunkEntity.id == chunk_id)
-                    .values({"existed_status": existed_status})
+                    .values({"status": existed_status.value})
                 )
                 await session.execute(stmt)
                 await session.commit()
@@ -238,8 +232,8 @@ class ChunkManager:
             async with await Postgres.get_session() as session:
                 stmt = (
                     update(ChunkEntity)
-                    .where(ChunkEntity.document_id == document_id)
-                    .values({"existed_status": existed_status})
+                    .where(ChunkEntity.doc_id == document_id)
+                    .values({"status": existed_status.value})
                 )
                 result = await session.execute(stmt)
                 await session.commit()
@@ -258,13 +252,13 @@ class ChunkManager:
             async with await Postgres.get_session() as session:
                 stmt = (
                     select(ChunkEntity)
-                    .where(ChunkEntity.document_id == document_id)
-                    .where(ChunkEntity.existed_status != ExistedStatus.DELETED)
+                    .where(ChunkEntity.doc_id == document_id)
+                    .where(ChunkEntity.status != ExistedStatus.DELETED.value)
                 )
                 if req.content:
                     stmt = stmt.where(ChunkEntity.content.ilike(f"%{req.content}%"))
                 if req.chunk_type:
-                    stmt = stmt.where(ChunkEntity.chunk_type == req.chunk_type)
+                    stmt = stmt.where(ChunkEntity.type == req.chunk_type)
                 if req.enabled is not None:
                     stmt = stmt.where(ChunkEntity.enabled == req.enabled)
                 if req.created_at_start:
@@ -315,8 +309,8 @@ class ChunkManager:
             async with await Postgres.get_session() as session:
                 stmt = (
                     select(ChunkEntity)
-                    .where(ChunkEntity.document_id == doc_id)
-                    .where(ChunkEntity.existed_status != ExistedStatus.DELETED)
+                    .where(ChunkEntity.doc_id == doc_id)
+                    .where(ChunkEntity.status != ExistedStatus.DELETED.value)
                     .order_by(ChunkEntity.created_at.asc())
                     .offset(global_offset - limit)
                     .limit(limit * 2 + 1)
@@ -408,12 +402,12 @@ class ChunkManager:
         async with await Postgres.get_session() as session:
             vector_param = str(vector)
             similarity_score = func.cosine_similarity(
-                ChunkEntity.text_vector, vector_param
+                ChunkEntity.vector, vector_param
             ).label("similarity_score")
             stmt = (
                 select(ChunkEntity, similarity_score)
                 .join(DocumentEntity, DocumentEntity.id == ChunkEntity.doc_id)
-                .where(ChunkEntity.text_vector.isnot(None))
+                .where(ChunkEntity.vector.isnot(None))
                 .where(similarity_score > 0)
                 .where(DocumentEntity.enabled == True)
                 .where(DocumentEntity.status != ExistedStatus.DELETED.value)
