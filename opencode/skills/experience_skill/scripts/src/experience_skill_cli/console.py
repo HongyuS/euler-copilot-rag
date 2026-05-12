@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from experience_skill_cli.schema.exprience import Experience
+    from experience_skill_cli.service.experience_service import HybridSearchResult
 
 # ---------------------------------------------------------------------------
 # Enum 值 -> 可读文本的映射
@@ -33,7 +34,7 @@ def _build_enum_display_map() -> None:
             ExperienceType.WIKI: "WIKI",
             ExperienceStatus.EXISTED: "存在",
             ExperienceStatus.DELETED: "已删除",
-        }
+        },
     )
 
 
@@ -155,3 +156,69 @@ def print_experience_list(exps: list[Experience], total: int | None = None) -> N
         if idx > 1:
             blank()
         print_experience(exp, idx)
+
+
+# ---------------------------------------------------------------------------
+# 混合检索结果打印
+# ---------------------------------------------------------------------------
+
+_SNIPPET_MAX_LEN = 100
+_DESCRIPTION_MAX_LEN = 200
+
+_MATCH_TYPE_LABELS = {
+    "both": "元数据 + 正文",
+    "metadata": "仅元数据",
+    "content": "仅正文",
+}
+
+
+def print_hybrid_search_results(
+    results: list[HybridSearchResult],
+) -> None:
+    """打印混合检索结果列表，包含匹配类型、得分和正文摘要。"""
+    # 延迟导入避免循环依赖
+
+    if not results:
+        info("无匹配结果")
+        return
+
+    for idx, sr in enumerate(results, 1):
+        if idx > 1:
+            blank()
+
+        exp = sr.experience
+        section(f"第 {idx} 条结果")
+
+        # 基本信息
+        echo(f"{'ID':<12}: {exp.id}")
+        echo(f"{'名称':<12}: {exp.name}")
+        echo(f"{'类型':<12}: {_format_value(exp.type)}")
+
+        # 匹配信息
+        match_label = _MATCH_TYPE_LABELS.get(sr.match_type, sr.match_type)
+        echo(f"{'匹配方式':<12}: {match_label}")
+        echo(
+            f"{'匹配得分':<12}: {sr.final_score} (元数据: {sr.db_score}, 正文: {sr.content_score})",
+        )
+
+        # 正文匹配摘要
+        if sr.snippets:
+            echo(f"{'正文命中':<12}: {sr.content_hit_count} 处")
+            echo(f"{'正文摘要':<12}:")
+            for snip in sr.snippets[:3]:  # 最多展示 3 条片段
+                # 截断过长行
+                text = snip.content
+                if len(text) > _SNIPPET_MAX_LEN:
+                    text = text[: _SNIPPET_MAX_LEN - 3] + "..."
+                echo(f"{'':<12}  L{snip.line_num}: {text}")
+
+        # 描述
+        if exp.description:
+            desc = exp.description
+            if len(desc) > _DESCRIPTION_MAX_LEN:
+                desc = desc[: _DESCRIPTION_MAX_LEN - 3] + "..."
+            echo(f"{'描述':<12}: {desc}")
+
+        # 来源
+        echo(f"{'来源':<12}: {exp.source}")
+        echo(f"{'是否热门':<12}: {'是' if exp.is_hot else '否'}")

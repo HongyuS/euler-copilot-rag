@@ -19,7 +19,7 @@ from experience_skill_cli.manager.experience_manager import ExperienceManager
 from experience_skill_cli.manager.keyword_manager import KeyWordManager
 from experience_skill_cli.schema.enum import ExperienceType
 from experience_skill_cli.schema.exprience import Experience
-from experience_skill_cli.service.experience_service import ExperienceService
+from experience_skill_cli.service.experience_service import ExperienceService, HybridSearchResult
 
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -124,9 +124,46 @@ async def search_experiences(
     exp_type: Annotated[str, Query(description="类型：SKILL / WIKI")],
     top_k: Annotated[int, Query(ge=1, le=100, description="返回条数")] = 20,
     is_hot: Annotated[bool | None, Query(description="是否热门")] = None,
+    search_mode: Annotated[
+        str | None,
+        Query(description="检索模式：hybrid（默认）/ metadata / content"),
+    ] = None,
 ) -> JSONResponse:
-    """基于 FTS 全文搜索经验。"""
+    """搜索经验，支持三种检索模式。
+
+    - hybrid（默认）：元数据 + 正文内容混合检索
+    - metadata：仅 FTS5 元数据检索
+    - content：仅正文内容 grep 检索
+    """
     experience_type = ExperienceType[exp_type.upper()]
+    mode = (search_mode or "hybrid").strip().lower()
+
+    if mode == "content":
+        results = ExperienceService.search_content_only(
+            query=query,
+            exp_type=experience_type,
+            top_k=top_k,
+            is_hot=is_hot,
+        )
+        return JSONResponse(
+            {
+                "items": [_hybrid_result_to_dict(r) for r in results],
+                "mode": "content",
+            },
+        )
+    if mode == "hybrid":
+        results = ExperienceService.search_with_content(
+            query=query,
+            exp_type=experience_type,
+            top_k=top_k,
+            is_hot=is_hot,
+        )
+        return JSONResponse(
+            {
+                "items": [_hybrid_result_to_dict(r) for r in results],
+                "mode": "hybrid",
+            },
+        )
     exps = ExperienceService.search_experiences(
         query=query,
         exp_type=experience_type,
@@ -136,6 +173,7 @@ async def search_experiences(
     return JSONResponse(
         {
             "items": [_exp_to_dict(e) for e in exps],
+            "mode": "metadata",
         },
     )
 
@@ -177,7 +215,7 @@ async def get_experience(experience_id: str) -> JSONResponse:
             wiki_md = SKILL_ROOT / exp.source
             if wiki_md.exists():
                 content = wiki_md.read_text(encoding="utf-8")
-    except Exception:  # noqa: BLE001
+    except Exception:
         content = "无法读取文件内容"
 
     # 剥离 YAML header，正文区域不展示冗余元信息
@@ -207,6 +245,30 @@ def _exp_to_dict(exp: Experience) -> dict[str, object]:
     }
 
 
+def _hybrid_result_to_dict(sr: HybridSearchResult) -> dict[str, object]:
+    """将 HybridSearchResult 转为前端可用的字典。"""
+    result = _exp_to_dict(sr.experience)
+    result.update(
+        {
+            "match_type": sr.match_type,
+            "db_score": sr.db_score,
+            "content_score": sr.content_score,
+            "final_score": sr.final_score,
+            "content_hit_count": sr.content_hit_count,
+            "snippets": [
+                {
+                    "line_num": s.line_num,
+                    "content": s.content,
+                    "match_start": s.match_start,
+                    "match_end": s.match_end,
+                }
+                for s in sr.snippets
+            ],
+        },
+    )
+    return result
+
+
 def start_web_server(
     host: str = "127.0.0.1",
     port: int = 8080,
@@ -234,7 +296,7 @@ def start_web_server(
                 timeout=1,
             ):
                 break
-        except Exception:  # noqa: BLE001
+        except Exception:
             time.sleep(0.1)
     else:
         warn(f"服务启动超时，请手动访问: {url}")
@@ -250,7 +312,7 @@ def start_web_server(
         try:
             webbrowser.open(url)
             launch(f"浏览器已打开: {url}")
-        except Exception:  # noqa: BLE001
+        except Exception:
             warn(f"无法自动打开浏览器，请手动访问: {url}")
     else:
         link(f"请访问: {url}")
