@@ -222,6 +222,21 @@ class DocManager:
             logger.error(f"根据文档ID查询文档信息失败，错误信息：{e}")
 
     @staticmethod
+    async def get_docs_cnt_and_size_by_kb_id(kb_id: str) -> tuple[int, int]:
+        """根据知识库ID查询文档数量和文档总大小"""
+        try:
+            async with await Postgres.get_session(DocumentEntity) as session:
+                stmt = select(
+                    func.count(), func.coalesce(func.sum(DocumentEntity.size), 0)
+                ).where(DocumentEntity.kb_id == kb_id)
+                result = await session.execute(stmt)
+                doc_cnt, total_size = result.fetchone()
+            return doc_cnt, total_size
+        except Exception as e:
+            logger.error(f"根据知识库ID查询文档数量和文档总大小失败，错误信息：{e}")
+            return 0, 0
+
+    @staticmethod
     async def search_docs_by_keywords(
         kb_ids: list[str],
         query: str,

@@ -5,6 +5,7 @@ from ENUM.model import ModelLabel, ModelProvider
 
 
 class StaticSourceConfig(BaseModel):
+    aes_key: str = Field(None, description="AES加密密钥")
     stop_words_path: str = Field(None, description="停用词文件路径")
     prompt_template_path: str = Field(None, description="提示词模板文件路径")
 

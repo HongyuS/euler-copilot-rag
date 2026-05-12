@@ -11,39 +11,45 @@ class BaseVectorDataBase(BaseDataBase):
     定义通用逻辑，子类必须实现：获取数据库连接URL、初始化数据库特殊逻辑
     """
 
-    # 类变量初始化
-    chunk_manager = BaseDataBase.find_sub_class(
-        Config().get_config().vector_db.database_type
-    ).chunk_manager
-    doc_manager = BaseDataBase.find_sub_class(
-        Config().get_config().vector_db.database_type
-    ).doc_manager
-    json_manager = BaseDataBase.find_sub_class(
-        Config().get_config().vector_db.database_type
-    ).json_manager
-    convertor = BaseDataBase.find_sub_class(
-        Config().get_config().vector_db.database_type
-    ).convertor
+    # 类变量
+    chunk_manager = None
+    doc_manager = None
+    json_manager = None
+    convertor = None
 
     def __init__(self) -> None:
         pass
 
-    @staticmethod
-    async def init_database_specifics() -> None:
+    @classmethod
+    async def init_database_specifics(cls) -> None:
         """
-        【抽象方法】子类必须实现：数据库专属初始化逻辑（如插件注册、连接监听等）
+        初始化向量数据库全局管理器（只执行一次）
         """
+        # 1. 只查一次子类
+        db_sub_class = BaseDataBase.find_sub_class(
+            Config().get_config().vector_db.database_type
+        )
+
+        # 2. 赋值给当前类变量
+        cls.chunk_manager = db_sub_class.chunk_manager
+        cls.doc_manager = db_sub_class.doc_manager
+        cls.json_manager = db_sub_class.json_manager
+        cls.convertor = db_sub_class.convertor
+
+        # 3. 日志
         vector_db_config = Config().get_config().vector_db
         logger.info(f"正在初始化向量数据库，类型：{vector_db_config.database_type}")
-        # 子类实现数据库专属初始化逻辑
-        await BaseVectorDataBase.find_sub_class(
-            vector_db_config.database_type
-        ).init_database_specifics()
 
-    @staticmethod
+        # 4. 调用子类初始化（建表）
+        await db_sub_class.init_database_specifics()
+
+    @classmethod
     async def get_session(cls) -> BaseDataBase._ConnectionManager:
         """通用：获取数据库会话（上下文管理器）"""
-        session = await BaseVectorDataBase.find_sub_class(
+        # 找到子类
+        db_sub_class = BaseDataBase.find_sub_class(
             Config().get_config().vector_db.database_type
-        ).get_session(cls)
-        return BaseDataBase._ConnectionManager(session)
+        )
+
+        # 调用子类的 get_session
+        return await db_sub_class.get_session()

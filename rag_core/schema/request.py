@@ -204,10 +204,11 @@ class SearchJsonRequest(BaseModel):
         None, description="JSON搜索条件的逻辑表达式"
     )
     query: Optional[str] = Field("", description="查询内容")
-    semantic_keys: Optional[list[str]] = Field(
+    semantic_keys: Optional[list[list[str]]] = Field(
         None,
         description="需要语义检索的JSON字段列表，默认为None则标识对所有字段进行语义检索",
     )
+    ratio: float = Field(0.5, description="语义检索结果占比，取值范围为0-1，默认为0.5")
 
 
 class SwitchChunkEnabledRequest(BaseModel):
@@ -246,6 +247,7 @@ class SearchChunkRequest(BaseModel):
     is_rerank: bool = Field(default=False, description="是否重新排序")
     is_compress: bool = Field(default=False, description="是否压缩")
     tokens_limit: int = Field(default=8192, description="token限制")
+    ratio: float = Field(0.5, description="语义检索结果占比，取值范围为0-1，默认为0.5")
 
 
 class ListTraceRequest(BaseModel):

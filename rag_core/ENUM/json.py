@@ -6,7 +6,7 @@ Copyright (c) Huawei Technologies Co., Ltd. 2023-2025. All rights reserved.
 from enum import Enum
 
 
-class LogicOperator(str, Enum):
+class LogicOperatorType(str, Enum):
     """逻辑运算符枚举"""
 
     AND = "and"
