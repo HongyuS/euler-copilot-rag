@@ -4,8 +4,7 @@ from rag_core.database.db_vector.postgres.engine import (
     JsonEntity,
 )
 from rag_core.schema.knowledge_base import Document, Chunk, Json
-from rag_core.ENUM.parse import ParseMode, Topology, ChunkParseTopology, ChunkType
-from rag_core.ENUM.general import ExistedStatus
+from rag_core.ENUM.parse import ParseMode, Topology, ChunkType
 
 
 class Convertor:

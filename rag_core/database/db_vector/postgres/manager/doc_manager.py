@@ -1,13 +1,6 @@
-from ast import stmt
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Column,
-    String,
-    Text,
-    BigInteger,
-    DateTime,
     func,
-    Index,
     update,
     delete,
     select,
@@ -20,7 +13,6 @@ from rag_core.schema.knowledge_base import Document
 from rag_core.database.db_vector.postgres.engine import (
     Postgres,
     DocumentEntity,
-    ChunkEntity,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,14 +24,14 @@ class DocManager:
         """批量添加文档，返回添加的文档ID列表"""
         doc_entities = []
         for doc in docs:
-            doc_entity = Postgres.convertor.document_to_document_entity(doc)
+            doc_entity = await Postgres.convertor.document_to_document_entity(doc)
             doc_entities.append(doc_entity)
         batch_size = 1024
         added_ids = []
         for i in range(0, len(doc_entities), batch_size):
             batch = doc_entities[i : i + batch_size]
             try:
-                async with await Postgres.get_session(DocumentEntity) as session:
+                async with await Postgres.get_session() as session:
                     session.add_all(batch)
                     await session.commit()
                 added_ids.extend([doc.id for doc in batch])
@@ -53,10 +45,10 @@ class DocManager:
         batch_size = 1024
         while True:
             try:
-                async with await Postgres.get_session(DocumentEntity) as session:
+                async with await Postgres.get_session() as session:
                     stmt = (
                         select(DocumentEntity.id)
-                        .where(DocumentEntity.existed_status == ExistedStatus.DELETED)
+                        .where(DocumentEntity.status == ExistedStatus.DELETED.value)
                         .limit(batch_size)
                     )
                     result = await session.execute(stmt)
@@ -76,7 +68,7 @@ class DocManager:
     async def update_doc_abstract_ts_vector_by_doc_id(doc_id) -> bool:
         """根据文档ID更新文档摘要的ts_vector字段"""
         try:
-            async with await Postgres.get_session(DocumentEntity) as session:
+            async with await Postgres.get_session() as session:
                 stmt = (
                     update(DocumentEntity)
                     .where(DocumentEntity.id == doc_id)
@@ -100,7 +92,7 @@ class DocManager:
     async def update_doc(doc_id: str, doc_info_dict: dict) -> bool:
         """根据文档ID更新文档信息"""
         try:
-            async with await Postgres.get_session(DocumentEntity) as session:
+            async with await Postgres.get_session() as session:
                 stmt = (
                     update(DocumentEntity)
                     .where(DocumentEntity.id == doc_id)
@@ -124,7 +116,7 @@ class DocManager:
         for i in range(0, len(doc_ids), batch_size):
             batch = doc_ids[i : i + batch_size]
             try:
-                async with await Postgres.get_session(DocumentEntity) as session:
+                async with await Postgres.get_session() as session:
                     stmt = (
                         update(DocumentEntity)
                         .where(DocumentEntity.id.in_(batch))
@@ -143,7 +135,7 @@ class DocManager:
     ) -> bool:
         """根据文档ID更新文档存在状态"""
         try:
-            async with await Postgres.get_session(DocumentEntity) as session:
+            async with await Postgres.get_session() as session:
                 stmt = (
                     update(DocumentEntity)
                     .where(DocumentEntity.id == doc_id)
@@ -161,7 +153,7 @@ class DocManager:
     async def list_docs(kb_id: str, req: ListDocRequest) -> tuple[int, list[Document]]:
         """根据知识库ID分页查询文档列表"""
         try:
-            async with await Postgres.get_session(DocumentEntity) as session:
+            async with await Postgres.get_session() as session:
                 stmt = select(DocumentEntity).where(DocumentEntity.kb_id == kb_id)
                 if req.name:
                     stmt = stmt.where(DocumentEntity.name.ilike(f"%{req.name}%"))
@@ -190,7 +182,7 @@ class DocManager:
                 if req.created_at_desc:
                     stmt = stmt.order_by(DocumentEntity.created_at.desc())
                 total_result = await session.execute(
-                    stmt.with_only_columns(func.count())
+                    stmt.with_only_columns(func.count()).order_by(None)
                 )
                 total = total_result.scalar()
                 stmt = stmt.offset((req.page_num - 1) * req.page_size).limit(
@@ -199,7 +191,7 @@ class DocManager:
                 result = await session.execute(stmt)
                 docs = result.scalars().all()
                 doc_list = [
-                    Postgres.convertor.document_entity_to_document(doc) for doc in docs
+                    await Postgres.convertor.document_entity_to_document(doc) for doc in docs
                 ]
             return total, doc_list
         except Exception as e:
@@ -210,12 +202,12 @@ class DocManager:
     async def get_doc_by_id(doc_id: str) -> Optional[Document]:
         """根据文档ID查询文档信息"""
         try:
-            async with await Postgres.get_session(DocumentEntity) as session:
+            async with await Postgres.get_session() as session:
                 stmt = select(DocumentEntity).where(DocumentEntity.id == doc_id)
                 result = await session.execute(stmt)
                 doc_entity = result.scalar_one_or_none()
                 if doc_entity:
-                    return Postgres.convertor.document_entity_to_document(doc_entity)
+                    return await Postgres.convertor.document_entity_to_document(doc_entity)
                 else:
                     return None
         except Exception as e:
@@ -225,7 +217,7 @@ class DocManager:
     async def get_docs_cnt_and_size_by_kb_id(kb_id: str) -> tuple[int, int]:
         """根据知识库ID查询文档数量和文档总大小"""
         try:
-            async with await Postgres.get_session(DocumentEntity) as session:
+            async with await Postgres.get_session() as session:
                 stmt = select(
                     func.count(), func.coalesce(func.sum(DocumentEntity.size), 0)
                 ).where(DocumentEntity.kb_id == kb_id)
@@ -270,7 +262,6 @@ class DocManager:
                 .where(DocumentEntity.enabled == True)
                 .where(DocumentEntity.status != ExistedStatus.DELETED.value)
                 .where(DocumentEntity.kb_id.in_(kb_ids))
-                .where(DocumentEntity.status != ExistedStatus.DELETED.value)
             )
             if doc_ids:
                 stmt = stmt.where(DocumentEntity.id.in_(doc_ids))
@@ -282,10 +273,11 @@ class DocManager:
             doc_entities = result.scalars().all()
         docs = []
         for doc_entity in doc_entities:
-            doc = Postgres.convertor.document_entity_to_document(doc_entity)
+            doc = await Postgres.convertor.document_entity_to_document(doc_entity)
             docs.append(doc)
         return docs
 
+    @staticmethod
     async def search_docs_by_vector(
         kb_ids: list[str],
         vector: list[float],
@@ -322,6 +314,6 @@ class DocManager:
             doc_entities = result.scalars().all()
         docs = []
         for doc_entity in doc_entities:
-            doc = Postgres.convertor.document_entity_to_document(doc_entity)
+            doc = await Postgres.convertor.document_entity_to_document(doc_entity)
             docs.append(doc)
         return docs
