@@ -1,8 +1,12 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from rag_core.schema.config import ModelConfig
+from rag_core.schema.json import Condition, LogicalExpression
+from rag_core.schema.trace import Trace
 from rag_core.ENUM.parse import Language, ParseMode, MetaDataType, ChunkType
-from rag_core.ENUM.task import TaskStatus
+from rag_core.ENUM.task import TaskStatus, TaskType
+from rag_core.ENUM.json import LogicOperator, OperationType, FieldType
+from rag_core.ENUM.knowledge_base import ChunkSearchMethod
 
 
 class CreateAccessKeyRequest(BaseModel):
@@ -52,6 +56,9 @@ class CreateDocKnowledgeBaseRequest(CreateKnowledgeBaseRequest):
     special_characters: Optional[str] = Field(
         None, description="知识库分块特殊字符（如换行符、逗号等）"
     )
+    default_search_method: ChunkSearchMethod = Field(
+        ChunkSearchMethod.HYBRID, description="知识库默认搜索方法"
+    )
     default_chunk_size: int = Field(1024, description="知识库默认分块大小")
     default_parse_mode: ParseMode = Field(
         ParseMode.GENERAL, description="知识库默认解析模式"
@@ -92,6 +99,9 @@ class UpdateDocKnowledgeBaseRequest(UpdateKnowledgeBaseRequest):
     language: Optional[Language] = Field(None, description="知识库语言")
     special_characters: Optional[str] = Field(
         None, description="知识库分块特殊字符（如换行符、逗号等）"
+    )
+    default_search_method: Optional[ChunkSearchMethod] = Field(
+        None, description="知识库默认搜索方法"
     )
     default_chunk_size: Optional[int] = Field(None, description="知识库默认分块大小")
     default_parse_mode: Optional[ParseMode] = Field(
@@ -186,6 +196,20 @@ class ListJsonRequest(BaseModel):
     )
 
 
+class SearchJsonRequest(BaseModel):
+    kb_ids: list[str] = Field(..., description="所属知识库ID列表")
+    top_k: int = Field(5, description="返回的结果数量")
+    banned_json_ids: list[str] = Field(default=[], description="被禁止的JSON ID列表")
+    logical_expression: Optional[LogicalExpression] = Field(
+        None, description="JSON搜索条件的逻辑表达式"
+    )
+    query: Optional[str] = Field("", description="查询内容")
+    semantic_keys: Optional[list[str]] = Field(
+        None,
+        description="需要语义检索的JSON字段列表，默认为None则标识对所有字段进行语义检索",
+    )
+
+
 class SwitchChunkEnabledRequest(BaseModel):
     chunk_ids: list[str] = Field(..., description="要启用的分块ID列表")
     enabled: bool = Field(..., description="分块是否启用")
@@ -213,6 +237,9 @@ class SearchChunkRequest(BaseModel):
     kb_ids: list[str] = Field(..., description="所属知识库ID列表")
     query: str = Field(default="", description="查询内容")
     top_k: int = Field(default=5, description="返回的结果数量")
+    search_method: Optional[ChunkSearchMethod] = Field(
+        None, description="搜索方法，默认为知识库默认搜索方法"
+    )
     doc_ids: list[str] = Field(default=[], description="所属文档ID列表")
     banned_doc_ids: list[str] = Field(default=[], description="被禁止的文档ID列表")
     is_related_surrounding: bool = Field(default=True, description="是否关联上下文")
@@ -220,6 +247,21 @@ class SearchChunkRequest(BaseModel):
     is_rerank: bool = Field(default=False, description="是否重新排序")
     is_compress: bool = Field(default=False, description="是否压缩")
     tokens_limit: int = Field(default=8192, description="token限制")
+
+
+class ListTraceRequest(BaseModel):
+    name: Optional[str] = Field(None, description="跟踪名称")
+    page_size: int = Field(10, description="每页记录数")
+    page_num: int = Field(1, description="页码")
+    created_at_start: Optional[str] = Field(
+        None, description="跟踪创建时间范围开始，格式为YYYY-MM-DD HH:MM:SS"
+    )
+    created_at_end: Optional[str] = Field(
+        None, description="跟踪创建时间范围结束，格式为YYYY-MM-DD HH:MM:SS"
+    )
+    created_at_desc: bool = Field(
+        False, description="跟踪创建时间排序，True表示降序，False表示升序"
+    )
 
 
 class ListTraceDetailsRequest(BaseModel):
@@ -243,4 +285,20 @@ class ListTraceDetailsRequest(BaseModel):
     )
     cost_time_desc: bool = Field(
         False, description="函数执行耗时排序，True表示降序，False表示升序"
+    )
+
+
+class ListTaskRequest(BaseModel):
+    type: Optional[TaskType] = Field(None, description="任务类型")
+    status: Optional[TaskStatus] = Field(None, description="任务状态")
+    page_size: int = Field(10, description="每页记录数")
+    page_num: int = Field(1, description="页码")
+    created_at_start: Optional[str] = Field(
+        None, description="任务创建时间范围开始，格式为YYYY-MM-DD HH:MM:SS"
+    )
+    created_at_end: Optional[str] = Field(
+        None, description="任务创建时间范围结束，格式为YYYY-MM-DD HH:MM:SS"
+    )
+    created_at_desc: bool = Field(
+        False, description="任务创建时间排序，True表示降序，False表示升序"
     )

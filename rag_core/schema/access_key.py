@@ -7,7 +7,9 @@ from ENUM.general import ExistedStatus
 class AccessKey(BaseModel):
     name: str = Field("", description="访问密钥名称")
     description: str = Field("", description="访问密钥描述")
-    key: str = Field(default_factory=lambda: str(uuid4()), description="访问密钥")
+    key: str = Field(
+        default_factory=lambda: str(uuid4()), description="访问密钥，sha256加密"
+    )
     owner_id: str = Field(..., description="访问密钥所属用户ID")
     owner_name: str = Field(..., description="访问密钥所属用户名")
     existed_status: ExistedStatus = Field(

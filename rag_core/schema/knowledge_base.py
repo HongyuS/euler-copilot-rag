@@ -4,13 +4,7 @@ from typing import Optional, Any
 from uuid import uuid4
 from ENUM.parse import ParseResultTopology, ChunkType, ParseMode, Language, MetaDataType
 from ENUM.general import ExistedStatus
-
-
-class SearchMethod(str, Enum):
-    """知识库搜索方法"""
-
-    DOC2CHUNK = "doc2chunk"
-    HYBRID = "hybrid"
+from ENUM.knowledge_base import ChunkSearchMethod
 
 
 class Chunk(BaseModel):
@@ -118,8 +112,8 @@ class DocKnowledgeBase(KnowledgeBase):
         None, description="知识库分块特殊字符（如换行符、逗号等）"
     )
     default_chunk_size: int = Field(1024, description="知识库默认分块大小")
-    default_search_method: SearchMethod = Field(
-        SearchMethod.HYBRID, description="知识库默认搜索方法"
+    default_search_method: ChunkSearchMethod = Field(
+        ChunkSearchMethod.HYBRID, description="知识库默认搜索方法"
     )
     default_parse_mode: ParseMode = Field(
         ParseMode.GENERAL, description="知识库默认解析模式"
