@@ -933,9 +933,9 @@
                     if (state.name) {
                         const params = new URLSearchParams({
                             query: state.name,
-                            exp_type: state.type || "SKILL",
                             top_k: String(state.pageSize),
                         });
+                        if (state.type) params.set("exp_type", state.type);
                         if (state.isHot) params.set("is_hot", "true");
                         if (state.searchMode) params.set("search_mode", state.searchMode);
                         for (const kw of state.selectedKw) {
