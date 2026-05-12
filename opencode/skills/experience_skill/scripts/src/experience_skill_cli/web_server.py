@@ -143,7 +143,26 @@ async def search_experiences(
         else [ExperienceType[exp_type.upper()]]
     )
 
-    all_results: list = []
+    if mode == "metadata":
+        all_exps: list[Experience] = []
+        for experience_type in types:
+            exps = ExperienceService.search_experiences(
+                query=query,
+                exp_type=experience_type,
+                top_k=top_k,
+                is_hot=is_hot,
+            )
+            all_exps.extend(exps)
+        all_exps = all_exps[:top_k]
+        return JSONResponse(
+            {
+                "items": [_exp_to_dict(e) for e in all_exps],
+                "mode": "metadata",
+            },
+        )
+
+    # hybrid / content 模式
+    all_hybrid: list[HybridSearchResult] = []
     for experience_type in types:
         if mode == "content":
             results = ExperienceService.search_content_only(
@@ -152,42 +171,23 @@ async def search_experiences(
                 top_k=top_k,
                 is_hot=is_hot,
             )
-            all_results.extend(results)
-        elif mode == "hybrid":
+        else:
             results = ExperienceService.search_with_content(
                 query=query,
                 exp_type=experience_type,
                 top_k=top_k,
                 is_hot=is_hot,
             )
-            all_results.extend(results)
-        else:
-            exps = ExperienceService.search_experiences(
-                query=query,
-                exp_type=experience_type,
-                top_k=top_k,
-                is_hot=is_hot,
-            )
-            all_results.extend(exps)
+        all_hybrid.extend(results)
 
     # 跨类型时按得分排序，截断至 top_k
     if len(types) > 1:
-        if mode == "metadata":
-            all_results = all_results[:top_k]
-        else:
-            all_results.sort(key=lambda r: r.final_score, reverse=True)
-            all_results = all_results[:top_k]
+        all_hybrid.sort(key=lambda r: r.final_score, reverse=True)
+    all_hybrid = all_hybrid[:top_k]
 
-    if mode == "metadata":
-        return JSONResponse(
-            {
-                "items": [_exp_to_dict(e) for e in all_results],
-                "mode": "metadata",
-            },
-        )
     return JSONResponse(
         {
-            "items": [_hybrid_result_to_dict(r) for r in all_results],
+            "items": [_hybrid_result_to_dict(r) for r in all_hybrid],
             "mode": mode,
         },
     )
