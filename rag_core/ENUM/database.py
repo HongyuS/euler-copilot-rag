@@ -6,6 +6,7 @@ class ScaleDbType(str, Enum):
     数据库类型枚举
     """
 
+    OPENGAUSS = "opengauss"
     POSTGRES = "postgres"
     MYSQL = "mysql"
     JINCANG = "jincang"
@@ -18,6 +19,8 @@ class VectorDbType(str, Enum):
     向量数据库类型枚举
     """
 
+    OPENGAUSS = "opengauss"
+    POSTGRES = "postgres"
     MILVUS = "milvus"
     ES = "elasticsearch"
     QDRANT = "quadrant"

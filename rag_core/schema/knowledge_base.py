@@ -13,8 +13,8 @@ class Chunk(BaseModel):
     """
 
     id: str = Field(default_factory=lambda: str(uuid4()), description="唯一ID")
-    knowledge_base_id: str = Field(..., description="所属知识库ID")
-    document_id: str = Field(..., description="所属文档ID")
+    kb_id: str = Field(..., description="所属知识库ID")
+    doc_id: str = Field(..., description="所属文档ID")
     content: str = Field(..., description="知识块内容")
     tokens: int = Field(..., description="知识块的token数量")
     type: ChunkType = Field(..., description="知识块类型")
@@ -23,7 +23,6 @@ class Chunk(BaseModel):
     global_offset: int = Field(0, description="知识块在原始数据中的全局偏移位置")
     local_offset: int = Field(0, description="知识块在所属页面中的局部偏移位置")
     enabled: bool = Field(default=True, description="知识块是否启用")
-    status: ExistedStatus = Field(ExistedStatus.EXISTED, description="知识块存在状态")
     hit_count: int = Field(0, description="知识块被检索命中的次数")
     created_at: str = Field(
         default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -51,7 +50,6 @@ class Document(BaseModel):
     chunk_size: int = Field(..., description="文档分块大小")
     topology: ParseResultTopology = Field(..., description="文档解析结果拓扑")
     enabled: bool = Field(default=True, description="文档是否启用")
-    status: ExistedStatus = Field(ExistedStatus.EXISTED, description="文档存在状态")
     abstract: str = Field("", description="文档摘要")
     abstract_vector: Optional[list[float]] = Field(
         default=None, description="文档摘要向量"
@@ -134,6 +132,7 @@ class DocKnowledgeBase(KnowledgeBase):
 class JsonKnowledgeBase(KnowledgeBase):
     json_count: int = Field(0, description="知识库中JSON数量")
     json_size: int = Field(0, description="知识库中JSON总大小，单位为字节")
+    schema: Optional[dict] = Field(None, description="JSON结构化模式定义")
     embedding_model_id: Optional[str] = Field(
         None, description="知识库使用的文本嵌入模型ID"
     )
