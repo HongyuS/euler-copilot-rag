@@ -6,58 +6,35 @@
 
 - **双模经验管理**：支持 Skill（工作流程技能）与 Wiki（资料知识库）两类经验资源
 - **全生命周期覆盖**：创建、评估、检索、合并、优化五大标准化能力
-- **高性能全文检索**：基于 SQLite + FTS5 + `simple` 中文/拼音分词器，支持模糊搜索与语义匹配
+- **混合全文检索**：默认融合 FTS5 元数据检索 + ripgrep/grep 正文搜索，支持中英文混合查询，结果标注匹配来源
+- **正文内容召回**：元数据中未覆盖的关键词也能命中（如正文中"rpm 数据库损坏"可被"数据库"检索召回）
+- **高性能后端降级**：正文搜索优先使用 ripgrep（`rg --json --fixed-strings`），不可用时自动降级为 Python 原生扫描
 - **热门经验追踪**：自动标记高频使用经验（同类型 Top 20），支持 LRU 淘汰与按热门度筛选
 - **CLI 命令行工具**：提供完整的命令行接口，便于集成到自动化流水线
-- **Web 管理界面**：基于 FastAPI 的图形化管理前端，支持类型筛选、关键词过滤、分页浏览
+- **Web 管理界面**：基于 FastAPI 的图形化管理前端，支持类型筛选、关键词过滤、分页浏览、检索模式切换
 
 ## 目录结构
 
 ```
 experience_skill/
-├── abilities/                 # 核心能力定义
-│   ├── skill/                 # Skill 能力：创建、评估、检索、合并、优化
-│   │   ├── create-skill.md
-│   │   ├── eval-skill.md
-│   │   ├── find-skill.md
-│   │   ├── merge-skill.md
-│   │   └── optimize-skill.md
-│   └── wiki/                  # Wiki 能力：创建、评估、检索、合并、优化
-│       ├── create-wiki.md
-│       ├── eval-wiki.md
-│       ├── find-wiki.md
-│       ├── merge-wiki.md
-│       └── optimize-wiki.md
-├── scripts/                   # 业务逻辑实现
-│   ├── main.py                # CLI 入口（argparse 子命令）
-│   ├── sqlite.py              # SQLite 数据库封装（含 FTS5 全文检索、表结构定义）
-│   ├── web_server.py          # FastAPI Web 服务
-│   ├── pyproject.toml         # uv 项目配置与依赖声明
-│   ├── templates/
-│   │   └── index.html         # Web 管理界面（HTML + 原生 JS）
-│   ├── service/
-│   │   └── experience_service.py   # 核心服务（增删改查、搜索、合并、优化）
-│   ├── manager/
-│   │   ├── experience_manager.py   # 数据库操作层（CRUD + FTS5 检索）
-│   │   └── keyword_manager.py      # 关键词管理（keyword_table）
-│   ├── schema/
-│   │   ├── exprience.py            # Pydantic 数据模型（Experience）
-│   │   └── enum.py                 # 枚举定义（ExperienceType / ExperienceStatus）
-│   ├── common/
-│   │   └── exprience.py            # 公共常量（热门阈值等）
-│   └── tokenizer/
-│       ├── build.sh                # simple 分词器编译脚本（自动获取最新版本）
-│       └── libsimple -> ...        # 编译产物软链接
-├── skill_hub/                 # Skill 资源仓库
-│   └── exmaple_skill/
-│       ├── skill_def.md
-│       └── database.yaml
-├── wiki_hub/                  # Wiki 资源仓库
-│   ├── example.md             # 示例 Wiki（YAML front matter + Markdown）
-│   └── ...
-├── SKILL.md                   # 组件自描述 Skill 文档
-├── README.md
-└── .gitignore
+├── abilities/                 # 核心能力定义（skill + wiki 各五项）
+├── scripts/                   # Python 项目（uv 管理）
+│   └── src/experience_skill_cli/
+│       ├── cli.py             # CLI 入口
+│       ├── console.py         # 控制台输出
+│       ├── sqlite.py          # SQLite + FTS5 封装
+│       ├── web_server.py      # FastAPI Web 服务
+│       ├── service/           # 业务服务层（含混合检索融合）
+│       ├── manager/           # 数据库操作层 + 正文搜索器
+│       ├── schema/            # 数据模型
+│       ├── common/            # 公共常量
+│       └── tokenizer/         # 中文分词扩展
+├── data/                      # 用户数据（不纳入版本控制）
+│   ├── skill_hub/             # Skill 仓库
+│   └── wiki_hub/              # Wiki 仓库
+├── example/                   # 参考模板
+├── SKILL.md                   # 组件自描述文档
+└── README.md
 ```
 
 ## 快速开始
@@ -67,12 +44,12 @@ experience_skill/
 全文检索依赖 `simple` 分词器（支持中文与拼音分词），首次使用前需编译：
 
 ```bash
-bash scripts/tokenizer/build.sh
+bash scripts/src/experience_skill_cli/tokenizer/build.sh
 ```
 
 脚本会自动查询 GitHub 最新 Release 版本并下载源码编译。若本地已存在对应版本的 `.tar.gz` 包则直接解压编译，无需重复下载。
 
-### 2. 安装依赖（推荐使用 uv）
+### 2. 安装依赖
 
 本项目使用 `uv` 管理 Python 依赖，在 `scripts/` 目录下执行：
 
@@ -81,58 +58,61 @@ cd scripts
 uv sync
 ```
 
-也可使用传统 pip 方式安装：
-
-```bash
-pip install fastapi uvicorn pydantic pyyaml
-```
-
 ### 3. 使用 CLI
 
-所有 CLI 命令需在 `scripts/` 目录下通过 `uv run python main.py` 执行：
+所有 CLI 命令在 `scripts/` 目录下通过 `uv run experience-skill` 执行：
 
 ```bash
 cd scripts
 
+# 同步 data/ 中所有经验到数据库
+uv run experience-skill sync
+
 # 添加 Skill 经验
-uv run python main.py add-experiences --type SKILL --source ../skill_hub/exmaple_skill
+uv run experience-skill add-experiences --type SKILL --source data/skill_hub/example-skill
 
 # 添加 Wiki 经验
-uv run python main.py add-experiences --type WIKI --source ../wiki_hub/example.md
+uv run experience-skill add-experiences --type WIKI --source data/wiki_hub/example.md
 
 # 列出所有经验（分页）
-uv run python main.py list-experiences
+uv run experience-skill list-experiences
 
 # 按类型与名称过滤
-uv run python main.py list-experiences --type SKILL --name example
+uv run experience-skill list-experiences --type SKILL --name example
 
 # 按热门筛选
-uv run python main.py list-experiences --is-hot true
+uv run experience-skill list-experiences --is-hot true
 
-# 全文检索（支持中文/拼音）
-uv run python main.py search-experiences --query "数据库优化" --type SKILL --top-k 5
+# 混合检索（默认：FTS5 元数据 + 正文内容，支持中文/拼音）
+uv run experience-skill search-experiences --query "数据库" --type SKILL --top-k 5
+
+# 仅元数据检索（FTS5，旧默认行为）
+uv run experience-skill search-experiences --query "数据库" --type SKILL --metadata-only
+
+# 仅正文检索（跳过 FTS5）
+uv run experience-skill search-experiences --query "数据库" --type SKILL --content-only
 
 # 按 ID 删除
-uv run python main.py delete-by-ids --ids <uuid1> <uuid2>
+uv run experience-skill delete-by-ids --ids <uuid1> <uuid2>
 
 # 按来源路径删除
-uv run python main.py delete-by-source --source ../skill_hub/exmaple_skill
+uv run experience-skill delete-by-source --source data/skill_hub/example-skill
 
 # 清空所有数据
-uv run python main.py delete-all
+uv run experience-skill delete-all
 ```
 
 ### 4. 启动 Web 管理界面
 
 ```bash
 cd scripts
-uv run python main.py web
+uv run experience-skill web
 ```
 
 Web 服务默认监听 `127.0.0.1:8080`，在 macOS 或有图形环境的 Linux 下会自动打开浏览器。支持自定义端口：
 
 ```bash
-uv run python main.py web --port 9090 --no-browser
+uv run experience-skill web --port 9090 --no-browser
 ```
 
 Web 页面功能：
@@ -140,6 +120,7 @@ Web 页面功能：
 - **名称搜索**：模糊匹配经验名称
 - **关键词过滤**：多选关键词标签联动过滤
 - **热门筛选**：仅查看热门经验
+- **检索模式切换**：混合检索（默认）/ 元数据 / 正文
 - **分页浏览**：上一页 / 下一页翻页
 
 ## 核心概念
@@ -171,6 +152,8 @@ keywords: [示例, 技能, 文档]
 ### Wiki（知识库）
 
 工作过程中查阅的网页、文档等资料的提炼总结，与 Skill 采用相同的 **YAML front matter + Markdown 正文** 格式，以单个 `.md` 文件形式存放。仅 YAML header 中的 name、description、keywords、references 元信息存入数据库用于检索，Markdown 正文不入库，检索命中后按 source 路径读取完整文件。
+
+> 混合检索模式下，正文内容会通过 ripgrep/grep 参与搜索，即使元数据中未包含某关键词，正文中的匹配也能被召回。
 
 ```yaml
 ---
@@ -226,12 +209,23 @@ references:
 
 ## 检索机制
 
-1. **关键词过滤**：基于 `keyword_table` 的精确匹配，支持 Web 界面多选关键词联动过滤
-2. **全文检索**：基于 SQLite FTS5 + `simple` 分词器，对 `description` 字段进行中文、拼音混合查询
-3. **双阶段召回**：
+组件默认启用**混合检索**，融合元数据与正文两种召回通路：
+
+1. **FTS5 元数据检索**：基于 SQLite FTS5 + `simple` 分词器，对 `description` 字段进行中文、拼音混合查询
    - 第一阶段：使用 `simple_query()` 做 AND 语义精确查询（取 `top_k // 2` 条）
    - 第二阶段：若结果不足，使用标准 OR 语法做松散查询补全（去重后补足至 `top_k` 条）
-4. **检索过滤**：支持按 `fields`（关键词字段）、`is_hot`（热门）、`banned_experience_ids`（排除）、`experience_ids`（限定范围）多维度过滤
+2. **正文内容检索**：基于 ripgrep（`rg --json --fixed-strings`）或 Python 原生扫描，搜索 Markdown 正文内容
+   - 自动跳过 YAML front matter，仅匹配正文部分
+   - ripgrep 不可用时自动降级为 Python 逐文件行扫描
+3. **加权融合排序**：
+   - DB 得分 = 1 / rank（位置得分，#1 = 1.0）
+   - 内容得分 = 命中行数 / 最大命中行数（归一化到 [0, 1]）
+   - 最终得分 = 0.6 × DB 得分 + 0.4 × 内容得分
+   - 结果标注匹配类型：`both`（双重命中）/ `metadata`（仅元数据）/ `content`（仅正文）
+4. **检索模式切换**：
+   - CLI：`--metadata-only` 仅元数据 / `--content-only` 仅正文 / 默认混合
+   - Web API：`search_mode=hybrid|metadata|content`
+5. **检索过滤**：支持按 `fields`（关键词字段）、`is_hot`（热门）、`banned_experience_ids`（排除）、`experience_ids`（限定范围）多维度过滤
 
 ## 热门经验机制
 
@@ -242,7 +236,7 @@ references:
 
 ## 约束规范
 
-- 所有新建 Skill、Wiki 必须统一存放至 `skill_hub`、`wiki_hub` 目录，禁止自定义存储路径
+- 所有新建 Skill、Wiki 必须统一存放至 `data/skill_hub`、`data/wiki_hub` 目录，禁止自定义存储路径
 - 沉淀内容禁止包含恶意代码、敏感数据、隐私信息及违规内容
 - 新建前必须先执行检索查重；存在相似资源时，优先推荐合并、优化，而非重复新建
 - 当存量资源体量较大时，定期合并同质化内容，精简资源库、降低冗余维护成本
@@ -253,6 +247,6 @@ references:
 |------|-------|------|------|
 | 创建 | `create-skill` | `create-wiki` | 从对话或资料中沉淀标准化经验；创建前自动查重 |
 | 评估 | `eval-skill` | `eval-wiki` | 基于评测集或抽样问答开展质量核验 |
-| 检索 | `find-skill` | `find-wiki` | SQLite 关键字检索 + FTS5 全文检索 |
+| 检索 | `find-skill` | `find-wiki` | FTS5 全文检索 + 正文内容 grep（默认混合检索） |
 | 合并 | `merge-skill` | `merge-wiki` | 识别相似资源，多份内容合并整编 |
 | 优化 | `optimize-skill` | `optimize-wiki` | 依据评估报告迭代优化，修复错误、补全内容 |

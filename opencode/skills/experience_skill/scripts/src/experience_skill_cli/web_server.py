@@ -121,7 +121,7 @@ async def list_hot_experiences(
 @app.get("/api/experiences/search")
 async def search_experiences(
     query: Annotated[str, Query(min_length=1, description="搜索关键词")],
-    exp_type: Annotated[str, Query(description="类型：SKILL / WIKI")],
+    exp_type: Annotated[str | None, Query(description="类型：SKILL / WIKI，不传则搜索全部")] = None,
     top_k: Annotated[int, Query(ge=1, le=100, description="返回条数")] = 20,
     is_hot: Annotated[bool | None, Query(description="是否热门")] = None,
     search_mode: Annotated[
@@ -129,51 +129,66 @@ async def search_experiences(
         Query(description="检索模式：hybrid（默认）/ metadata / content"),
     ] = None,
 ) -> JSONResponse:
-    """搜索经验，支持三种检索模式。
+    """搜索经验，支持三种检索模式和跨类型搜索。
 
+    - exp_type 不传时同时搜索 SKILL + WIKI，按得分合并排序
     - hybrid（默认）：元数据 + 正文内容混合检索
     - metadata：仅 FTS5 元数据检索
     - content：仅正文内容 grep 检索
     """
-    experience_type = ExperienceType[exp_type.upper()]
     mode = (search_mode or "hybrid").strip().lower()
-
-    if mode == "content":
-        results = ExperienceService.search_content_only(
-            query=query,
-            exp_type=experience_type,
-            top_k=top_k,
-            is_hot=is_hot,
-        )
-        return JSONResponse(
-            {
-                "items": [_hybrid_result_to_dict(r) for r in results],
-                "mode": "content",
-            },
-        )
-    if mode == "hybrid":
-        results = ExperienceService.search_with_content(
-            query=query,
-            exp_type=experience_type,
-            top_k=top_k,
-            is_hot=is_hot,
-        )
-        return JSONResponse(
-            {
-                "items": [_hybrid_result_to_dict(r) for r in results],
-                "mode": "hybrid",
-            },
-        )
-    exps = ExperienceService.search_experiences(
-        query=query,
-        exp_type=experience_type,
-        top_k=top_k,
-        is_hot=is_hot,
+    types: list[ExperienceType] = (
+        [ExperienceType.SKILL, ExperienceType.WIKI]
+        if exp_type is None
+        else [ExperienceType[exp_type.upper()]]
     )
+
+    if mode == "metadata":
+        all_exps: list[Experience] = []
+        for experience_type in types:
+            exps = ExperienceService.search_experiences(
+                query=query,
+                exp_type=experience_type,
+                top_k=top_k,
+                is_hot=is_hot,
+            )
+            all_exps.extend(exps)
+        all_exps = all_exps[:top_k]
+        return JSONResponse(
+            {
+                "items": [_exp_to_dict(e) for e in all_exps],
+                "mode": "metadata",
+            },
+        )
+
+    # hybrid / content 模式
+    all_hybrid: list[HybridSearchResult] = []
+    for experience_type in types:
+        if mode == "content":
+            results = ExperienceService.search_content_only(
+                query=query,
+                exp_type=experience_type,
+                top_k=top_k,
+                is_hot=is_hot,
+            )
+        else:
+            results = ExperienceService.search_with_content(
+                query=query,
+                exp_type=experience_type,
+                top_k=top_k,
+                is_hot=is_hot,
+            )
+        all_hybrid.extend(results)
+
+    # 跨类型时按得分排序，截断至 top_k
+    if len(types) > 1:
+        all_hybrid.sort(key=lambda r: r.final_score, reverse=True)
+    all_hybrid = all_hybrid[:top_k]
+
     return JSONResponse(
         {
-            "items": [_exp_to_dict(e) for e in exps],
-            "mode": "metadata",
+            "items": [_hybrid_result_to_dict(r) for r in all_hybrid],
+            "mode": mode,
         },
     )
 
@@ -251,19 +266,6 @@ def _hybrid_result_to_dict(sr: HybridSearchResult) -> dict[str, object]:
     result.update(
         {
             "match_type": sr.match_type,
-            "db_score": sr.db_score,
-            "content_score": sr.content_score,
-            "final_score": sr.final_score,
-            "content_hit_count": sr.content_hit_count,
-            "snippets": [
-                {
-                    "line_num": s.line_num,
-                    "content": s.content,
-                    "match_start": s.match_start,
-                    "match_end": s.match_end,
-                }
-                for s in sr.snippets
-            ],
         },
     )
     return result

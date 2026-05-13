@@ -220,15 +220,18 @@ class ContentSearcher:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def search(
+    def search(  # noqa: PLR0912
         query: str,
         sources: list[str],
         exp_type: ExperienceType,
     ) -> list[ContentMatch]:
         """对指定 source 列表进行正文内容搜索。
 
+        支持多关键词：将 query 按空白拆分为独立 token，逐个搜索后合并结果。
+        命中多个 token 的文件得分更高，仅命中单个 token 的也不会被排除。
+
         Args:
-            query: 原始搜索关键词（支持中文、英文、拼音）
+            query: 原始搜索关键词（支持中文、英文、拼音，空格分隔多词）
             sources: 待搜索的 source 相对路径列表
             exp_type: 经验类型（SKILL / WIKI）
 
@@ -246,42 +249,70 @@ class ContentSearcher:
         for src in sources:
             p = ContentSearcher.resolve_md_file(src, exp_type)
             if p is not None:
-                # 用 resolved 的绝对路径做 key（避免符号链接差异）
                 target_paths.append(p)
                 path_to_source[str(p)] = src
 
         if not target_paths:
             return []
 
-        # 选择后端并搜索
-        use_rg = ContentSearcher._rg_available()
-        if use_rg:
-            raw_matches = ContentSearcher._search_with_rg(query_str, target_paths)
-        else:
-            raw_matches = ContentSearcher._search_with_python(query_str, target_paths)
+        # 拆分为独立 token，去重并过滤空串
+        tokens = [t for t in query_str.split() if t]
+        if not tokens:
+            tokens = [query_str]
 
-        if not raw_matches:
+        use_rg = ContentSearcher._rg_available()
+
+        # 逐 token 搜索并合并结果: file_key -> {token: [matches]}
+        merged: dict[str, dict[str, list[dict]]] = {}
+        for token in tokens:
+            if use_rg:
+                raw = ContentSearcher._search_with_rg(token, target_paths)
+            else:
+                raw = ContentSearcher._search_with_python(token, target_paths)
+            for path_str, hits in raw.items():
+                if path_str not in merged:
+                    merged[path_str] = {}
+                merged[path_str][token] = hits
+
+        if not merged:
             return []
 
-        # 归一化得分：以最大命中数为基准
-        max_hits = max((len(v) for v in raw_matches.values()), default=1)
+        # 计算得分：命中行数 × 命中 token 比例，兼顾广度和深度
+        max_raw = 0.0
+        pre_results: list[dict] = []
+        for path_str, token_hits in merged.items():
+            all_hits: list[dict] = []
+            for hits in token_hits.values():
+                all_hits.extend(hits)
+            hit_count = len(all_hits)
+            tokens_matched = len(token_hits)
+            raw_score = hit_count * tokens_matched / len(tokens)
+            max_raw = max(max_raw, raw_score)
+            pre_results.append({
+                "path": path_str,
+                "all_hits": all_hits,
+                "hit_count": hit_count,
+                "tokens_matched": tokens_matched,
+                "raw_score": raw_score,
+            })
 
+        # normalize scores
         results: list[ContentMatch] = []
-        for path_str, hits in raw_matches.items():
-            src = path_to_source.get(path_str, path_str)
-            score = round(len(hits) / max(max_hits, 1), 4)
+        for pr in pre_results:
+            src: str = path_to_source.get(pr["path"], "") or pr["path"]
+            score = round(pr["raw_score"] / max(max_raw, 1), 4)
 
             snippets: list[ContentSnippet] = []
-            for h in hits[: ContentSearcher._MAX_SNIPPETS]:
+            for h in pr["all_hits"][: ContentSearcher._MAX_SNIPPETS]:
                 line_num = h.get("line_number", 0)
-                content = h.get("lines", {}).get("text", "")
+                text = h.get("lines", {}).get("text", "")
                 submatches = h.get("submatches", [])
                 match_start = submatches[0]["start"] if submatches else 0
                 match_end = submatches[0]["end"] if submatches else 0
                 snippets.append(
                     ContentSnippet(
                         line_num=line_num,
-                        content=content.strip(),
+                        content=text.strip(),
                         match_start=match_start,
                         match_end=match_end,
                     ),
@@ -292,12 +323,11 @@ class ContentSearcher:
                     source=src,
                     score=score,
                     snippets=snippets,
-                    hit_count=len(hits),
-                    file_path=path_str,
+                    hit_count=pr["hit_count"],
+                    file_path=pr["path"],
                 ),
             )
 
-        # 按得分降序
         results.sort(key=lambda x: x.score, reverse=True)
         return results
 
